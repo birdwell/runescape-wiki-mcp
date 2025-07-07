@@ -8,61 +8,62 @@ import { ToolArguments, ToolResponse } from '../types.js';
 // Tool definitions for price-related functionality
 export const priceTools: Tool[] = [
     {
-        name: 'get_latest_prices',
-        description: 'Get the latest Grand Exchange prices for all items or a specific item',
+        name: 'get_item_price',
+        description: 'Get the current Grand Exchange price and details for a specific item',
         inputSchema: {
             type: 'object',
             properties: {
                 itemId: {
                     type: 'number',
-                    description: 'Optional item ID to get price for specific item',
+                    description: 'Item ID to get price and details for',
                 },
             },
+            required: ['itemId'],
         },
     },
     {
-        name: 'get_5m_prices',
-        description: 'Get 5-minute average prices for all items',
+        name: 'get_ge_info',
+        description: 'Get Grand Exchange Database information including last update date',
         inputSchema: {
             type: 'object',
-            properties: {
-                timestamp: {
-                    type: 'number',
-                    description: 'Optional Unix timestamp to get prices for specific time',
-                },
-            },
+            properties: {},
         },
     },
     {
-        name: 'get_1h_prices',
-        description: 'Get 1-hour average prices for all items',
+        name: 'get_category_info',
+        description: 'Get information about a specific item category',
         inputSchema: {
             type: 'object',
             properties: {
-                timestamp: {
+                category: {
                     type: 'number',
-                    description: 'Optional Unix timestamp to get prices for specific time',
+                    description: 'Category ID (1-32)',
                 },
             },
+            required: ['category'],
         },
     },
     {
-        name: 'get_timeseries',
-        description: 'Get price time series data for a specific item',
+        name: 'search_items',
+        description: 'Search for items in a specific category and starting letter',
         inputSchema: {
             type: 'object',
             properties: {
-                itemId: {
+                category: {
                     type: 'number',
-                    description: 'Item ID to get time series for',
+                    description: 'Category ID (1-32)',
                 },
-                timestep: {
+                alpha: {
                     type: 'string',
-                    enum: ['5m', '1h', '6h', '24h'],
-                    description: 'Time interval for the series',
+                    description: 'Starting letter (a-z) or # for numbers',
+                },
+                page: {
+                    type: 'number',
+                    description: 'Page number (starting from 1)',
+                    default: 1,
                 },
             },
-            required: ['itemId', 'timestep'],
+            required: ['category', 'alpha'],
         },
     },
 ];
@@ -70,47 +71,38 @@ export const priceTools: Tool[] = [
 // Tool handlers for price-related functionality
 export async function handlePriceTool(name: string, args: ToolArguments): Promise<ToolResponse> {
     switch (name) {
-        case 'get_latest_prices': {
-            const itemId = args?.itemId as number | undefined;
-            let url = `${RS3_PRICES_API}/latest`;
-            if (itemId) {
-                url += `?id=${itemId}`;
-            }
-
-            const data = await makeApiRequest(url);
-            return createSuccessResponse('Latest Grand Exchange Prices', data);
-        }
-
-        case 'get_5m_prices': {
-            const timestamp = args?.timestamp as number | undefined;
-            let url = `${RS3_PRICES_API}/5m`;
-            if (timestamp) {
-                url += `?timestamp=${timestamp}`;
-            }
-
-            const data = await makeApiRequest(url);
-            return createSuccessResponse('5-Minute Average Prices', data);
-        }
-
-        case 'get_1h_prices': {
-            const timestamp = args?.timestamp as number | undefined;
-            let url = `${RS3_PRICES_API}/1h`;
-            if (timestamp) {
-                url += `?timestamp=${timestamp}`;
-            }
-
-            const data = await makeApiRequest(url);
-            return createSuccessResponse('1-Hour Average Prices', data);
-        }
-
-        case 'get_timeseries': {
+        case 'get_item_price': {
             const itemId = args?.itemId as number;
-            const timestep = args?.timestep as string;
+            const url = `${RS3_PRICES_API}/catalogue/detail.json?item=${itemId}`;
 
-            const url = `${RS3_PRICES_API}/timeseries?id=${itemId}&timestep=${timestep}`;
             const data = await makeApiRequest(url);
+            return createSuccessResponse(`Item Detail for ${itemId}`, data);
+        }
 
-            return createSuccessResponse(`Price Time Series for Item ${itemId} (${timestep})`, data);
+        case 'get_ge_info': {
+            const url = `${RS3_PRICES_API}/info.json`;
+            const data = await makeApiRequest(url);
+            return createSuccessResponse('Grand Exchange Database Information', data);
+        }
+
+        case 'get_category_info': {
+            const category = args?.category as number;
+            const url = `${RS3_PRICES_API}/catalogue/category.json?category=${category}`;
+            const data = await makeApiRequest(url);
+            return createSuccessResponse(`Category ${category} Information`, data);
+        }
+
+        case 'search_items': {
+            const category = args?.category as number;
+            const alpha = args?.alpha as string;
+            const page = (args?.page as number) || 1;
+            
+            // Handle the special case for numbers
+            const alphaParam = alpha === '#' ? '%23' : alpha;
+            const url = `${RS3_PRICES_API}/catalogue/items.json?category=${category}&alpha=${alphaParam}&page=${page}`;
+            
+            const data = await makeApiRequest(url);
+            return createSuccessResponse(`Items in Category ${category} starting with "${alpha}" (Page ${page})`, data);
         }
 
         default:

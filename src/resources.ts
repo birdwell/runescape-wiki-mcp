@@ -8,14 +8,14 @@ import { makeApiRequest } from './utils.js';
 export const resources: Resource[] = [
     {
         uri: RESOURCE_URIS.LATEST_PRICES,
-        name: 'Latest Grand Exchange Prices',
-        description: 'Current Grand Exchange prices for all items',
+        name: 'Grand Exchange Database Info',
+        description: 'Information about the Grand Exchange Database including last update',
         mimeType: 'application/json',
     },
     {
         uri: RESOURCE_URIS.ITEM_MAPPING,
-        name: 'Item Mapping',
-        description: 'Complete mapping of all items with metadata',
+        name: 'Item Categories',
+        description: 'Available item categories in the Grand Exchange',
         mimeType: 'application/json',
     },
 ];
@@ -26,7 +26,7 @@ export async function handleResource(request: ReadResourceRequest) {
 
     switch (uri) {
         case RESOURCE_URIS.LATEST_PRICES: {
-            const data = await makeApiRequest(`${RS3_PRICES_API}/latest`);
+            const data = await makeApiRequest(`${RS3_PRICES_API}/info.json`);
             return {
                 contents: [
                     {
@@ -39,7 +39,8 @@ export async function handleResource(request: ReadResourceRequest) {
         }
 
         case RESOURCE_URIS.ITEM_MAPPING: {
-            const data = await makeApiRequest(`${RS3_PRICES_API}/mapping`);
+            // Get info about category 1 as an example of available categories
+            const data = await makeApiRequest(`${RS3_PRICES_API}/catalogue/category.json?category=1`);
             return {
                 contents: [
                     {

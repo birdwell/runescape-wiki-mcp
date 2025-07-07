@@ -8,14 +8,6 @@ import { ToolArguments, ToolResponse } from '../types.js';
 // Tool definitions for item-related functionality
 export const itemTools: Tool[] = [
     {
-        name: 'get_item_mapping',
-        description: 'Get the mapping of all items with their IDs, names, and metadata',
-        inputSchema: {
-            type: 'object',
-            properties: {},
-        },
-    },
-    {
         name: 'get_item_detail',
         description: 'Get detailed item information from the official Grand Exchange API including price trends, examine text, and metadata',
         inputSchema: {
@@ -80,18 +72,6 @@ export const itemTools: Tool[] = [
 // Tool handlers for item-related functionality
 export async function handleItemTool(name: string, args: ToolArguments): Promise<ToolResponse> {
     switch (name) {
-        case 'get_item_mapping': {
-            const data = await makeApiRequest(`${RS3_PRICES_API}/mapping`);
-            return {
-                content: [
-                    {
-                        type: 'text',
-                        text: `Item Mapping (${data.length} items):\n\n${JSON.stringify(data.slice(0, 10), null, 2)}\n\n... and ${data.length - 10} more items`,
-                    },
-                ],
-            };
-        }
-
         case 'get_item_detail': {
             const itemId = args?.itemId as number;
             const data = await makeApiRequest(`${RS_GE_API}/catalogue/detail.json?item=${itemId}`);

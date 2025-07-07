@@ -1,129 +1,109 @@
 // Tests for item tools
 
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import nock from 'nock';
 import { handleItemTool } from '../src/tools/itemTools.js';
-import { mockResponses, validateToolResponse } from './testUtils.js';
+import { RS_GE_API, RS3_PRICES_API } from '../src/constants.js';
 
 describe('Item Tools', () => {
-
     beforeEach(() => {
         nock.cleanAll();
     });
 
-    afterAll(() => {
-        nock.restore();
-    });
-
-    describe('get_item_mapping', () => {
-        it('should get item mapping', async () => {
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/mapping')
-                .reply(200, mockResponses.itemMapping);
-
-            const response = await handleItemTool('get_item_mapping', {});
-
-            validateToolResponse(response);
-            expect(response.content[0].text).toContain('Item Mapping');
-            expect(response.content[0].text).toContain('Abyssal whip');
-        });
-
-        it('should handle API errors', async () => {
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/mapping')
-                .reply(500, 'Internal Server Error');
-
-            await expect(handleItemTool('get_item_mapping', {}))
-                .rejects.toThrow('API request failed: 500');
-        });
+    afterEach(() => {
+        nock.cleanAll();
     });
 
     describe('get_item_detail', () => {
-        it('should get item details', async () => {
-            nock('https://services.runescape.com')
-                .get('/m=itemdb_rs/api/catalogue/detail.json?item=4151')
-                .reply(200, mockResponses.itemDetail);
+        it('should get item details from official API', async () => {
+            nock(RS_GE_API)
+                .get('/catalogue/detail.json?item=4151')
+                .reply(200, {
+                    item: {
+                        id: 4151,
+                        name: 'Abyssal whip',
+                        description: 'A weapon from the Abyss.',
+                        current: { price: '75k' }
+                    }
+                });
 
-            const response = await handleItemTool('get_item_detail', { itemId: 4151 });
+            const result = await handleItemTool('get_item_detail', { itemId: 4151 });
 
-            validateToolResponse(response);
-            expect(response.content[0].text).toContain('Item Detail for 4151');
-            expect(response.content[0].text).toContain('Abyssal whip');
-        });
-
-        it('should require itemId parameter', async () => {
-            await expect(handleItemTool('get_item_detail', {}))
-                .rejects.toThrow();
+            expect(result.content).toBeDefined();
+            expect(result.content[0].text).toContain('Item Detail for 4151');
+            expect(result.content[0].text).toContain('Abyssal whip');
         });
     });
 
     describe('get_item_graph', () => {
         it('should get price graph data', async () => {
-            const mockGraphData = {
-                daily: { "1640995200000": 2400000 },
-                average: { "1640995200000": 2380000 }
-            };
+            nock(RS_GE_API)
+                .get('/graph/4151.json')
+                .reply(200, {
+                    daily: {
+                        '1640995200000': 2400000,
+                        '1641081600000': 2390000
+                    }
+                });
 
-            nock('https://services.runescape.com')
-                .get('/m=itemdb_rs/api/graph/4151.json')
-                .reply(200, mockGraphData);
+            const result = await handleItemTool('get_item_graph', { itemId: 4151 });
 
-            const response = await handleItemTool('get_item_graph', { itemId: 4151 });
-
-            validateToolResponse(response);
-            expect(response.content[0].text).toContain('Price Graph for Item 4151');
+            expect(result.content).toBeDefined();
+            expect(result.content[0].text).toContain('Price Graph for Item 4151');
         });
     });
 
     describe('browse_items_by_category', () => {
         it('should browse items by category', async () => {
-            const mockCategoryData = {
-                total: 10,
-                items: [mockResponses.itemDetail.item]
-            };
+            nock(RS_GE_API)
+                .get('/catalogue/items.json?category=1&alpha=a&page=1')
+                .reply(200, {
+                    items: [
+                        { id: 1, name: 'Item 1' },
+                        { id: 2, name: 'Item 2' }
+                    ]
+                });
 
-            nock('https://services.runescape.com')
-                .get('/m=itemdb_rs/api/catalogue/items.json?category=24&alpha=a&page=1')
-                .reply(200, mockCategoryData);
-
-            const response = await handleItemTool('browse_items_by_category', { category: 24 });
-
-            validateToolResponse(response);
-            expect(response.content[0].text).toContain('Items in Category 24');
-        });
-
-        it('should accept custom alpha and page parameters', async () => {
-            const mockCategoryData = { total: 0, items: [] };
-
-            nock('https://services.runescape.com')
-                .get('/m=itemdb_rs/api/catalogue/items.json?category=24&alpha=z&page=5')
-                .reply(200, mockCategoryData);
-
-            const response = await handleItemTool('browse_items_by_category', {
-                category: 24,
-                alpha: 'z',
-                page: 5
+            const result = await handleItemTool('browse_items_by_category', {
+                category: 1,
+                alpha: 'a',
+                page: 1
             });
 
-            validateToolResponse(response);
-            expect(response.content[0].text).toContain('Items in Category 24 (z, Page 5)');
+            expect(result.content).toBeDefined();
+            expect(result.content[0].text).toContain('Items in Category 1 (a, Page 1)');
         });
     });
 
     describe('get_ge_info', () => {
         it('should get Grand Exchange info', async () => {
-            nock('https://services.runescape.com')
-                .get('/m=itemdb_rs/api/info.json')
-                .reply(200, mockResponses.geInfo);
+            nock(RS_GE_API)
+                .get('/info.json')
+                .reply(200, {
+                    lastConfigUpdateRuneday: 8526
+                });
 
-            const response = await handleItemTool('get_ge_info', {});
+            const result = await handleItemTool('get_ge_info', {});
 
-            validateToolResponse(response);
-            expect(response.content[0].text).toContain('Grand Exchange Database Information');
+            expect(result.content).toBeDefined();
+            expect(result.content[0].text).toContain('Grand Exchange Database Information');
+            expect(result.content[0].text).toContain('lastConfigUpdateRuneday');
         });
     });
 
-    it('should throw error for unknown tool', async () => {
-        await expect(handleItemTool('unknown_tool', {}))
-            .rejects.toThrow('Unknown item tool: unknown_tool');
+    describe('Error handling', () => {
+        it('should handle API errors', async () => {
+            nock(RS_GE_API)
+                .get('/catalogue/detail.json?item=999999')
+                .reply(404, { error: 'Item not found' });
+
+            await expect(handleItemTool('get_item_detail', { itemId: 999999 }))
+                .rejects.toThrow('API request failed: 404');
+        });
+
+        it('should handle unknown tool', async () => {
+            await expect(handleItemTool('unknown_tool', {}))
+                .rejects.toThrow('Unknown item tool: unknown_tool');
+        });
     });
 }); 

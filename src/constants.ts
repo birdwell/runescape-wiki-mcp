@@ -1,8 +1,8 @@
 // Constants for RuneScape Wiki MCP Server
 
 // API Base URLs
-export const RS3_PRICES_API = 'https://prices.runescape.wiki/api/v1/rs';
-export const RS_GE_API = 'https://services.runescape.com/m=itemdb_rs/api';
+export const RS3_PRICES_API = 'https://secure.runescape.com/m=itemdb_rs/api';
+export const RS_GE_API = 'https://secure.runescape.com/m=itemdb_rs/api';
 export const RS3_HISCORES_API = 'https://secure.runescape.com/m=hiscore';
 
 // User agent for API requests

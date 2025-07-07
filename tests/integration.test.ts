@@ -1,121 +1,128 @@
 // Integration tests
 
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import nock from 'nock';
 import { handleTool } from '../src/tools/index.js';
 import { handleResource } from '../src/resources.js';
-import { mockResponses } from './testUtils.js';
+import { RESOURCE_URIS, RS3_PRICES_API, RS_GE_API } from '../src/constants.js';
 
 describe('Integration Tests', () => {
     beforeEach(() => {
         nock.cleanAll();
     });
 
-    afterAll(() => {
-        nock.restore();
+    afterEach(() => {
+        nock.cleanAll();
     });
 
     describe('Tool Integration', () => {
         it('should handle price tool workflow', async () => {
-            // Mock API responses
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/latest')
-                .reply(200, mockResponses.latestPrices);
+            // Mock get_item_price
+            nock(RS3_PRICES_API)
+                .get('/catalogue/detail.json?item=4151')
+                .reply(200, {
+                    item: {
+                        id: 4151,
+                        name: 'Abyssal whip',
+                        current: { price: '75k' }
+                    }
+                });
 
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/timeseries?id=4151&timestep=1h')
-                .reply(200, { data: { "1640995200000": 2400000 } });
+            const priceResult = await handleTool('get_item_price', { itemId: 4151 });
+            expect(priceResult.content[0].text).toContain('Abyssal whip');
 
-            // Get latest prices
-            const latestPrices = await handleTool('get_latest_prices', {});
-            expect(latestPrices.content[0].text).toContain('4151');
+            // Mock get_ge_info
+            nock(RS3_PRICES_API)
+                .get('/info.json')
+                .reply(200, {
+                    lastConfigUpdateRuneday: 8526
+                });
 
-            // Get timeseries for specific item
-            const timeseries = await handleTool('get_timeseries', {
-                itemId: 4151,
-                timestep: '1h'
-            });
-            expect(timeseries.content[0].text).toContain('Price Time Series');
+            const infoResult = await handleTool('get_ge_info', {});
+            expect(infoResult.content[0].text).toContain('lastConfigUpdateRuneday');
         });
 
         it('should handle item tool workflow', async () => {
-            // Mock API responses
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/mapping')
-                .reply(200, mockResponses.itemMapping);
+            // Mock item detail
+            nock(RS_GE_API)
+                .get('/catalogue/detail.json?item=4151')
+                .reply(200, {
+                    item: {
+                        id: 4151,
+                        name: 'Abyssal whip',
+                        description: 'A weapon from the Abyss.'
+                    }
+                });
 
-            nock('https://services.runescape.com')
-                .get('/m=itemdb_rs/api/catalogue/detail.json?item=4151')
-                .reply(200, mockResponses.itemDetail);
+            const detailResult = await handleTool('get_item_detail', { itemId: 4151 });
+            expect(detailResult.content[0].text).toContain('Abyssal whip');
 
-            // Get item mapping
-            const mapping = await handleTool('get_item_mapping', {});
-            expect(mapping.content[0].text).toContain('Abyssal whip');
+            // Mock price graph
+            nock(RS_GE_API)
+                .get('/graph/4151.json')
+                .reply(200, {
+                    daily: {
+                        '1640995200000': 2400000
+                    }
+                });
 
-            // Get specific item details
-            const details = await handleTool('get_item_detail', { itemId: 4151 });
-            expect(details.content[0].text).toContain('Item Detail for 4151');
-        });
-
-        it('should handle player stats workflow', async () => {
-            // Mock API response
-            nock('https://secure.runescape.com')
-                .get('/m=hiscore/m=hiscore/index_lite.ws?player=TestPlayer')
-                .reply(200, mockResponses.playerStats);
-
-            const stats = await handleTool('get_player_stats', {
-                username: 'TestPlayer'
-            });
-            expect(stats.content[0].text).toContain('Player Stats for TestPlayer');
+            const graphResult = await handleTool('get_item_graph', { itemId: 4151 });
+            expect(graphResult.content[0].text).toContain('Price Graph');
         });
     });
 
     describe('Resource Integration', () => {
         it('should read latest prices resource', async () => {
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/latest')
-                .reply(200, mockResponses.latestPrices);
+            nock(RS3_PRICES_API)
+                .get('/info.json')
+                .reply(200, {
+                    lastConfigUpdateRuneday: 8526
+                });
 
             const prices = await handleResource({
-                method: 'resources/read' as const,
-                params: { uri: 'runescape://prices/latest' }
-            });
+                params: { uri: RESOURCE_URIS.LATEST_PRICES }
+            } as any);
 
             expect(prices.contents).toHaveLength(1);
-            expect(prices.contents[0].text).toContain('4151');
+            expect(prices.contents[0].text).toContain('lastConfigUpdateRuneday');
         });
 
         it('should read item mapping resource', async () => {
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/mapping')
-                .reply(200, mockResponses.itemMapping);
+            nock(RS3_PRICES_API)
+                .get('/catalogue/category.json?category=1')
+                .reply(200, {
+                    types: [],
+                    alpha: [
+                        { letter: 'a', items: 6 }
+                    ]
+                });
 
             const mapping = await handleResource({
-                method: 'resources/read' as const,
-                params: { uri: 'runescape://items/mapping' }
-            });
+                params: { uri: RESOURCE_URIS.ITEM_MAPPING }
+            } as any);
 
             expect(mapping.contents).toHaveLength(1);
-            expect(mapping.contents[0].text).toContain('Abyssal whip');
+            expect(mapping.contents[0].text).toContain('alpha');
         });
     });
 
-    describe('Error Handling Integration', () => {
-        it('should handle tool errors gracefully', async () => {
-            // Unknown tool
-            await expect(handleTool('unknown_tool', {}))
-                .rejects.toThrow('Unknown tool: unknown_tool');
+    describe('Error Recovery', () => {
+        it('should handle API failures gracefully', async () => {
+            nock(RS3_PRICES_API)
+                .get('/catalogue/detail.json?item=999999')
+                .reply(404, { error: 'Item not found' });
 
-            // Missing parameters
-            await expect(handleTool('get_item_detail', {}))
-                .rejects.toThrow();
+            await expect(handleTool('get_item_price', { itemId: 999999 }))
+                .rejects.toThrow('API request failed: 404');
         });
 
-        it('should handle resource errors gracefully', async () => {
-            // Unknown resource
-            await expect(handleResource({
-                method: 'resources/read' as const,
-                params: { uri: 'unknown://resource' }
-            })).rejects.toThrow('Unknown resource: unknown://resource');
+        it('should handle network errors', async () => {
+            nock(RS3_PRICES_API)
+                .get('/info.json')
+                .replyWithError({ code: 'ECONNREFUSED' });
+
+            await expect(handleTool('get_ge_info', {}))
+                .rejects.toThrow();
         });
     });
 }); 

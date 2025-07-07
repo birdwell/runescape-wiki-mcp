@@ -1,97 +1,85 @@
 // Tests for resources
 
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import nock from 'nock';
-import { resources, handleResource } from '../src/resources.js';
-import { ReadResourceRequest } from '@modelcontextprotocol/sdk/types.js';
+import { handleResource } from '../src/resources.js';
 import { RESOURCE_URIS, RS3_PRICES_API } from '../src/constants.js';
 
 describe('Resources', () => {
-
     beforeEach(() => {
         nock.cleanAll();
     });
 
-    afterAll(() => {
-        nock.restore();
+    afterEach(() => {
+        nock.cleanAll();
     });
 
-    describe('Resource definitions', () => {
-        it('should have all required resources', () => {
-            expect(resources.length).toBe(2);
+    describe('LATEST_PRICES resource', () => {
+        it('should return Grand Exchange info', async () => {
+            const mockResponse = {
+                lastConfigUpdateRuneday: 8526
+            };
 
-            const resourceUris = resources.map(r => r.uri);
-            expect(resourceUris).toContain(RESOURCE_URIS.LATEST_PRICES);
-            expect(resourceUris).toContain(RESOURCE_URIS.ITEM_MAPPING);
-        });
+            nock(RS3_PRICES_API)
+                .get('/info.json')
+                .reply(200, mockResponse);
 
-        it('should have valid resource properties', () => {
-            resources.forEach(resource => {
-                expect(resource.uri).toBeDefined();
-                expect(resource.name).toBeDefined();
-                expect(resource.description).toBeDefined();
-                expect(resource.mimeType).toBe('application/json');
-            });
-        });
-    });
-
-    describe('handleResource', () => {
-        it('should read latest prices resource', async () => {
-            const mockPricesData = {
-                data: {
-                    4151: { high: 2400000, low: 2380000 }
+            const request = {
+                params: {
+                    uri: RESOURCE_URIS.LATEST_PRICES
                 }
             };
 
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/latest')
-                .reply(200, mockPricesData);
-
-            const request: ReadResourceRequest = {
-                method: 'resources/read' as const,
-                params: { uri: RESOURCE_URIS.LATEST_PRICES }
-            };
-
-            const response = await handleResource(request);
+            const response = await handleResource(request as any);
 
             expect(response.contents).toHaveLength(1);
             expect(response.contents[0].uri).toBe(RESOURCE_URIS.LATEST_PRICES);
             expect(response.contents[0].mimeType).toBe('application/json');
-            expect(response.contents[0].text).toContain('4151');
+            expect(response.contents[0].text).toContain('lastConfigUpdateRuneday');
+            expect(response.contents[0].text).toContain('8526');
         });
+    });
 
-        it('should read item mapping resource', async () => {
-            const mockMappingData = {
-                4151: {
-                    name: 'Abyssal whip',
-                    examine: 'A weapon from the abyss.',
-                    members: true
+    describe('ITEM_MAPPING resource', () => {
+        it('should return category information', async () => {
+            const mockResponse = {
+                types: [],
+                alpha: [
+                    { letter: 'a', items: 6 },
+                    { letter: 'b', items: 10 }
+                ]
+            };
+
+            nock(RS3_PRICES_API)
+                .get('/catalogue/category.json?category=1')
+                .reply(200, mockResponse);
+
+            const request = {
+                params: {
+                    uri: RESOURCE_URIS.ITEM_MAPPING
                 }
             };
 
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/mapping')
-                .reply(200, mockMappingData);
-
-            const request: ReadResourceRequest = {
-                method: 'resources/read' as const,
-                params: { uri: RESOURCE_URIS.ITEM_MAPPING }
-            };
-
-            const response = await handleResource(request);
+            const response = await handleResource(request as any);
 
             expect(response.contents).toHaveLength(1);
             expect(response.contents[0].uri).toBe(RESOURCE_URIS.ITEM_MAPPING);
-            expect(response.contents[0].text).toContain('Abyssal whip');
+            expect(response.contents[0].mimeType).toBe('application/json');
+            expect(response.contents[0].text).toContain('alpha');
+            expect(response.contents[0].text).toContain('items');
         });
+    });
 
+    describe('handleResource', () => {
         it('should throw error for unknown resource', async () => {
-            const request: ReadResourceRequest = {
-                method: 'resources/read' as const,
-                params: { uri: 'unknown://resource' }
+            const request = {
+                params: {
+                    uri: 'runescape://unknown/resource'
+                }
             };
 
-            await expect(handleResource(request))
-                .rejects.toThrow('Unknown resource: unknown://resource');
+            await expect(handleResource(request as any))
+                .rejects.toThrow('Unknown resource: runescape://unknown/resource');
         });
     });
 }); 

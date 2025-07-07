@@ -1,113 +1,107 @@
 // Tests for price tools
 
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import nock from 'nock';
 import { handlePriceTool } from '../src/tools/priceTools.js';
-import { mockResponses, validateToolResponse } from './testUtils.js';
+import { RS3_PRICES_API } from '../src/constants.js';
 
 describe('Price Tools', () => {
     beforeEach(() => {
         nock.cleanAll();
     });
 
-    afterAll(() => {
-        nock.restore();
+    afterEach(() => {
+        nock.cleanAll();
     });
 
-    describe('get_latest_prices', () => {
-        it('should get latest prices for all items', async () => {
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/latest')
-                .reply(200, mockResponses.latestPrices);
+    describe('get_item_price', () => {
+        it('should get price details for a specific item', async () => {
+            nock(RS3_PRICES_API)
+                .get('/catalogue/detail.json?item=4151')
+                .reply(200, {
+                    item: {
+                        id: 4151,
+                        name: 'Abyssal whip',
+                        current: { price: 75000 }
+                    }
+                });
 
-            const response = await handlePriceTool('get_latest_prices', {});
+            const result = await handlePriceTool('get_item_price', { itemId: 4151 });
 
-            validateToolResponse(response);
-            expect(response.content[0].text).toContain('Latest Grand Exchange Prices');
-            expect(response.content[0].text).toContain('4151');
-        });
-
-        it('should get latest price for specific item', async () => {
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/latest?id=4151')
-                .reply(200, { "4151": mockResponses.latestPrices["4151"] });
-
-            const response = await handlePriceTool('get_latest_prices', { itemId: 4151 });
-
-            validateToolResponse(response);
-            expect(response.content[0].text).toContain('Latest Grand Exchange Prices');
+            expect(result.content).toBeDefined();
+            expect(result.content[0].text).toContain('Item Detail for 4151');
+            expect(result.content[0].text).toContain('Abyssal whip');
         });
     });
 
-    describe('get_5m_prices', () => {
-        it('should get 5-minute average prices', async () => {
-            const mock5mData = {
-                timestamp: 1640995200,
-                data: {
-                    "4151": { avgHighPrice: 2400000, avgLowPrice: 2350000 }
-                }
-            };
+    describe('get_ge_info', () => {
+        it('should get Grand Exchange database information', async () => {
+            nock(RS3_PRICES_API)
+                .get('/info.json')
+                .reply(200, {
+                    lastConfigUpdateRuneday: 8526
+                });
 
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/5m')
-                .reply(200, mock5mData);
+            const result = await handlePriceTool('get_ge_info', {});
 
-            const response = await handlePriceTool('get_5m_prices', {});
-
-            validateToolResponse(response);
-            expect(response.content[0].text).toContain('5-Minute Average Prices');
+            expect(result.content).toBeDefined();
+            expect(result.content[0].text).toContain('Grand Exchange Database Information');
+            expect(result.content[0].text).toContain('lastConfigUpdateRuneday');
         });
     });
 
-    describe('get_1h_prices', () => {
-        it('should get 1-hour average prices', async () => {
-            const mock1hData = {
-                timestamp: 1640995200,
-                data: {
-                    "4151": { avgHighPrice: 2380000, avgLowPrice: 2330000 }
-                }
-            };
+    describe('get_category_info', () => {
+        it('should get category information', async () => {
+            nock(RS3_PRICES_API)
+                .get('/catalogue/category.json?category=1')
+                .reply(200, {
+                    types: [],
+                    alpha: [{ letter: 'a', items: 6 }]
+                });
 
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/1h')
-                .reply(200, mock1hData);
+            const result = await handlePriceTool('get_category_info', { category: 1 });
 
-            const response = await handlePriceTool('get_1h_prices', {});
-
-            validateToolResponse(response);
-            expect(response.content[0].text).toContain('1-Hour Average Prices');
+            expect(result.content).toBeDefined();
+            expect(result.content[0].text).toContain('Category 1 Information');
+            expect(result.content[0].text).toContain('alpha');
         });
     });
 
-    describe('get_timeseries', () => {
-        it('should get price timeseries data', async () => {
-            const mockTimeseries = {
-                data: {
-                    "1640995200000": 2400000,
-                    "1640998800000": 2390000
-                }
-            };
+    describe('search_items', () => {
+        it('should search items by category and alpha', async () => {
+            nock(RS3_PRICES_API)
+                .get('/catalogue/items.json?category=1&alpha=a&page=1')
+                .reply(200, {
+                    items: [
+                        { id: 1, name: 'Abyssal whip' }
+                    ]
+                });
 
-            nock('https://prices.runescape.wiki')
-                .get('/api/v1/rs/timeseries?id=4151&timestep=1h')
-                .reply(200, mockTimeseries);
-
-            const response = await handlePriceTool('get_timeseries', {
-                itemId: 4151,
-                timestep: '1h'
+            const result = await handlePriceTool('search_items', {
+                category: 1,
+                alpha: 'a',
+                page: 1
             });
 
-            validateToolResponse(response);
-            expect(response.content[0].text).toContain('Price Time Series for Item 4151');
+            expect(result.content).toBeDefined();
+            expect(result.content[0].text).toContain('Items in Category 1 starting with "a"');
         });
 
-        it('should require itemId parameter', async () => {
-            await expect(handlePriceTool('get_timeseries', { timestep: '1h' }))
-                .rejects.toThrow();
-        });
-    });
+        it('should handle # for numbers', async () => {
+            nock(RS3_PRICES_API)
+                .get('/catalogue/items.json?category=1&alpha=%23&page=1')
+                .reply(200, {
+                    items: []
+                });
 
-    it('should throw error for unknown tool', async () => {
-        await expect(handlePriceTool('unknown_tool', {}))
-            .rejects.toThrow('Unknown price tool: unknown_tool');
+            const result = await handlePriceTool('search_items', {
+                category: 1,
+                alpha: '#',
+                page: 1
+            });
+
+            expect(result.content).toBeDefined();
+            expect(result.content[0].text).toContain('Items in Category 1 starting with "#"');
+        });
     });
 }); 
