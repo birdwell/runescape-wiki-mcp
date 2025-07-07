@@ -8,12 +8,14 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "start": "node dist/index.js",
+    "debug": "DEBUG=true node dist/index.js",
     "dev": "tsc --watch & node --watch dist/index.js",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
     "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "test:verbose": "NODE_OPTIONS='--experimental-vm-modules' jest --verbose",
-    "inspector": "npx @modelcontextprotocol/inspector node dist/index.js"
+    "inspector": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "prepare": "npm run build"
   },
   "keywords": [
     "mcp",

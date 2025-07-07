@@ -13,7 +13,7 @@ import {
 import { SERVER_CONFIG } from './constants.js';
 import { allTools, handleTool } from './tools/index.js';
 import { resources, handleResource } from './resources.js';
-import { createErrorResponse } from './utils.js';
+import { createErrorResponse, debugLog } from './utils.js';
 
 // Initialize the MCP server
 export const server = new Server(
@@ -36,13 +36,17 @@ export function setupServerHandlers() {
     server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest) => {
         const { name, arguments: args } = request.params;
 
+        debugLog(`Tool called: ${name}`, args);
+
         try {
             const result = await handleTool(name, args || {});
+            debugLog(`Tool ${name} succeeded`, result);
             return {
                 content: result.content,
                 isError: result.isError,
             };
         } catch (error) {
+            debugLog(`Tool ${name} failed`, error);
             const errorResponse = createErrorResponse(error);
             return {
                 content: errorResponse.content,

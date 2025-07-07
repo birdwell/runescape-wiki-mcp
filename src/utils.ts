@@ -7,17 +7,25 @@ import { USER_AGENT } from './constants.js';
  * Makes an API request with proper error handling and user agent
  */
 export async function makeApiRequest(url: string): Promise<any> {
+    debugLog(`Making API request to: ${url}`);
+
     const response = await fetch(url, {
         headers: {
             'User-Agent': USER_AGENT,
         },
     });
 
+    debugLog(`API response status: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
+        const errorText = await response.text();
+        debugLog(`API error response:`, errorText);
         throw new Error(`API request failed: ${response.status} ${response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    debugLog(`API response data:`, data);
+    return data;
 }
 
 /**
@@ -69,4 +77,14 @@ export function createSuccessResponse(title: string, data: any): {
             },
         ],
     };
-} 
+}
+
+// Debug logging function
+export function debugLog(message: string, data?: any) {
+    if (process.env.DEBUG === 'true' || process.env.DEBUG === '1') {
+        console.error(`[DEBUG] ${new Date().toISOString()} - ${message}`, data ? JSON.stringify(data, null, 2) : '');
+    }
+}
+
+// Helper function to make API requests
+// ... existing code ... 
