@@ -1,0 +1,284 @@
+
+> runescape-wiki-mcp@1.0.0 test
+> NODE_OPTIONS='--experimental-vm-modules' jest
+
+(node:38246) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38242) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38244) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38247) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38245) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+FAIL tests/resources.test.ts
+  ● Resources › handleResource › should read latest prices resource
+
+    TypeError: mockedMakeApiRequest.mockResolvedValueOnce is not a function
+
+      50 |             };
+      51 |
+    > 52 |             mockedMakeApiRequest.mockResolvedValueOnce(mockPricesData);
+         |                                  ^
+      53 |
+      54 |             const request: ReadResourceRequest = {
+      55 |                 method: 'resources/read' as const,
+
+      at Object.<anonymous> (tests/resources.test.ts:52:34)
+
+  ● Resources › handleResource › should read item mapping resource
+
+    TypeError: mockedMakeApiRequest.mockResolvedValueOnce is not a function
+
+      74 |             };
+      75 |
+    > 76 |             mockedMakeApiRequest.mockResolvedValueOnce(mockMappingData);
+         |                                  ^
+      77 |
+      78 |             const request: ReadResourceRequest = {
+      79 |                 method: 'resources/read' as const,
+
+      at Object.<anonymous> (tests/resources.test.ts:76:34)
+
+(node:38248) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS tests/server.test.ts
+FAIL tests/playerTools.test.ts
+  ● Player Tools › get_player_stats › should get player stats for ironman
+
+    FetchError: request to https://secure.runescape.com/m=hiscore/m=hiscore_ironman/index_lite.ws?player=TestPlayer failed, reason: Nock: No match for request {
+      "method": "GET",
+      "url": "https://secure.runescape.com/m=hiscore/m=hiscore_ironman/index_lite.ws?player=TestPlayer",
+      "headers": {
+        "accept": "*/*",
+        "accept-encoding": "gzip, deflate, br",
+        "user-agent": "RuneScape Wiki MCP Server - github.com/user/runescape-wiki-mcp"
+      }
+    }
+
+      at OverriddenClientRequest.<anonymous> (node_modules/node-fetch/src/index.js:108:11)
+      at Socket.<anonymous> (node_modules/propagate/index.js:64:17)
+      at node_modules/nock/lib/socket.js:101:14
+
+  ● Player Tools › get_player_stats › should handle different game modes
+
+    FetchError: request to https://secure.runescape.com/m=hiscore/m=hiscore_hardcore_ironman/index_lite.ws?player=TestPlayer failed, reason: Nock: No match for request {
+      "method": "GET",
+      "url": "https://secure.runescape.com/m=hiscore/m=hiscore_hardcore_ironman/index_lite.ws?player=TestPlayer",
+      "headers": {
+        "accept": "*/*",
+        "accept-encoding": "gzip, deflate, br",
+        "user-agent": "RuneScape Wiki MCP Server - github.com/user/runescape-wiki-mcp"
+      }
+    }
+
+      at OverriddenClientRequest.<anonymous> (node_modules/node-fetch/src/index.js:108:11)
+      at Socket.<anonymous> (node_modules/propagate/index.js:64:17)
+      at node_modules/nock/lib/socket.js:101:14
+
+(node:38243) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+FAIL tests/priceTools.test.ts
+  ● Price Tools › get_latest_prices › should get latest prices for all items
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "Latest Prices"
+    Received string:    "Latest Grand Exchange Prices:·
+    {
+      \"4151\": {
+        \"high\": 2400000,
+        \"highTime\": 1640995200,
+        \"low\": 2350000,
+        \"lowTime\": 1640995200
+      }
+    }"
+
+      23 |
+      24 |             validateToolResponse(response);
+    > 25 |             expect(response.content[0].text).toContain('Latest Prices');
+         |                                              ^
+      26 |             expect(response.content[0].text).toContain('4151');
+      27 |         });
+      28 |
+
+      at Object.<anonymous> (tests/priceTools.test.ts:25:46)
+
+  ● Price Tools › get_latest_prices › should get latest price for specific item
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "Latest Price for Item 4151"
+    Received string:    "Latest Grand Exchange Prices:·
+    {
+      \"4151\": {
+        \"high\": 2400000,
+        \"highTime\": 1640995200,
+        \"low\": 2350000,
+        \"lowTime\": 1640995200
+      }
+    }"
+
+      35 |
+      36 |             validateToolResponse(response);
+    > 37 |             expect(response.content[0].text).toContain('Latest Price for Item 4151');
+         |                                              ^
+      38 |         });
+      39 |     });
+      40 |
+
+      at Object.<anonymous> (tests/priceTools.test.ts:37:46)
+
+  ● Price Tools › get_timeseries › should get price timeseries data
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "Price Timeseries for Item 4151"
+    Received string:    "Price Time Series for Item 4151 (1h):·
+    {
+      \"data\": {
+        \"1640995200000\": 2400000,
+        \"1640998800000\": 2390000
+      }
+    }"
+
+       98 |
+       99 |             validateToolResponse(response);
+    > 100 |             expect(response.content[0].text).toContain('Price Timeseries for Item 4151');
+          |                                              ^
+      101 |         });
+      102 |
+      103 |         it('should require itemId parameter', async () => {
+
+      at Object.<anonymous> (tests/priceTools.test.ts:100:46)
+
+FAIL tests/integration.test.ts
+  ● Integration Tests › Tool Integration › should handle price tool workflow
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "Price Timeseries"
+    Received string:    "Price Time Series for Item 4151 (1h):·
+    {
+      \"data\": {
+        \"1640995200000\": 2400000
+      }
+    }"
+
+      35 |                 timestep: '1h'
+      36 |             });
+    > 37 |             expect(timeseries.content[0].text).toContain('Price Timeseries');
+         |                                                ^
+      38 |         });
+      39 |
+      40 |         it('should handle item tool workflow', async () => {
+
+      at Object.<anonymous> (tests/integration.test.ts:37:48)
+
+FAIL tests/itemTools.test.ts
+  ● Item Tools › get_item_mapping › should get item mapping
+
+    TypeError: mockedMakeApiRequest.mockResolvedValueOnce is not a function
+
+      25 |     describe('get_item_mapping', () => {
+      26 |         it('should get item mapping', async () => {
+    > 27 |             mockedMakeApiRequest.mockResolvedValueOnce(mockResponses.itemMapping);
+         |                                  ^
+      28 |
+      29 |             const response = await handleItemTool('get_item_mapping', {});
+      30 |
+
+      at Object.<anonymous> (tests/itemTools.test.ts:27:34)
+
+  ● Item Tools › get_item_mapping › should handle API errors
+
+    TypeError: mockedMakeApiRequest.mockRejectedValueOnce is not a function
+
+      35 |
+      36 |         it('should handle API errors', async () => {
+    > 37 |             mockedMakeApiRequest.mockRejectedValueOnce(new Error('API request failed: 500'));
+         |                                  ^
+      38 |
+      39 |             await expect(handleItemTool('get_item_mapping', {}))
+      40 |                 .rejects.toThrow('API request failed: 500');
+
+      at Object.<anonymous> (tests/itemTools.test.ts:37:34)
+
+  ● Item Tools › get_item_detail › should get item details
+
+    TypeError: mockedMakeApiRequest.mockResolvedValueOnce is not a function
+
+      44 |     describe('get_item_detail', () => {
+      45 |         it('should get item details', async () => {
+    > 46 |             mockedMakeApiRequest.mockResolvedValueOnce(mockResponses.itemDetail);
+         |                                  ^
+      47 |
+      48 |             const response = await handleItemTool('get_item_detail', { itemId: 4151 });
+      49 |
+
+      at Object.<anonymous> (tests/itemTools.test.ts:46:34)
+
+  ● Item Tools › get_item_graph › should get price graph data
+
+    TypeError: mockedMakeApiRequest.mockResolvedValueOnce is not a function
+
+      66 |             };
+      67 |
+    > 68 |             mockedMakeApiRequest.mockResolvedValueOnce(mockGraphData);
+         |                                  ^
+      69 |
+      70 |             const response = await handleItemTool('get_item_graph', { itemId: 4151 });
+      71 |
+
+      at Object.<anonymous> (tests/itemTools.test.ts:68:34)
+
+  ● Item Tools › browse_items_by_category › should browse items by category
+
+    TypeError: mockedMakeApiRequest.mockResolvedValueOnce is not a function
+
+      82 |             };
+      83 |
+    > 84 |             mockedMakeApiRequest.mockResolvedValueOnce(mockCategoryData);
+         |                                  ^
+      85 |
+      86 |             const response = await handleItemTool('browse_items_by_category', { category: 24 });
+      87 |
+
+      at Object.<anonymous> (tests/itemTools.test.ts:84:34)
+
+  ● Item Tools › browse_items_by_category › should accept custom alpha and page parameters
+
+    TypeError: mockedMakeApiRequest.mockResolvedValueOnce is not a function
+
+      93 |             const mockCategoryData = { total: 0, items: [] };
+      94 |
+    > 95 |             mockedMakeApiRequest.mockResolvedValueOnce(mockCategoryData);
+         |                                  ^
+      96 |
+      97 |             const response = await handleItemTool('browse_items_by_category', {
+      98 |                 category: 24,
+
+      at Object.<anonymous> (tests/itemTools.test.ts:95:34)
+
+  ● Item Tools › get_ge_info › should get Grand Exchange info
+
+    TypeError: mockedMakeApiRequest.mockResolvedValueOnce is not a function
+
+      108 |     describe('get_ge_info', () => {
+      109 |         it('should get Grand Exchange info', async () => {
+    > 110 |             mockedMakeApiRequest.mockResolvedValueOnce(mockResponses.geInfo);
+          |                                  ^
+      111 |
+      112 |             const response = await handleItemTool('get_ge_info', {});
+      113 |
+
+      at Object.<anonymous> (tests/itemTools.test.ts:110:34)
+
+PASS tests/errorHandling.test.ts
+
+Test Suites: 5 failed, 2 passed, 7 total
+Tests:       15 failed, 40 passed, 55 total
+Snapshots:   0 total
+Time:        2.252 s
+Ran all test suites.
