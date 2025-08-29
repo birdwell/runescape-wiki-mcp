@@ -4,6 +4,7 @@
 export const RS3_PRICES_API = 'https://secure.runescape.com/m=itemdb_rs/api';
 export const RS_GE_API = 'https://secure.runescape.com/m=itemdb_rs/api';
 export const RS3_HISCORES_API = 'https://secure.runescape.com/m=hiscore';
+export const RUNESCAPE_WIKI_API = 'https://runescape.wiki/api.php';
 
 // User agent for API requests
 export const USER_AGENT = 'RuneScape Wiki MCP Server - github.com/user/runescape-wiki-mcp';

@@ -4,6 +4,7 @@ import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { priceTools, handlePriceTool } from './priceTools.js';
 import { itemTools, handleItemTool } from './itemTools.js';
 import { playerTools, handlePlayerTool } from './playerTools.js';
+import { wikiTools, handleWikiTool } from './wikiTools.js';
 import { ToolArguments, ToolResponse } from '../types.js';
 
 // Export all tools combined
@@ -11,6 +12,7 @@ export const allTools: Tool[] = [
     ...priceTools,
     ...itemTools,
     ...playerTools,
+    ...wikiTools,
 ];
 
 // Main tool handler that routes to appropriate sub-handler
@@ -30,8 +32,13 @@ export async function handleTool(name: string, args: ToolArguments): Promise<Too
         return handlePlayerTool(name, args);
     }
 
+    // Check if it's a wiki tool
+    if (wikiTools.some(tool => tool.name === name)) {
+        return handleWikiTool(name, args);
+    }
+
     throw new Error(`Unknown tool: ${name}`);
 }
 
 // Export individual tool categories
-export { priceTools, itemTools, playerTools }; 
+export { priceTools, itemTools, playerTools, wikiTools }; 

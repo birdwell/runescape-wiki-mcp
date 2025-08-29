@@ -159,6 +159,50 @@ Get player statistics from RuneScape 3 hiscores.
 - Individual skill levels, experience, and ranks
 - Formatted data for all 30 skills (including Summoning, Dungeoneering, Divination, Invention, Archaeology, and Necromancy)
 
+## Item Category Mapping
+
+| Category Name            | Category Number |
+|-------------------------|----------------|
+| Ammo                    | 1              |
+| Arrows                  | 2              |
+| Bolts                   | 3              |
+| Construction materials  | 4              |
+| Cooking ingredients     | 5              |
+| Costumes                | 6              |
+| Crafting materials      | 7              |
+| Familiars               | 8              |
+| Fletching materials     | 9              |
+| Food and Drink          | 10             |
+| Herblore materials      | 11             |
+| Hunting equipment       | 12             |
+| Jewellery               | 13             |
+| Mage armour             | 14             |
+| Mage weapons            | 15             |
+| Melee armour - low      | 16             |
+| Melee armour - mid      | 17             |
+| Melee armour - high     | 18             |
+| Melee weapons - low     | 19             |
+| Melee weapons - mid     | 20             |
+| Melee weapons - high    | 21             |
+| Mining and Smithing     | 22             |
+| Potions                 | 23             |
+| Prayer armour           | 24             |
+| Prayer materials        | 25             |
+| Range armour            | 26             |
+| Range weapons           | 27             |
+| Runecrafting            | 28             |
+| Runes, Spells, Teleports| 29             |
+| Seeds                   | 30             |
+| Summoning scrolls       | 31             |
+| Tools and containers    | 32             |
+| Woodcutting product     | 33             |
+| Pocket items            | 34             |
+| Stone spirits           | 35             |
+| Firemaking products     | 36             |
+| Archaeology materials   | 37-43          |
+
+Refer to this table when using tools that require a category number, such as `search_items`.
+
 ## Available Resources
 
 ### `runescape://prices/latest`
