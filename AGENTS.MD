@@ -7,6 +7,7 @@ This MCP (Model Context Protocol) server provides access to RuneScape 3 (RS3) Gr
 ## Architecture
 
 ### Server Structure
+
 ```
 runescape-wiki-mcp/
 ├── src/
@@ -24,6 +25,7 @@ runescape-wiki-mcp/
 ```
 
 ### Communication
+
 - MCP servers communicate via **stdio** (standard input/output)
 - Requests come in on stdin as JSON-RPC
 - Responses go out on stdout
@@ -34,18 +36,22 @@ runescape-wiki-mcp/
 ### 1. Price Tools (`priceTools.ts`)
 
 #### `get_item_price`
+
 Get current Grand Exchange price for a specific item.
+
 ```json
 {
   "name": "get_item_price",
   "arguments": {
-    "itemId": 18832  // Frost Dragon Bones
+    "itemId": 18832 // Frost Dragon Bones
   }
 }
 ```
 
 #### `get_ge_info`
+
 Get Grand Exchange database information including last update.
+
 ```json
 {
   "name": "get_ge_info",
@@ -54,24 +60,28 @@ Get Grand Exchange database information including last update.
 ```
 
 #### `get_category_info`
+
 Get information about item categories.
+
 ```json
 {
   "name": "get_category_info",
   "arguments": {
-    "category": 1  // Category ID (1-32)
+    "category": 1 // Category ID (1-32)
   }
 }
 ```
 
 #### `search_items`
+
 Search for items by category and starting letter.
+
 ```json
 {
   "name": "search_items",
   "arguments": {
     "category": 1,
-    "alpha": "f",  // Use "#" for numbers
+    "alpha": "f", // Use "#" for numbers
     "page": 1
   }
 }
@@ -80,18 +90,22 @@ Search for items by category and starting letter.
 ### 2. Item Tools (`itemTools.ts`)
 
 #### `get_item_detail`
+
 Get detailed item information from the official API.
+
 ```json
 {
   "name": "get_item_detail",
   "arguments": {
-    "itemId": 4151  // Abyssal whip
+    "itemId": 4151 // Abyssal whip
   }
 }
 ```
 
 #### `get_item_graph`
+
 Get historical price data (last 180 days).
+
 ```json
 {
   "name": "get_item_graph",
@@ -102,14 +116,16 @@ Get historical price data (last 180 days).
 ```
 
 #### `browse_items_by_category`
+
 Browse items in the Grand Exchange catalogue.
+
 ```json
 {
   "name": "browse_items_by_category",
   "arguments": {
-    "category": 24,  // Category ID (0-43)
-    "alpha": "a",    // Optional, default "a"
-    "page": 1        // Optional, default 1
+    "category": 24, // Category ID (0-43)
+    "alpha": "a", // Optional, default "a"
+    "page": 1 // Optional, default 1
   }
 }
 ```
@@ -117,13 +133,15 @@ Browse items in the Grand Exchange catalogue.
 ### 3. Player Tools (`playerTools.ts`)
 
 #### `get_player_stats`
+
 Get player statistics from RS3 hiscores.
+
 ```json
 {
   "name": "get_player_stats",
   "arguments": {
     "username": "Zezima",
-    "gameMode": "normal"  // Options: "normal", "ironman", "hardcore"
+    "gameMode": "normal" // Options: "normal", "ironman", "hardcore"
   }
 }
 ```
@@ -131,10 +149,12 @@ Get player statistics from RS3 hiscores.
 ## API Endpoints
 
 ### Base URLs
+
 - **Grand Exchange API**: `https://secure.runescape.com/m=itemdb_rs/api`
 - **Hiscores API**: `https://secure.runescape.com/m=hiscore`
 
 ### Important Endpoints
+
 1. **Item Details**: `/catalogue/detail.json?item={itemId}`
 2. **Item Graph**: `/graph/{itemId}.json`
 3. **Category Info**: `/catalogue/category.json?category={categoryId}`
@@ -143,9 +163,11 @@ Get player statistics from RS3 hiscores.
 6. **Player Stats**: `/{gameMode}/index_lite.ws?player={username}`
 
 ### User Agent Requirement
+
 All API requests MUST include the User-Agent header:
+
 ```
-User-Agent: RuneScape Wiki MCP Server - github.com/user/runescape-wiki-mcp
+User-Agent: RuneScape Wiki MCP Server - github.com/joshbirdwell/runescape-wiki-mcp
 ```
 
 ## Common Item IDs
@@ -161,6 +183,7 @@ Bond: 29492
 ## Debugging
 
 ### 1. Enable Debug Mode
+
 ```bash
 # Method 1: Using npm script
 npm run debug
@@ -173,7 +196,9 @@ DEBUG=true node dist/index.js
 ```
 
 ### 2. Debug Output
+
 When debug mode is enabled, you'll see:
+
 - All API request URLs
 - Response status codes
 - Response data
@@ -183,34 +208,39 @@ When debug mode is enabled, you'll see:
 ### 3. Common Issues and Solutions
 
 #### 404 Not Found
+
 - **Cause**: Invalid item ID or API endpoint
 - **Solution**: Verify item ID exists, check endpoint format
 - **Debug**: Check the exact URL being requested in debug logs
 
 #### No Response from Server
+
 - **Cause**: Server not running or crashed
-- **Solution**: 
+- **Solution**:
+
   ```bash
   # Check if running
   ps aux | grep "node.*dist/index.js"
-  
+
   # Restart
   npm run build && npm start
   ```
 
 #### Tool Not Found
+
 - **Cause**: Tool name typo or not exported
 - **Solution**: Check exact tool names in the code
 - **Available tools**: Check `src/tools/index.ts`
 
 ### 4. Testing API Endpoints
+
 ```bash
 # Test item price endpoint
-curl -H "User-Agent: RuneScape Wiki MCP Server - github.com/user/runescape-wiki-mcp" \
+curl -H "User-Agent: RuneScape Wiki MCP Server - github.com/joshbirdwell/runescape-wiki-mcp" \
      "https://secure.runescape.com/m=itemdb_rs/api/catalogue/detail.json?item=18832"
 
 # Test GE info
-curl -H "User-Agent: RuneScape Wiki MCP Server - github.com/user/runescape-wiki-mcp" \
+curl -H "User-Agent: RuneScape Wiki MCP Server - github.com/joshbirdwell/runescape-wiki-mcp" \
      "https://secure.runescape.com/m=itemdb_rs/api/info.json"
 ```
 
@@ -224,6 +254,7 @@ The server provides two resources that can be read:
 ## Server Management
 
 ### Starting the Server
+
 ```bash
 # Build first
 npm run build
@@ -239,6 +270,7 @@ npm run inspector
 ```
 
 ### Stopping the Server
+
 ```bash
 # Find process
 ps aux | grep "node.*dist/index.js"
@@ -251,6 +283,7 @@ ps aux | grep "node.*dist/index.js" | grep -v grep | awk '{print $2}' | xargs ki
 ```
 
 ### Monitoring
+
 ```bash
 # Watch debug logs
 tail -f debug.log
@@ -262,18 +295,22 @@ echo '{"jsonrpc":"2.0","method":"tools/list","id":1}' | node dist/index.js
 ## Best Practices
 
 1. **Always use debug mode during development**
+
    - Helps identify API issues quickly
    - Shows exact URLs and responses
 
 2. **Handle API failures gracefully**
+
    - RS3 APIs can be slow or temporarily unavailable
    - Consider implementing retry logic
 
 3. **Cache responses when appropriate**
+
    - GE prices update periodically, not real-time
    - Category info rarely changes
 
 4. **Use proper item IDs**
+
    - Search for items first if ID unknown
    - Web search "RS3 {item name} item ID"
 
@@ -284,15 +321,18 @@ echo '{"jsonrpc":"2.0","method":"tools/list","id":1}' | node dist/index.js
 ## Quick Reference
 
 ### Find Item IDs
+
 1. Use `search_items` with appropriate category and letter
 2. Check RuneScape Wiki: `https://runescape.wiki/w/{Item_name}`
 3. Use the official GE: `https://secure.runescape.com/m=itemdb_rs/`
 
 ### Category IDs
+
 - 1-32: Various item categories
 - Check with `get_category_info` to explore
 
 ### Game Modes for Hiscores
+
 - `normal`: Regular accounts
 - `ironman`: Ironman mode
 - `hardcore`: Hardcore ironman mode
@@ -324,6 +364,7 @@ echo '{"jsonrpc":"2.0","method":"tools/list","id":1}' | node dist/index.js
 ## Using @RuneScape Wiki in Claude
 
 ### Setup
+
 1. Ensure the MCP server is running: `npm start`
 2. In Claude, use @RuneScape Wiki to access the tools
 3. Claude will automatically connect to the MCP server
@@ -331,40 +372,48 @@ echo '{"jsonrpc":"2.0","method":"tools/list","id":1}' | node dist/index.js
 ### Example Queries for Claude
 
 #### Getting Prices
+
 ```
 @RuneScape Wiki Can you check the current price of Frost Dragon Bones?
 ```
+
 Claude will use: `get_item_price` with `itemId: 18832`
 
 #### Finding Items
+
 ```
 @RuneScape Wiki What items start with "Dragon" in the combat category?
 ```
+
 Claude will use: `search_items` with appropriate category and alpha
 
 #### Player Stats
+
 ```
 @RuneScape Wiki Show me the stats for player "Zezima"
 ```
+
 Claude will use: `get_player_stats` with username
 
 ### Understanding Tool Responses
 
 #### Price Response Example
+
 ```json
 {
   "item": {
     "id": 18832,
     "name": "Frost dragon bones",
-    "current": {"trend": "neutral", "price": "21.3k"},
-    "today": {"trend": "negative", "price": "-279"},
+    "current": { "trend": "neutral", "price": "21.3k" },
+    "today": { "trend": "negative", "price": "-279" },
     "members": "true",
-    "day30": {"trend": "negative", "change": "-4.0%"}
+    "day30": { "trend": "negative", "change": "-4.0%" }
   }
 }
 ```
 
 #### Player Stats Response
+
 ```json
 {
   "Overall": {
@@ -384,6 +433,7 @@ Claude will use: `get_player_stats` with username
 ## API Categories Reference
 
 ### Item Categories (for browse/search)
+
 ```
 0: Miscellaneous
 1: Ammo
@@ -432,45 +482,48 @@ Claude will use: `get_player_stats` with username
 ## Complete Tool Examples
 
 ### Finding an Item ID
+
 ```javascript
 // Step 1: Search by category and letter
-await handleTool('search_items', {
-  category: 24,  // High level melee weapons
-  alpha: 'a',
-  page: 1
+await handleTool("search_items", {
+  category: 24, // High level melee weapons
+  alpha: "a",
+  page: 1,
 });
 
 // Step 2: Get detailed info once you have the ID
-await handleTool('get_item_detail', {
-  itemId: 4151  // Found Abyssal whip
+await handleTool("get_item_detail", {
+  itemId: 4151, // Found Abyssal whip
 });
 ```
 
 ### Price Checking Workflow
+
 ```javascript
 // 1. Get current price
-const price = await handleTool('get_item_price', {
-  itemId: 18832
+const price = await handleTool("get_item_price", {
+  itemId: 18832,
 });
 
 // 2. Get historical data
-const history = await handleTool('get_item_graph', {
-  itemId: 18832
+const history = await handleTool("get_item_graph", {
+  itemId: 18832,
 });
 
 // 3. Check when GE was last updated
-const info = await handleTool('get_ge_info', {});
+const info = await handleTool("get_ge_info", {});
 ```
 
 ### Player Comparison
+
 ```javascript
 // Compare multiple players
-const players = ['Zezima', 'Lynx Titan', 'Player123'];
+const players = ["Zezima", "Lynx Titan", "Player123"];
 
 for (const username of players) {
-  const stats = await handleTool('get_player_stats', {
+  const stats = await handleTool("get_player_stats", {
     username,
-    gameMode: 'normal'
+    gameMode: "normal",
   });
   // Process stats...
 }
@@ -479,6 +532,7 @@ for (const username of players) {
 ## Error Handling Patterns
 
 ### Robust API Calls
+
 ```javascript
 async function getItemPriceSafely(itemId) {
   try {
@@ -486,20 +540,20 @@ async function getItemPriceSafely(itemId) {
     const result = await makeApiRequest(
       `${RS3_PRICES_API}/catalogue/detail.json?item=${itemId}`
     );
-    debugLog('Price fetch successful', result);
+    debugLog("Price fetch successful", result);
     return result;
   } catch (error) {
-    debugLog('Price fetch failed', error);
-    
+    debugLog("Price fetch failed", error);
+
     // Check specific error types
-    if (error.message.includes('404')) {
+    if (error.message.includes("404")) {
       throw new Error(`Item ${itemId} not found in Grand Exchange`);
-    } else if (error.message.includes('timeout')) {
+    } else if (error.message.includes("timeout")) {
       // Retry once
-      debugLog('Retrying after timeout...');
+      debugLog("Retrying after timeout...");
       return await makeApiRequest(url);
     }
-    
+
     throw error;
   }
 }
@@ -515,20 +569,22 @@ async function getItemPriceSafely(itemId) {
 ## Testing Your Implementation
 
 ### Unit Test Example
+
 ```javascript
-describe('Price Tools', () => {
-  it('should get Frost Dragon Bones price', async () => {
-    const result = await handlePriceTool('get_item_price', {
-      itemId: 18832
+describe("Price Tools", () => {
+  it("should get Frost Dragon Bones price", async () => {
+    const result = await handlePriceTool("get_item_price", {
+      itemId: 18832,
     });
-    
+
     expect(result.content).toBeDefined();
-    expect(result.content[0].text).toContain('Frost dragon bones');
+    expect(result.content[0].text).toContain("Frost dragon bones");
   });
 });
 ```
 
 ### Integration Test
+
 ```bash
 # Test the full flow
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_item_price","arguments":{"itemId":18832}},"id":1}' | node dist/index.js | jq .
@@ -544,6 +600,7 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_item_price","
 ## Future Improvements
 
 Consider adding:
+
 1. Caching layer for frequently requested items
 2. Bulk operations for multiple items
 3. WebSocket support for real-time price updates
@@ -572,4 +629,4 @@ Consider adding:
 
 - RuneScape Wiki: https://runescape.wiki/
 - Official GE: https://secure.runescape.com/m=itemdb_rs/
-- RS3 Hiscores: https://secure.runescape.com/m=hiscore/ 
+- RS3 Hiscores: https://secure.runescape.com/m=hiscore/

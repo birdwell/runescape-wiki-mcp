@@ -25,7 +25,7 @@
     "api",
     "wiki"
   ],
-  "author": "",
+  "author": "Josh Birdwell",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
