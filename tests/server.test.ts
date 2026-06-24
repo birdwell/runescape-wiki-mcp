@@ -28,13 +28,16 @@ describe('MCP Server', () => {
                 'get_item_detail',
                 'get_item_graph',
                 'browse_items_by_category',
-                'get_ge_info'
             ];
 
-            // Note: get_ge_info appears in both price and item tools
             itemTools.forEach(toolName => {
                 expect(allTools.some(t => t.name === toolName)).toBe(true);
             });
+        });
+
+        it('should have unique tool names', () => {
+            const names = allTools.map(t => t.name);
+            expect(new Set(names).size).toBe(names.length);
         });
 
         it('should have all player tools', () => {
@@ -68,9 +71,9 @@ describe('MCP Server', () => {
             expect(categoryInfoTool?.inputSchema.required).toContain('category');
 
             const searchItemsTool = allTools.find(t => t.name === 'search_items');
-            expect(searchItemsTool?.inputSchema.properties).toHaveProperty('category');
-            expect(searchItemsTool?.inputSchema.properties).toHaveProperty('alpha');
-            expect(searchItemsTool?.inputSchema.properties).toHaveProperty('query');
+            expect(searchItemsTool?.inputSchema.required).toContain('category');
+            expect(searchItemsTool?.inputSchema.required).toContain('alpha');
+            expect(searchItemsTool?.inputSchema.properties).toHaveProperty('page');
 
             const playerStatsTool = allTools.find(t => t.name === 'get_player_stats');
             expect(playerStatsTool?.inputSchema.required).toContain('username');

@@ -103,5 +103,15 @@ describe('Price Tools', () => {
             expect(result.content).toBeDefined();
             expect(result.content[0].text).toContain('Items in Category 1 starting with "#"');
         });
+
+        it('should return validation error when category or alpha is missing', async () => {
+            const missingCategory = await handlePriceTool('search_items', { alpha: 'a' });
+            expect(missingCategory.isError).toBe(true);
+            expect(missingCategory.content[0].text).toContain('category is required');
+
+            const missingAlpha = await handlePriceTool('search_items', { category: 1 });
+            expect(missingAlpha.isError).toBe(true);
+            expect(missingAlpha.content[0].text).toContain('alpha is required');
+        });
     });
 }); 

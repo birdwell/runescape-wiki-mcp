@@ -14,6 +14,7 @@ import { SERVER_CONFIG } from './constants.js';
 import { allTools, handleTool } from './tools/index.js';
 import { resources, handleResource } from './resources.js';
 import { createErrorResponse, debugLog } from './utils.js';
+import { McpError } from '@modelcontextprotocol/sdk/types.js';
 
 // Initialize the MCP server
 export const server = new Server(
@@ -46,6 +47,9 @@ export function setupServerHandlers() {
                 isError: result.isError,
             };
         } catch (error) {
+            if (error instanceof McpError) {
+                throw error;
+            }
             debugLog(`Tool ${name} failed`, error);
             const errorResponse = createErrorResponse(error);
             return {

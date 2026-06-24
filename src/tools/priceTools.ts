@@ -4,96 +4,86 @@ import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { RS3_PRICES_API } from '../constants.js';
 import { makeApiRequest, createSuccessResponse } from '../utils.js';
 import { ToolArguments, ToolResponse } from '../types.js';
+import {
+    EMPTY_OBJECT_SCHEMA,
+    READ_ONLY_TOOL,
+    categoryProperty,
+    itemIdProperty,
+    JSON_SCHEMA_2020_12,
+} from '../mcpSchemas.js';
+import { isToolResponse, optionalInteger, requireInteger, requireString } from '../validation.js';
 
 // Tool definitions for price-related functionality
 export const priceTools: Tool[] = [
     {
         name: 'get_item_price',
+        title: 'Get Item Price',
         description: 'Get the current Grand Exchange price and details for a specific item',
         inputSchema: {
+            $schema: JSON_SCHEMA_2020_12,
             type: 'object',
             properties: {
-                itemId: {
-                    type: 'number',
-                    description: 'Item ID to get price and details for',
-                },
+                itemId: itemIdProperty,
             },
             required: ['itemId'],
+            additionalProperties: false,
         },
+        ...READ_ONLY_TOOL,
     },
     {
         name: 'get_ge_info',
+        title: 'Grand Exchange Info',
         description: 'Get Grand Exchange Database information including last update date',
-        inputSchema: {
-            type: 'object',
-            properties: {},
-        },
+        inputSchema: EMPTY_OBJECT_SCHEMA,
+        ...READ_ONLY_TOOL,
     },
     {
         name: 'get_category_info',
+        title: 'Category Info',
         description: 'Get information about a specific item category',
         inputSchema: {
+            $schema: JSON_SCHEMA_2020_12,
             type: 'object',
             properties: {
-                category: {
-                    type: 'number',
-                    description: 'Category ID (1-32)',
-                },
+                category: categoryProperty,
             },
             required: ['category'],
+            additionalProperties: false,
         },
+        ...READ_ONLY_TOOL,
     },
     {
         name: 'get_all_categories',
+        title: 'All Categories',
         description: 'Get a list of all item categories with their IDs and names.',
-        inputSchema: {
-            type: 'object',
-            properties: {},
-        },
+        inputSchema: EMPTY_OBJECT_SCHEMA,
+        ...READ_ONLY_TOOL,
     },
     {
         name: 'search_items',
-        description: 'Search for items by name, category, starting letter, price, or membership. Supports full-text search and advanced filters. Category numbers are listed in the README under "Item Category Mapping". Use get_all_categories for more details.',
+        title: 'Search Items',
+        description: 'Search Grand Exchange items by category and starting letter. Use get_all_categories to find category IDs.',
         inputSchema: {
+            $schema: JSON_SCHEMA_2020_12,
             type: 'object',
             properties: {
-                query: {
-                    type: 'string',
-                    description: 'Full or partial item name to search for',
-                },
-                category: {
-                    type: 'number',
-                    description: 'Category ID (see README table, typically 1-43)',
-                },
+                category: categoryProperty,
                 alpha: {
                     type: 'string',
+                    minLength: 1,
+                    maxLength: 1,
                     description: 'Starting letter (a-z) or # for numbers',
                 },
-                price_min: {
-                    type: 'number',
-                    description: 'Minimum price (inclusive)',
-                },
-                price_max: {
-                    type: 'number',
-                    description: 'Maximum price (inclusive)',
-                },
-                members_only: {
-                    type: 'boolean',
-                    description: 'Filter for members-only items',
-                },
-                sort_by: {
-                    type: 'string',
-                    enum: ['name', 'price', 'trend'],
-                    description: 'Sort results by name, price, or trend',
-                },
                 page: {
-                    type: 'number',
+                    type: 'integer',
+                    minimum: 1,
                     description: 'Page number (starting from 1)',
-                    default: 1,
                 },
             },
-            required: [],
+            required: ['category', 'alpha'],
+            additionalProperties: false,
         },
+        ...READ_ONLY_TOOL,
     },
 ];
 
@@ -101,9 +91,12 @@ export const priceTools: Tool[] = [
 export async function handlePriceTool(name: string, args: ToolArguments): Promise<ToolResponse> {
     switch (name) {
         case 'get_item_price': {
-            const itemId = args?.itemId as number;
-            const url = `${RS3_PRICES_API}/catalogue/detail.json?item=${itemId}`;
+            const itemId = requireInteger(args?.itemId, 'itemId');
+            if (isToolResponse(itemId)) {
+                return itemId;
+            }
 
+            const url = `${RS3_PRICES_API}/catalogue/detail.json?item=${itemId}`;
             const data = await makeApiRequest(url);
             return createSuccessResponse(`Item Detail for ${itemId}`, data);
         }
@@ -115,14 +108,17 @@ export async function handlePriceTool(name: string, args: ToolArguments): Promis
         }
 
         case 'get_category_info': {
-            const category = args?.category as number;
+            const category = requireInteger(args?.category, 'category');
+            if (isToolResponse(category)) {
+                return category;
+            }
+
             const url = `${RS3_PRICES_API}/catalogue/category.json?category=${category}`;
             const data = await makeApiRequest(url);
             return createSuccessResponse(`Category ${category} Information`, data);
         }
 
         case 'get_all_categories': {
-            // Updated to match the official Grand Exchange category IDs and names
             const categories = [
                 { id: 1, name: 'Ammo' },
                 { id: 41, name: 'Archaeology materials' },
@@ -173,31 +169,29 @@ export async function handlePriceTool(name: string, args: ToolArguments): Promis
         }
 
         case 'search_items': {
-            // TODO: Implement local full-text and advanced search using item mapping
-            // For now, fallback to the old API (category+alpha)
-            const query = args?.query as string;
-            const category = args?.category as number;
-            const alpha = args?.alpha as string;
-            const price_min = args?.price_min as number;
-            const price_max = args?.price_max as number;
-            const members_only = args?.members_only as boolean;
-            const sort_by = args?.sort_by as string;
-            const page = (args?.page as number) || 1;
-
-            // If only category+alpha provided, use the API
-            if (category && alpha) {
-                const alphaParam = alpha === '#' ? '%23' : alpha;
-                const url = `${RS3_PRICES_API}/catalogue/items.json?category=${category}&alpha=${alphaParam}&page=${page}`;
-                const data = await makeApiRequest(url);
-                return createSuccessResponse(`Items in Category ${category} starting with "${alpha}" (Page ${page})`, data);
+            const category = requireInteger(args?.category, 'category');
+            if (isToolResponse(category)) {
+                return category;
             }
-            // Otherwise, return a not-implemented message
-            return createSuccessResponse('Advanced search is not yet implemented. Please use category and alpha for now.', {
-                query, category, alpha, price_min, price_max, members_only, sort_by, page
-            });
+
+            const alpha = requireString(args?.alpha, 'alpha');
+            if (isToolResponse(alpha)) {
+                return alpha;
+            }
+
+            const pageResult = optionalInteger(args?.page, 'page', { minimum: 1 });
+            if (isToolResponse(pageResult)) {
+                return pageResult;
+            }
+            const page = pageResult ?? 1;
+
+            const alphaParam = alpha === '#' ? '%23' : alpha;
+            const url = `${RS3_PRICES_API}/catalogue/items.json?category=${category}&alpha=${alphaParam}&page=${page}`;
+            const data = await makeApiRequest(url);
+            return createSuccessResponse(`Items in Category ${category} starting with "${alpha}" (Page ${page})`, data);
         }
 
         default:
             throw new Error(`Unknown price tool: ${name}`);
     }
-} 
+}

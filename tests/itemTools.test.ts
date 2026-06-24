@@ -75,22 +75,6 @@ describe('Item Tools', () => {
         });
     });
 
-    describe('get_ge_info', () => {
-        it('should get Grand Exchange info', async () => {
-            nock(RS_GE_API)
-                .get('/info.json')
-                .reply(200, {
-                    lastConfigUpdateRuneday: 8526
-                });
-
-            const result = await handleItemTool('get_ge_info', {});
-
-            expect(result.content).toBeDefined();
-            expect(result.content[0].text).toContain('Grand Exchange Database Information');
-            expect(result.content[0].text).toContain('lastConfigUpdateRuneday');
-        });
-    });
-
     describe('Error handling', () => {
         it('should handle API errors', async () => {
             nock(RS_GE_API)
@@ -99,6 +83,12 @@ describe('Item Tools', () => {
 
             await expect(handleItemTool('get_item_detail', { itemId: 999999 }))
                 .rejects.toThrow('API request failed: 404');
+        });
+
+        it('should return validation error for missing itemId', async () => {
+            const result = await handleItemTool('get_item_detail', {});
+            expect(result.isError).toBe(true);
+            expect(result.content[0].text).toContain('itemId is required');
         });
 
         it('should handle unknown tool', async () => {

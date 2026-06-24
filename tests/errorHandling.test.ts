@@ -64,7 +64,7 @@ describe('Error Handling', () => {
                     Object.assign(new Error('Connection refused'), { code: 'ECONNREFUSED' }),
                 );
 
-            await expect(handleItemTool('get_ge_info', {}))
+            await expect(handlePriceTool('get_ge_info', {}))
                 .rejects.toThrow();
         });
     });
