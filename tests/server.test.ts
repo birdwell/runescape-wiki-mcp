@@ -68,8 +68,9 @@ describe('MCP Server', () => {
             expect(categoryInfoTool?.inputSchema.required).toContain('category');
 
             const searchItemsTool = allTools.find(t => t.name === 'search_items');
-            expect(searchItemsTool?.inputSchema.required).toContain('category');
-            expect(searchItemsTool?.inputSchema.required).toContain('alpha');
+            expect(searchItemsTool?.inputSchema.properties).toHaveProperty('category');
+            expect(searchItemsTool?.inputSchema.properties).toHaveProperty('alpha');
+            expect(searchItemsTool?.inputSchema.properties).toHaveProperty('query');
 
             const playerStatsTool = allTools.find(t => t.name === 'get_player_stats');
             expect(playerStatsTool?.inputSchema.required).toContain('username');
