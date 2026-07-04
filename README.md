@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/birdwell-runescape-wiki-mcp-badge.png)](https://mseep.ai/app/birdwell-runescape-wiki-mcp)
+
 # RuneScape Wiki MCP Server
 
 A Model Context Protocol (MCP) server that provides access to RuneScape Wiki APIs, including real-time Grand Exchange prices, item data, and player statistics for RuneScape 3 (RS3).
