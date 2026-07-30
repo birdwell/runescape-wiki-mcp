@@ -1,7 +1,7 @@
 {
   "name": "runescape-wiki-mcp",
-  "version": "1.0.0",
-  "description": "MCP server for RuneScape Wiki APIs - provides access to Grand Exchange prices, item data, and player statistics for RuneScape 3 (RS3)",
+  "version": "1.1.0",
+  "description": "MCP server for RuneScape 3 Grand Exchange prices, item lookup, player hiscores, and wiki content",
   "main": "dist/index.js",
   "module": "src/smithery.ts",
   "type": "module",
@@ -29,7 +29,7 @@
   "author": "Josh Birdwell",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/server": "^2.0.0",
     "node-fetch": "^3.3.2",
     "zod": "^4.4.3"
   },

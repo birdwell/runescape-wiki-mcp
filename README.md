@@ -1,48 +1,25 @@
 # RuneScape Wiki MCP Server
 
-A Model Context Protocol (MCP) server that provides access to RuneScape Wiki APIs, including real-time Grand Exchange prices, item data, and player statistics for RuneScape 3 (RS3).
+A Model Context Protocol (MCP) server for **RuneScape 3** Grand Exchange prices, item name lookup, player hiscores, and wiki page extracts.
 
-## Features
+Speaks MCP **2026-07-28** (stateless) via `serveStdio`, with legacy 2025-era clients still supported.
 
-- **Real-time Grand Exchange Prices**: Get current, 5-minute, and 1-hour average prices for all items
-- **Item Database**: Access complete item mappings with metadata (names, IDs, examine text, etc.)
-- **Price Time Series**: Historical price data with configurable time intervals
-- **Player Statistics**: Lookup player stats from RuneScape 3 hiscores
-- **Multiple Game Modes**: Support for normal, ironman, and hardcore ironman accounts
-- **MCP Resources**: Direct access to price and item data through MCP resource URIs
+## Prerequisites
 
-## Installation
+- Node.js 20+
+- npm
 
-### Prerequisites
-
-- Node.js 18.0.0 or higher
-- npm or yarn
-
-### Install Dependencies
+## Install / Build / Run
 
 ```bash
 npm install
-```
-
-### Build the Project
-
-```bash
 npm run build
+npm start          # stdio MCP server
+npm test           # unit + protocol compliance
+npm run inspector  # MCP Inspector
 ```
 
-### Development Mode
-
-```bash
-npm run dev
-```
-
-This will start the TypeScript compiler in watch mode and automatically restart the server when files change.
-
-## Usage
-
-### With Claude Desktop
-
-Add the following configuration to your Claude Desktop config file:
+## Claude Desktop
 
 ```json
 {
@@ -55,239 +32,77 @@ Add the following configuration to your Claude Desktop config file:
 }
 ```
 
-### With MCP Inspector
+## Tools
 
-Test the server using the MCP Inspector:
+| Tool | Purpose |
+|------|---------|
+| `lookup_item` | **Name → ID + latest price** (Weirdgloop + wiki opensearch). Start here when you only know the name. |
+| `get_item_price` | GE detail + trends by `itemId` **or** `name` |
+| `get_item_graph` | 180-day price graph by `itemId` **or** `name` |
+| `summarize_price_history` | Compact 7–90 day trend summary (min/max/avg/change/volume) |
+| `compare_items` | Bulk compare up to 10 items by `names` or `itemIds` |
+| `estimate_flip` | Flip profit estimate after RS3 2% GE sales tax |
+| `browse_items` | Catalogue browse by category + starting letter (not a name search) |
+| `get_all_categories` | Category ID → name map (0–43) |
+| `get_category_info` | Letter counts for one category |
+| `get_ge_info` | GE database metadata (`lastConfigUpdateRuneday`) |
+| `get_player_stats` | RS3 hiscores by username (`gameMode`: `normal` works; ironman/hardcore currently 404 from Jagex) |
+| `get_wiki_page_content` | Plain-text wiki extract (follows redirects) |
 
-```bash
-# Using npm script (recommended)
-npm run inspector
+### Prompts (workflow templates)
 
-# Or manually with npx
-npx @modelcontextprotocol/inspector node dist/index.js
+| Prompt | Args |
+|--------|------|
+| `check_item_price` | `itemName` |
+| `compare_ge_items` | `items` (comma-separated) |
+| `estimate_item_flip` | `itemName`, optional `quantity` |
+| `player_overview` | `username` |
+
+### Typical agent flow
+
+```
+lookup_item { query: "abyssal whip" }
+  → id 4151, price …
+get_item_price { itemId: 4151 }   # or { name: "Abyssal whip" }
+get_item_graph { itemId: 4151 }
 ```
 
-### Quick Test
+## Resources
 
-Verify the server is working correctly:
+| URI | Contents |
+|-----|----------|
+| `runescape://ge/info` | GE database info (not prices) |
+| `runescape://ge/categories` | Canonical category list |
 
-```bash
-npm test
-```
+## Data sources
 
-## Available Tools
+- Jagex GE: `https://secure.runescape.com/m=itemdb_rs/api`
+- Jagex hiscores lite: `https://secure.runescape.com/m=hiscore/index_lite.ws`
+- Weirdgloop RS exchange: `https://api.weirdgloop.org/exchange/history/rs`
+- RuneScape Wiki MediaWiki API: `https://runescape.wiki/api.php`
 
-### `get_latest_prices`
+All requests send User-Agent:  
+`RuneScape Wiki MCP Server - github.com/joshbirdwell/runescape-wiki-mcp`
 
-Get the latest Grand Exchange prices for all items or a specific item.
-
-**Parameters:**
-- `itemId` (optional): Item ID to get price for specific item
-
-**Example:**
-```json
-{
-  "itemId": 4151
-}
-```
-
-### `get_item_mapping`
-
-Get the complete mapping of all items with their IDs, names, and metadata.
-
-**Parameters:** None
-
-**Returns:** Array of items with:
-- `id`: Item ID
-- `name`: Item name
-- `examine`: Examine text
-- `members`: Whether it's a members-only item
-- `lowalch`: Low alchemy value
-- `highalch`: High alchemy value
-- `limit`: Grand Exchange buy limit
-- `value`: Item value
-- `icon`: Icon filename
-
-### `get_5m_prices`
-
-Get 5-minute average prices for all items.
-
-**Parameters:**
-- `timestamp` (optional): Unix timestamp to get prices for specific time
-
-### `get_1h_prices`
-
-Get 1-hour average prices for all items.
-
-**Parameters:**
-- `timestamp` (optional): Unix timestamp to get prices for specific time
-
-### `get_timeseries`
-
-Get price time series data for a specific item.
-
-**Parameters:**
-- `itemId` (required): Item ID to get time series for
-- `timestep` (required): Time interval - one of: `5m`, `1h`, `6h`, `24h`
-
-**Example:**
-```json
-{
-  "itemId": 4151,
-  "timestep": "1h"
-}
-```
-
-### `get_player_stats`
-
-Get player statistics from RuneScape 3 hiscores.
-
-**Parameters:**
-- `username` (required): Player username to lookup
-- `gameMode` (optional): Game mode - one of: `normal`, `ironman`, `hardcore`
-
-**Example:**
-```json
-{
-  "username": "Zezima",
-  "gameMode": "normal"
-}
-```
-
-**Returns:** Parsed statistics including:
-- Overall rank and total level
-- Individual skill levels, experience, and ranks
-- Formatted data for all 30 skills (including Summoning, Dungeoneering, Divination, Invention, Archaeology, and Necromancy)
-
-## Item Category Mapping
-
-| Category Name            | Category Number |
-|-------------------------|----------------|
-| Ammo                    | 1              |
-| Arrows                  | 2              |
-| Bolts                   | 3              |
-| Construction materials  | 4              |
-| Cooking ingredients     | 5              |
-| Costumes                | 6              |
-| Crafting materials      | 7              |
-| Familiars               | 8              |
-| Fletching materials     | 9              |
-| Food and Drink          | 10             |
-| Herblore materials      | 11             |
-| Hunting equipment       | 12             |
-| Jewellery               | 13             |
-| Mage armour             | 14             |
-| Mage weapons            | 15             |
-| Melee armour - low      | 16             |
-| Melee armour - mid      | 17             |
-| Melee armour - high     | 18             |
-| Melee weapons - low     | 19             |
-| Melee weapons - mid     | 20             |
-| Melee weapons - high    | 21             |
-| Mining and Smithing     | 22             |
-| Potions                 | 23             |
-| Prayer armour           | 24             |
-| Prayer materials        | 25             |
-| Range armour            | 26             |
-| Range weapons           | 27             |
-| Runecrafting            | 28             |
-| Runes, Spells, Teleports| 29             |
-| Seeds                   | 30             |
-| Summoning scrolls       | 31             |
-| Tools and containers    | 32             |
-| Woodcutting product     | 33             |
-| Pocket items            | 34             |
-| Stone spirits           | 35             |
-| Firemaking products     | 36             |
-| Archaeology materials   | 37-43          |
-
-Refer to this table when using tools that require a category number, such as `search_items`.
-
-## Available Resources
-
-### `runescape://prices/latest`
-
-Direct access to the latest Grand Exchange prices for all items.
-
-### `runescape://items/mapping`
-
-Direct access to the complete item mapping data.
-
-## API Endpoints
-
-This server uses the following RuneScape Wiki APIs:
-
-- **RS3 Prices API**: `https://prices.runescape.wiki/api/v1/rs`
-  - Latest prices, 5-minute averages, 1-hour averages, time series data
-- **RS3 Hiscores API**: `https://secure.runescape.com/m=hiscore`
-  - Player statistics for different game modes
-
-## Rate Limits
-
-The RuneScape Wiki APIs have the following guidelines:
-- Use a descriptive User-Agent (automatically handled by this server)
-- Avoid excessive requests that could impact API stability
-- The server implements proper error handling and respects API limitations
-
-## Error Handling
-
-The server includes comprehensive error handling:
-- API request failures are caught and returned as error responses
-- Invalid parameters are validated before making API calls
-- Network timeouts and connection issues are handled gracefully
-- Player not found errors are properly reported
-
-## Development
-
-### Project Structure
+## Project layout
 
 ```
 src/
-├── index.ts          # Main server implementation
-├── types/            # TypeScript type definitions
-└── utils/            # Utility functions
-
-dist/                 # Compiled JavaScript output
+├── index.ts          # stdio entry (serveStdio)
+├── smithery.ts       # Smithery HTTP factory
+├── server.ts         # createServer() + handlers
+├── itemResolve.ts    # name → ID resolution
+├── categories.ts     # GE category table
+├── tools/            # MCP tools
+└── resources.ts      # MCP resources
 ```
 
-### Scripts
+## Notes
 
-- `npm run build`: Compile TypeScript to JavaScript
-- `npm run watch`: Watch for changes and recompile
-- `npm start`: Start the server in production mode
-- `npm run dev`: Start in development mode with auto-restart
-- `npm test`: Run a simple test to verify the server is working
-- `npm run inspector`: Launch the MCP Inspector to test the server
-
-### Adding New Tools
-
-1. Define the tool in the `tools` array with proper schema
-2. Add a case handler in the `CallToolRequestSchema` handler
-3. Implement the API logic with proper error handling
-4. Update this README with documentation
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+- **RS3 only**, not OSRS (different IDs and endpoints).
+- Ironman/hardcore `index_lite` endpoints are documented by Jagex but currently return HTTP 404; the tool reports that instead of silently returning normal-mode data.
+- Smithery hosts should rebuild the server card after tool changes so the published schema matches this README.
 
 ## License
 
-MIT License - see LICENSE file for details.
-
-## Acknowledgments
-
-- [RuneScape Wiki](https://runescape.wiki/) for providing the APIs
-- [Model Context Protocol](https://modelcontextprotocol.io/) for the MCP specification
-- Jagex for RuneScape 3
-
-## Support
-
-For issues, questions, or feature requests, please open an issue on the GitHub repository.
-
----
-
-**Note**: This is an unofficial tool and is not affiliated with Jagex or the RuneScape Wiki. Please respect the API usage guidelines and terms of service. 
+MIT — unofficial; not affiliated with Jagex or the RuneScape Wiki.

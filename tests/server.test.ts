@@ -1,82 +1,70 @@
 // Tests for MCP server
+
 import { describe, it, expect } from '@jest/globals';
-import { server, setupServerHandlers } from '../src/server.js';
+import { createServer } from '../src/server.js';
 import { allTools } from '../src/tools/index.js';
 import { resources } from '../src/resources.js';
+import { RESOURCE_URIS } from '../src/constants.js';
 
 describe('MCP Server', () => {
-    beforeEach(() => {
-        setupServerHandlers();
+    it('should create a configured server instance', () => {
+        expect(createServer()).toBeDefined();
     });
 
     describe('Tools registration', () => {
-        it('should have all price tools', () => {
-            const priceTools = [
+        it('should expose the consolidated tool surface', () => {
+            const expected = [
+                'lookup_item',
+                'get_item_graph',
                 'get_item_price',
                 'get_ge_info',
                 'get_category_info',
-                'search_items'
+                'get_all_categories',
+                'browse_items',
+                'summarize_price_history',
+                'compare_items',
+                'estimate_flip',
+                'get_player_stats',
+                'get_wiki_page_content',
             ];
 
-            priceTools.forEach(toolName => {
+            expected.forEach(toolName => {
                 expect(allTools.some(t => t.name === toolName)).toBe(true);
             });
-        });
 
-        it('should have all item tools', () => {
-            const itemTools = [
-                'get_item_detail',
-                'get_item_graph',
-                'browse_items_by_category',
-            ];
-
-            itemTools.forEach(toolName => {
-                expect(allTools.some(t => t.name === toolName)).toBe(true);
-            });
+            // Removed duplicates / obsolete tools
+            expect(allTools.some(t => t.name === 'get_item_detail')).toBe(false);
+            expect(allTools.some(t => t.name === 'search_items')).toBe(false);
+            expect(allTools.some(t => t.name === 'browse_items_by_category')).toBe(false);
         });
 
         it('should have unique tool names', () => {
             const names = allTools.map(t => t.name);
             expect(new Set(names).size).toBe(names.length);
         });
-
-        it('should have all player tools', () => {
-            const playerTools = [
-                'get_player_stats'
-            ];
-
-            playerTools.forEach(toolName => {
-                expect(allTools.some(t => t.name === toolName)).toBe(true);
-            });
-        });
     });
 
     describe('Resources registration', () => {
-        it('should have required resources', () => {
-            expect(resources).toBeDefined();
-            expect(resources.length).toBeGreaterThan(0);
-
-            // Check specific resources
-            expect(resources.some(r => r.uri === 'runescape://prices/latest')).toBe(true);
-            expect(resources.some(r => r.uri === 'runescape://items/mapping')).toBe(true);
+        it('should have honest GE resources', () => {
+            expect(resources.some(r => r.uri === RESOURCE_URIS.GE_INFO)).toBe(true);
+            expect(resources.some(r => r.uri === RESOURCE_URIS.GE_CATEGORIES)).toBe(true);
         });
     });
 
     describe('Tool schemas', () => {
-        it('should have required parameters defined correctly', () => {
-            const itemPriceTool = allTools.find(t => t.name === 'get_item_price');
-            expect(itemPriceTool?.inputSchema.required).toContain('itemId');
+        it('should document lookup and flexible price args', () => {
+            const lookup = allTools.find(t => t.name === 'lookup_item');
+            expect(lookup?.inputSchema.required).toContain('query');
 
-            const categoryInfoTool = allTools.find(t => t.name === 'get_category_info');
-            expect(categoryInfoTool?.inputSchema.required).toContain('category');
+            const price = allTools.find(t => t.name === 'get_item_price');
+            expect(price?.inputSchema.properties).toHaveProperty('itemId');
+            expect(price?.inputSchema.properties).toHaveProperty('name');
 
-            const searchItemsTool = allTools.find(t => t.name === 'search_items');
-            expect(searchItemsTool?.inputSchema.required).toContain('category');
-            expect(searchItemsTool?.inputSchema.required).toContain('alpha');
-            expect(searchItemsTool?.inputSchema.properties).toHaveProperty('page');
+            const browse = allTools.find(t => t.name === 'browse_items');
+            expect(browse?.inputSchema.required).toContain('category');
 
-            const playerStatsTool = allTools.find(t => t.name === 'get_player_stats');
-            expect(playerStatsTool?.inputSchema.required).toContain('username');
+            const player = allTools.find(t => t.name === 'get_player_stats');
+            expect(player?.inputSchema.required).toContain('username');
         });
     });
-}); 
+});

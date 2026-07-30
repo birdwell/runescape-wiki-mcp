@@ -61,7 +61,7 @@ When you see "API request failed: 404 Not found":
 ### Finding Item IDs
 
 For items like Frost Dragon Bones:
-1. Use the `search_items` tool with appropriate category
+1. Use `lookup_item` with the item name (or `browse_items` with category + letter)
 2. Browse categories using `get_category_info`
 3. Check the official RuneScape Wiki for item IDs
 

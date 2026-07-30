@@ -1,17 +1,23 @@
 // Wiki tools for RuneScape Wiki MCP Server
 
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool } from '@modelcontextprotocol/server';
 import { RUNESCAPE_WIKI_API } from '../constants.js';
-import { makeApiRequest, createSuccessResponse } from '../utils.js';
-import { ToolArguments, ToolResponse } from '../types.js';
 import { JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
-import { isToolResponse, requireString } from '../validation.js';
+import { ToolArguments, ToolResponse } from '../types.js';
+import { makeApiRequest, createSuccessResponse } from '../utils.js';
+import {
+    isToolResponse,
+    rejectUnknownKeys,
+    requireString,
+    validationError,
+} from '../validation.js';
 
 export const wikiTools: Tool[] = [
     {
         name: 'get_wiki_page_content',
         title: 'Get Wiki Page Content',
-        description: 'Fetch the plain text content of a RuneScape Wiki page (e.g., Mining, Smithing, etc.)',
+        description:
+            'Fetch plain-text content of a RuneScape Wiki page. Follows redirects. Prefer exact titles; use lookup_item or wiki search when unsure.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -19,7 +25,7 @@ export const wikiTools: Tool[] = [
                 page: {
                     type: 'string',
                     minLength: 1,
-                    description: 'The title of the wiki page to fetch (case-sensitive, spaces allowed)',
+                    description: 'Wiki page title (spaces allowed; redirects are followed)',
                 },
             },
             required: ['page'],
@@ -29,24 +35,51 @@ export const wikiTools: Tool[] = [
     },
 ];
 
+interface WikiPage {
+    pageid?: number;
+    title?: string;
+    missing?: boolean | string;
+    extract?: string;
+}
+
 export async function handleWikiTool(name: string, args: ToolArguments): Promise<ToolResponse> {
     switch (name) {
         case 'get_wiki_page_content': {
-            const page = requireString(args?.page, 'page');
+            const unexpected = rejectUnknownKeys(args, ['page']);
+            if (unexpected) {
+                return unexpected;
+            }
+
+            const page = requireString(args?.page, 'page', { minLength: 1 });
             if (isToolResponse(page)) {
                 return page;
             }
 
-            const url = `${RUNESCAPE_WIKI_API}?action=query&prop=extracts&format=json&explaintext=1&titles=${encodeURIComponent(page)}`;
+            const url =
+                `${RUNESCAPE_WIKI_API}?action=query&prop=extracts&format=json` +
+                `&explaintext=1&redirects=1&titles=${encodeURIComponent(page)}`;
             const data = await makeApiRequest(url);
-            const pages = data?.query?.pages || {};
+            const pages = (data?.query?.pages ?? {}) as Record<string, WikiPage>;
             const firstPage = Object.values(pages)[0];
-            let extract = '(No content found)';
-            if (firstPage && typeof firstPage === 'object' && 'extract' in firstPage && typeof firstPage.extract === 'string') {
-                extract = firstPage.extract;
+
+            if (!firstPage || firstPage.missing !== undefined) {
+                return validationError(
+                    `Wiki page "${page}" was not found. Try a different title or lookup_item.`
+                );
             }
-            return createSuccessResponse(`Wiki Page: ${page}`, extract);
+
+            const extract =
+                typeof firstPage.extract === 'string' ? firstPage.extract.trim() : '';
+            if (!extract) {
+                return validationError(
+                    `Wiki page "${firstPage.title ?? page}" has no extractable text.`
+                );
+            }
+
+            const resolvedTitle = firstPage.title ?? page;
+            return createSuccessResponse(`Wiki Page: ${resolvedTitle}`, extract);
         }
+
         default:
             throw new Error(`Unknown wiki tool: ${name}`);
     }

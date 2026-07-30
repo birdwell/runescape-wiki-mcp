@@ -1,33 +1,33 @@
 // Resources for RuneScape Wiki MCP Server
 
-import { Resource, ReadResourceRequest } from '@modelcontextprotocol/sdk/types.js';
-import { RS3_PRICES_API, RESOURCE_URIS } from './constants.js';
+import type { Resource, ReadResourceRequest } from '@modelcontextprotocol/server';
+import { ITEM_CATEGORIES } from './categories.js';
+import { RS3_GE_API, RESOURCE_URIS } from './constants.js';
 import { makeApiRequest } from './utils.js';
 import { resourceNotFoundError } from './errors.js';
 
-// Resource definitions
 export const resources: Resource[] = [
     {
-        uri: RESOURCE_URIS.LATEST_PRICES,
+        uri: RESOURCE_URIS.GE_INFO,
         name: 'Grand Exchange Database Info',
-        description: 'Information about the Grand Exchange Database including last update',
+        description:
+            'Grand Exchange database metadata from Jagex (lastConfigUpdateRuneday). Not item prices — use get_item_price or lookup_item for prices.',
         mimeType: 'application/json',
     },
     {
-        uri: RESOURCE_URIS.ITEM_MAPPING,
-        name: 'Item Categories',
-        description: 'Available item categories in the Grand Exchange',
+        uri: RESOURCE_URIS.GE_CATEGORIES,
+        name: 'Grand Exchange Categories',
+        description: 'Canonical list of RS3 Grand Exchange category IDs and names (0-43).',
         mimeType: 'application/json',
     },
 ];
 
-// Resource handler
 export async function handleResource(request: ReadResourceRequest) {
     const { uri } = request.params;
 
     switch (uri) {
-        case RESOURCE_URIS.LATEST_PRICES: {
-            const data = await makeApiRequest(`${RS3_PRICES_API}/info.json`);
+        case RESOURCE_URIS.GE_INFO: {
+            const data = await makeApiRequest(`${RS3_GE_API}/info.json`);
             return {
                 contents: [
                     {
@@ -39,15 +39,13 @@ export async function handleResource(request: ReadResourceRequest) {
             };
         }
 
-        case RESOURCE_URIS.ITEM_MAPPING: {
-            // Get info about category 1 as an example of available categories
-            const data = await makeApiRequest(`${RS3_PRICES_API}/catalogue/category.json?category=1`);
+        case RESOURCE_URIS.GE_CATEGORIES: {
             return {
                 contents: [
                     {
                         uri,
                         mimeType: 'application/json',
-                        text: JSON.stringify(data, null, 2),
+                        text: JSON.stringify(ITEM_CATEGORIES, null, 2),
                     },
                 ],
             };
@@ -56,4 +54,4 @@ export async function handleResource(request: ReadResourceRequest) {
         default:
             throw resourceNotFoundError(uri);
     }
-} 
+}

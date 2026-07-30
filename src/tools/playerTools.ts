@@ -1,11 +1,16 @@
 // Player tools for RuneScape Wiki MCP Server
 
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
-import { RS3_HISCORES_API, RS3_SKILLS, GAME_MODE_ENDPOINTS } from '../constants.js';
-import { makeTextApiRequest, createSuccessResponse } from '../utils.js';
-import { ToolArguments, ToolResponse, PlayerStatsResponse, GameMode } from '../types.js';
+import type { Tool } from '@modelcontextprotocol/server';
+import { GAME_MODE_PATHS, RS3_HISCORES_ORIGIN, RS3_SKILLS } from '../constants.js';
 import { JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
-import { isToolResponse, requireString, validationError } from '../validation.js';
+import { GameMode, PlayerStatsResponse, ToolArguments, ToolResponse } from '../types.js';
+import { createSuccessResponse, makeTextApiRequest } from '../utils.js';
+import {
+    isToolResponse,
+    rejectUnknownKeys,
+    requireString,
+    validationError,
+} from '../validation.js';
 
 const GAME_MODES = ['normal', 'ironman', 'hardcore'] as const;
 
@@ -13,12 +18,12 @@ function isGameMode(value: string): value is GameMode {
     return (GAME_MODES as readonly string[]).includes(value);
 }
 
-// Tool definitions for player-related functionality
 export const playerTools: Tool[] = [
     {
         name: 'get_player_stats',
         title: 'Get Player Stats',
-        description: 'Get player statistics from RuneScape 3 hiscores',
+        description:
+            'Get RS3 hiscores for a player. Normal mode works via Jagex index_lite. Ironman/hardcore use documented Jagex endpoints that currently return HTTP 404; the tool reports that clearly instead of falling back to normal data.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -31,7 +36,8 @@ export const playerTools: Tool[] = [
                 gameMode: {
                     type: 'string',
                     enum: ['normal', 'ironman', 'hardcore'],
-                    description: 'Game mode hiscores to check',
+                    description: 'Hiscores board (default: normal)',
+                    default: 'normal',
                 },
             },
             required: ['username'],
@@ -41,39 +47,71 @@ export const playerTools: Tool[] = [
     },
 ];
 
-// Tool handlers for player-related functionality
 export async function handlePlayerTool(name: string, args: ToolArguments): Promise<ToolResponse> {
     switch (name) {
         case 'get_player_stats': {
-            const username = requireString(args?.username, 'username');
+            const unexpected = rejectUnknownKeys(args, ['username', 'gameMode']);
+            if (unexpected) {
+                return unexpected;
+            }
+
+            const username = requireString(args?.username, 'username', { minLength: 1 });
             if (isToolResponse(username)) {
                 return username;
             }
 
-            const rawGameMode = args?.gameMode;
             let gameMode: GameMode = 'normal';
-            if (rawGameMode !== undefined) {
-                if (typeof rawGameMode !== 'string' || !isGameMode(rawGameMode)) {
+            if (args?.gameMode !== undefined) {
+                if (typeof args.gameMode !== 'string' || !isGameMode(args.gameMode)) {
                     return validationError('gameMode must be one of: normal, ironman, hardcore');
                 }
-                gameMode = rawGameMode;
+                gameMode = args.gameMode;
             }
 
-            const endpoint = GAME_MODE_ENDPOINTS[gameMode];
-            const url = `${RS3_HISCORES_API}/${endpoint}?player=${encodeURIComponent(username)}`;
+            const path = GAME_MODE_PATHS[gameMode];
+            const url = `${RS3_HISCORES_ORIGIN}${path}?player=${encodeURIComponent(username)}`;
 
-            const csvData = await makeTextApiRequest(url);
-            const lines = csvData.trim().split('\n');
+            let csvData: string;
+            try {
+                csvData = await makeTextApiRequest(url);
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                if (message.includes('404')) {
+                    if (gameMode !== 'normal') {
+                        return validationError(
+                            `RS3 ${gameMode} hiscores lite API returned HTTP 404 from Jagex ` +
+                                `(${path}). This endpoint is documented but currently unavailable. ` +
+                                `Try gameMode "normal", or check the HTML hiscores on runescape.com.`
+                        );
+                    }
+                    return validationError(
+                        `Player "${username}" was not found on the normal hiscores (HTTP 404).`
+                    );
+                }
+                throw error;
+            }
+
+            const lines = csvData.trim().split('\n').filter(line => line.length > 0);
+            if (lines.length === 0 || !lines[0].includes(',')) {
+                return validationError(
+                    `Unexpected hiscores response for "${username}" (${gameMode}).`
+                );
+            }
 
             const parsedStats: PlayerStatsResponse = {};
-            lines.slice(0, 30).forEach((line: string, index: number) => {
-                const [rank, level, xp] = line.split(',');
+            const skillCount = Math.min(RS3_SKILLS.length, lines.length);
+            for (let index = 0; index < skillCount; index += 1) {
+                const parts = lines[index]?.split(',') ?? [];
+                const [rank, level, xp] = parts;
+                const rankNum = Number.parseInt(rank ?? '', 10);
+                const levelNum = Number.parseInt(level ?? '', 10);
+                const xpNum = Number.parseInt(xp ?? '', 10);
                 parsedStats[RS3_SKILLS[index]] = {
-                    rank: rank === '-1' ? 'Unranked' : parseInt(rank),
-                    level: level === '-1' ? 0 : parseInt(level),
-                    experience: xp === '-1' ? 0 : parseInt(xp),
+                    rank: rank === '-1' || !Number.isFinite(rankNum) ? 'Unranked' : rankNum,
+                    level: level === '-1' || !Number.isFinite(levelNum) ? 0 : levelNum,
+                    experience: xp === '-1' || !Number.isFinite(xpNum) ? 0 : xpNum,
                 };
-            });
+            }
 
             return createSuccessResponse(`Player Stats for ${username} (${gameMode})`, parsedStats);
         }
