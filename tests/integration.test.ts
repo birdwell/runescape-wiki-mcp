@@ -119,7 +119,9 @@ describe('Integration Tests', () => {
         it('should handle network errors', async () => {
             nock(RS3_PRICES_API)
                 .get('/info.json')
-                .replyWithError({ code: 'ECONNREFUSED' });
+                .replyWithError(
+                    Object.assign(new Error('Connection refused'), { code: 'ECONNREFUSED' }),
+                );
 
             await expect(handleTool('get_ge_info', {}))
                 .rejects.toThrow();

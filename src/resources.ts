@@ -3,6 +3,7 @@
 import { Resource, ReadResourceRequest } from '@modelcontextprotocol/sdk/types.js';
 import { RS3_PRICES_API, RESOURCE_URIS } from './constants.js';
 import { makeApiRequest } from './utils.js';
+import { resourceNotFoundError } from './errors.js';
 
 // Resource definitions
 export const resources: Resource[] = [
@@ -53,6 +54,6 @@ export async function handleResource(request: ReadResourceRequest) {
         }
 
         default:
-            throw new Error(`Unknown resource: ${uri}`);
+            throw resourceNotFoundError(uri);
     }
 } 

@@ -60,9 +60,11 @@ describe('Error Handling', () => {
         it('should handle connection refused', async () => {
             nock(RS_GE_API)
                 .get('/info.json')
-                .replyWithError({ code: 'ECONNREFUSED' });
+                .replyWithError(
+                    Object.assign(new Error('Connection refused'), { code: 'ECONNREFUSED' }),
+                );
 
-            await expect(handleItemTool('get_ge_info', {}))
+            await expect(handlePriceTool('get_ge_info', {}))
                 .rejects.toThrow();
         });
     });

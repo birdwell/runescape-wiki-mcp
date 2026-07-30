@@ -71,7 +71,7 @@ describe('Resources', () => {
     });
 
     describe('handleResource', () => {
-        it('should throw error for unknown resource', async () => {
+        it('should throw McpError for unknown resource', async () => {
             const request = {
                 params: {
                     uri: 'runescape://unknown/resource'
@@ -79,7 +79,10 @@ describe('Resources', () => {
             };
 
             await expect(handleResource(request as any))
-                .rejects.toThrow('Unknown resource: runescape://unknown/resource');
+                .rejects.toMatchObject({
+                    code: -32602,
+                    message: expect.stringContaining('Resource not found'),
+                });
         });
     });
 }); 

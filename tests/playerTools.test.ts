@@ -68,8 +68,9 @@ describe('Player Tools', () => {
         });
 
         it('should require username parameter', async () => {
-            await expect(handlePlayerTool('get_player_stats', {}))
-                .rejects.toThrow('Username is required');
+            const result = await handlePlayerTool('get_player_stats', {});
+            expect(result.isError).toBe(true);
+            expect(result.content[0].text).toBe('username is required');
         });
     });
 

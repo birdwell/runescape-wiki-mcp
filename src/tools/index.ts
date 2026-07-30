@@ -6,6 +6,7 @@ import { itemTools, handleItemTool } from './itemTools.js';
 import { playerTools, handlePlayerTool } from './playerTools.js';
 import { wikiTools, handleWikiTool } from './wikiTools.js';
 import { ToolArguments, ToolResponse } from '../types.js';
+import { unknownToolError } from '../errors.js';
 
 // Export all tools combined
 export const allTools: Tool[] = [
@@ -37,7 +38,7 @@ export async function handleTool(name: string, args: ToolArguments): Promise<Too
         return handleWikiTool(name, args);
     }
 
-    throw new Error(`Unknown tool: ${name}`);
+    throw unknownToolError(name);
 }
 
 // Export individual tool categories

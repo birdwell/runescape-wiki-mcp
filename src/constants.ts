@@ -14,6 +14,8 @@ export const USER_AGENT =
 export const SERVER_CONFIG = {
   name: "runescape-wiki-mcp",
   version: "1.0.0",
+  description:
+    "RS3 Grand Exchange prices, item data, player hiscores, and RuneScape Wiki content",
 } as const;
 
 // RuneScape 3 skills in order (30 skills total)
