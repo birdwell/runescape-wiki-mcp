@@ -7,5 +7,5 @@ import './instrument.js';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { createServer } from './server.js';
 
-console.error('RuneScape Wiki MCP Server running on stdio');
+console.error('RuneScape 3 MCP Server running on stdio');
 serveStdio(() => createServer());

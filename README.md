@@ -1,4 +1,4 @@
-# RuneScape Wiki MCP Server
+# RuneScape 3 MCP Server
 
 [![npm](https://img.shields.io/npm/v/runescape-wiki-mcp)](https://www.npmjs.com/package/runescape-wiki-mcp)
 [![CI](https://github.com/birdwell/runescape-wiki-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/birdwell/runescape-wiki-mcp/actions/workflows/ci.yml)
@@ -6,32 +6,35 @@
 
 [![RuneScape Wiki MCP Server MCP server – quality and maintenance score on Glama](https://glama.ai/mcp/servers/birdwell/runescape-wiki-mcp/badges/card.svg)](https://glama.ai/mcp/servers/birdwell/runescape-wiki-mcp)
 
-A Model Context Protocol (MCP) server for **RuneScape 3** Grand Exchange prices, item name lookup, player hiscores, and wiki page extracts.
+**RuneScape 3 MCP Server (RS3)** — Connect Claude, ChatGPT, Cursor, and other AI assistants to RuneScape Wiki, Grand Exchange prices, player hiscores, item comparisons, and money-making tools. Available as a hosted MCP server or npm package.
 
-Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy 2025-era clients still supported.
+The GitHub repository is `runescape-wiki-mcp`. The server covers Grand Exchange market data and player hiscores as well as the wiki.
 
-Remote endpoint: `https://runescape-wiki-mcp.fly.dev/mcp`
+## What it does
 
-Registry name: `io.github.birdwell/runescape-wiki-mcp`
+Connects an AI assistant to RuneScape 3 data: item prices, 7–90 day trends, side-by-side comparisons, flip estimates after the 2% Grand Exchange tax, player hiscores, and RuneScape Wiki pages.
 
-## Prerequisites
+## Why use it
 
-- Node.js 20+
-- npm
+Research items, compare prices, estimate a flip, and look up a player without leaving the assistant. Ask in plain language. The assistant calls the tools.
 
-## Install / Build / Run
+## Example questions
 
-```bash
-npm install
-npm run build
-npm start          # stdio MCP server
-npm test           # unit + protocol compliance
-npm run inspector  # MCP Inspector
-```
+- What's the current price of a Noxious scythe?
+- Compare the price trends of a Noxious scythe, a Dragon rider lance, and an Abyssal whip.
+- How has the price of a Noxious scythe changed over the past 30 days?
+- Estimate the profit from flipping 100 Dragon rider lances.
+- Look up my RuneScape stats and recommend what to train next.
+
+Price questions use `lookup_item`, `get_item_price`, `compare_items`, `summarize_price_history`, and `estimate_flip`. Stats questions use `get_player_stats`; the assistant turns those levels into a training suggestion. Wiki questions use `search_wiki`, then `get_wiki_page_content`.
+
+The server summarizes items you name. It does not rank the whole Grand Exchange by 30-day gain.
 
 ## Connect
 
-Remote (Streamable HTTP):
+Hosted endpoint: `https://runescape-wiki-mcp.fly.dev/mcp`
+
+Cursor, Claude Desktop, and other clients that accept a remote MCP URL:
 
 ```json
 {
@@ -56,7 +59,7 @@ stdio via npm:
 }
 ```
 
-Local stdio:
+Local stdio, after `npm install` and `npm run build`:
 
 ```json
 {
@@ -73,32 +76,33 @@ Discovery:
 
 - Server card: `https://runescape-wiki-mcp.fly.dev/mcp/server-card`
 - AI Catalog: `https://runescape-wiki-mcp.fly.dev/.well-known/ai-catalog.json`
+- Official MCP Registry: [`io.github.birdwell/runescape-wiki-mcp`](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.birdwell/runescape-wiki-mcp)
+- npm: [`runescape-wiki-mcp`](https://www.npmjs.com/package/runescape-wiki-mcp)
+
+Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy 2025-era clients still supported.
 
 ## Tools
 
-| Tool | Purpose |
-|------|---------|
-| `lookup_item` | **Name → ID + latest price** (Weirdgloop + wiki opensearch). Start here when you only know the name. |
-| `get_item_price` | GE detail + trends by `itemId` **or** `name` |
-| `get_item_graph` | 180-day price graph by `itemId` **or** `name` |
-| `summarize_price_history` | Compact 7–90 day trend summary (min/max/avg/change/volume) |
-| `compare_items` | Bulk compare up to 10 items by `names` or `itemIds` |
-| `estimate_flip` | Flip profit estimate after RS3 2% GE sales tax |
-| `browse_items` | Catalogue browse by category + starting letter (not a name search) |
-| `get_all_categories` | Category ID → name map (0–43) |
-| `get_category_info` | Letter counts for one category |
-| `get_ge_info` | GE database metadata (`lastConfigUpdateRuneday`) |
-| `get_player_stats` | RS3 hiscores by username (`gameMode`: `normal` works; ironman/hardcore currently 404 from Jagex) |
-| `get_wiki_page_content` | Plain-text wiki extract (follows redirects) |
+- `lookup_item` — Resolve an item name to a Grand Exchange ID and the latest price. Start here when you only know the name.
+- `get_item_price` — Current Grand Exchange detail and trend for one item, by `itemId` or `name`.
+- `get_item_graph` — About 180 days of daily prices, by `itemId` or `name`.
+- `summarize_price_history` — Min, max, average, change, and volume over 7–90 days (default 30).
+- `compare_items` — Compare up to 10 items by `names` or `itemIds`.
+- `estimate_flip` — Estimated flip profit after the RS3 2% Grand Exchange sales tax.
+- `browse_items` — Browse one Grand Exchange category by starting letter. This is not a name search.
+- `get_all_categories` — Category IDs 0–43 and their names.
+- `get_category_info` — How many items sit under each letter in one category.
+- `get_ge_info` — Grand Exchange database metadata (`lastConfigUpdateRuneday`), not prices.
+- `get_player_stats` — RS3 hiscores for a username. `gameMode: normal` works. Ironman and hardcore currently return HTTP 404 from Jagex.
+- `search_wiki` — Search RuneScape Wiki titles and snippets when the page title is unknown.
+- `get_wiki_page_content` — Plain-text wiki extract. Follows redirects.
 
-### Prompts (workflow templates)
+### Prompts
 
-| Prompt | Args |
-|--------|------|
-| `check_item_price` | `itemName` |
-| `compare_ge_items` | `items` (comma-separated) |
-| `estimate_item_flip` | `itemName`, optional `quantity` |
-| `player_overview` | `username` |
+- `check_item_price` — `itemName`
+- `compare_ge_items` — `items` (comma-separated names)
+- `estimate_item_flip` — `itemName`, optional `quantity`
+- `player_overview` — `username`
 
 ### Typical agent flow
 
@@ -106,7 +110,8 @@ Discovery:
 lookup_item { query: "abyssal whip" }
   → id 4151, price …
 get_item_price { itemId: 4151 }   # or { name: "Abyssal whip" }
-get_item_graph { itemId: 4151 }
+summarize_price_history { name: "Abyssal whip", days: 30 }
+search_wiki { query: "abyssal whip special attack" }
 ```
 
 ## Resources
@@ -125,6 +130,19 @@ get_item_graph { itemId: 4151 }
 
 All requests send User-Agent:  
 `RuneScape Wiki MCP Server - github.com/birdwell/runescape-wiki-mcp`
+
+## Develop
+
+- Node.js 20+
+- npm
+
+```bash
+npm install
+npm run build
+npm start          # stdio MCP server
+npm test           # unit + protocol compliance
+npm run inspector  # MCP Inspector
+```
 
 ## Project layout
 

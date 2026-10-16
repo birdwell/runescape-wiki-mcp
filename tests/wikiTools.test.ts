@@ -13,8 +13,64 @@ describe('Wiki Tools', () => {
         nock.cleanAll();
     });
 
-    it('should register get_wiki_page_content', () => {
+    it('should register wiki search and page content', () => {
+        expect(wikiTools.some(t => t.name === 'search_wiki')).toBe(true);
         expect(wikiTools.some(t => t.name === 'get_wiki_page_content')).toBe(true);
+        const page = wikiTools.find(t => t.name === 'get_wiki_page_content');
+        expect(page?.description).toContain('search_wiki');
+    });
+
+    describe('search_wiki', () => {
+        it('should return titles, plain snippets, and wiki urls', async () => {
+            nock('https://runescape.wiki')
+                .get('/api.php')
+                .query(query => query.action === 'query' && query.list === 'search' && query.srsearch === 'Noxious scythe')
+                .reply(200, {
+                    query: {
+                        search: [
+                            {
+                                title: 'Noxious scythe',
+                                snippet: 'The <span class="searchmatch">Noxious</span> scythe is a weapon.',
+                            },
+                        ],
+                    },
+                });
+
+            const result = await handleWikiTool('search_wiki', { query: 'Noxious scythe', limit: 3 });
+            expect(result.isError).toBeFalsy();
+            expect(result.structuredContent).toEqual({
+                results: [
+                    {
+                        title: 'Noxious scythe',
+                        snippet: 'The Noxious scythe is a weapon.',
+                        url: 'https://runescape.wiki/w/Noxious_scythe',
+                    },
+                ],
+            });
+        });
+
+        it('should return an empty result list when nothing matches', async () => {
+            nock('https://runescape.wiki')
+                .get('/api.php')
+                .query(true)
+                .reply(200, { query: { search: [] } });
+
+            const result = await handleWikiTool('search_wiki', { query: 'zzzz-not-a-page' });
+            expect(result.isError).toBeFalsy();
+            expect(result.structuredContent).toEqual({ results: [] });
+        });
+
+        it('should require query', async () => {
+            const result = await handleWikiTool('search_wiki', {});
+            expect(result.isError).toBe(true);
+            expect(result.content[0].text).toBe('query is required');
+        });
+
+        it('should reject a limit outside 1-10', async () => {
+            const result = await handleWikiTool('search_wiki', { query: 'whip', limit: 0 });
+            expect(result.isError).toBe(true);
+            expect(result.content[0].text).toContain('limit');
+        });
     });
 
     describe('get_wiki_page_content', () => {
@@ -59,6 +115,7 @@ describe('Wiki Tools', () => {
             const result = await handleWikiTool('get_wiki_page_content', { page: 'MissingPage' });
             expect(result.isError).toBe(true);
             expect(result.content[0].text).toContain('was not found');
+            expect(result.content[0].text).toContain('search_wiki');
         });
 
         it('should error on empty extract', async () => {

@@ -25,6 +25,7 @@ describe('MCP Server', () => {
                 'compare_items',
                 'estimate_flip',
                 'get_player_stats',
+                'search_wiki',
                 'get_wiki_page_content',
             ];
 

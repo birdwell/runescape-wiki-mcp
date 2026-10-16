@@ -25,7 +25,7 @@ export const USER_AGENT =
 
 /** Official MCP Registry name (GitHub namespace). */
 export const REGISTRY_NAME = 'io.github.birdwell/runescape-wiki-mcp';
-export const SERVER_TITLE = 'RuneScape Wiki';
+export const SERVER_TITLE = 'RuneScape 3 MCP Server';
 export const PUBLIC_ORIGIN = 'https://runescape-wiki-mcp.fly.dev';
 export const MCP_PATH = '/mcp';
 export const REPOSITORY_URL = 'https://github.com/birdwell/runescape-wiki-mcp';
@@ -37,7 +37,7 @@ export const SERVER_CONFIG = {
     name: 'runescape-wiki-mcp',
     version: '1.2.0',
     description:
-        'RS3 Grand Exchange prices, item lookup, player hiscores, and RuneScape Wiki content',
+        'RuneScape 3 prices, hiscores, flips, and wiki pages for AI assistants.',
 } as const;
 
 // RuneScape 3 skills in order (30 skills total)

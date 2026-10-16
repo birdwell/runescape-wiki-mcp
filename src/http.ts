@@ -22,11 +22,12 @@ function serveHomepage(_req: IncomingMessage, res: ServerResponse): void {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>RuneScape Wiki MCP</title>
+  <title>RuneScape 3 MCP Server</title>
+  <meta name="description" content="Connect Claude, ChatGPT, Cursor, and other AI assistants to RuneScape 3 Grand Exchange prices, player hiscores, and the RuneScape Wiki." />
 </head>
 <body>
-  <h1>RuneScape Wiki MCP</h1>
-  <p>RS3 Grand Exchange prices, item lookup, hiscores, and wiki tools over MCP.</p>
+  <h1>RuneScape 3 MCP Server</h1>
+  <p>Grand Exchange prices, item comparisons, flip estimates, player hiscores, and RuneScape Wiki pages over MCP.</p>
   <ul>
     <li><a href="${CANONICAL_MCP_URL}">MCP endpoint</a></li>
     <li><a href="${serverCardUrl(PUBLIC_ORIGIN)}">Server card</a></li>
@@ -105,7 +106,7 @@ async function writeWebResponse(response: Response, res: ServerResponse): Promis
 }
 
 server.listen(port, host, () => {
-    console.error(`RuneScape Wiki MCP Server listening on http://${host}:${port}/mcp`);
+    console.error(`RuneScape 3 MCP Server listening on http://${host}:${port}/mcp`);
 });
 
 async function shutdown(): Promise<void> {

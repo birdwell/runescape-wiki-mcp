@@ -1,7 +1,7 @@
 {
   "name": "runescape-wiki-mcp",
   "version": "1.2.0",
-  "description": "RS3 Grand Exchange prices, item lookup, player hiscores, and RuneScape Wiki content",
+  "description": "RuneScape 3 MCP server for Grand Exchange prices, item comparisons, flip estimates, player hiscores, and wiki pages.",
   "mcpName": "io.github.birdwell/runescape-wiki-mcp",
   "bin": {
     "runescape-wiki-mcp": "dist/index.js"
@@ -43,12 +43,15 @@
   "keywords": [
     "mcp",
     "mcp-server",
+    "model-context-protocol",
     "modelcontextprotocol",
     "runescape",
+    "runescape3",
     "rs3",
+    "runescape-wiki",
     "grand-exchange",
-    "api",
-    "wiki"
+    "ai-agent",
+    "gaming"
   ],
   "author": "Josh Birdwell",
   "license": "MIT",
