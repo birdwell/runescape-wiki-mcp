@@ -6,6 +6,7 @@ import { createMcpHandler } from '@modelcontextprotocol/server';
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import { PUBLIC_ORIGIN } from './constants.js';
 import { CANONICAL_MCP_URL, handleDiscoveryRequest, serverCardUrl } from './discovery.js';
+import { clientKeyFromHeaders, consumeRateLimit } from './rateLimit.js';
 import { createServer as createMcpServer } from './server.js';
 
 const port = Number(process.env.PORT ?? 8080);
@@ -68,6 +69,26 @@ const server = createServer((req, res) => {
     );
     if (discovery) {
         void writeWebResponse(discovery, res);
+        return;
+    }
+
+    const limit = consumeRateLimit(
+        clientKeyFromHeaders({
+            get(name: string) {
+                const value = req.headers[name.toLowerCase()];
+                if (Array.isArray(value)) {
+                    return value[0] ?? null;
+                }
+                return value ?? null;
+            },
+        })
+    );
+    if (!limit.ok) {
+        res.writeHead(429, {
+            'content-type': 'application/json',
+            'retry-after': String(limit.retryAfterSeconds),
+        });
+        res.end(JSON.stringify({ error: 'Too many requests' }));
         return;
     }
 

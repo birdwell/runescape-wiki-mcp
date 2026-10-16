@@ -3,7 +3,7 @@
 import type { Tool } from '@modelcontextprotocol/server';
 import { RS3_GE_API } from '../constants.js';
 import { lookupItems, resolveItemId } from '../itemResolve.js';
-import { itemIdProperty, JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
+import { itemIdProperty, JSON_SCHEMA_2020_12, lookupOutputSchema, jagexObjectOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
 import { makeApiRequest, createSuccessResponse } from '../utils.js';
 import {
@@ -39,13 +39,14 @@ export const itemTools: Tool[] = [
             required: ['query'],
             additionalProperties: false,
         },
+        outputSchema: lookupOutputSchema,
         ...READ_ONLY_TOOL,
     },
     {
         name: 'get_item_graph',
         title: 'Get Item Price Graph',
         description:
-            'Get historical Grand Exchange price graph data (last 180 days) by itemId or name.',
+            'Read the public Jagex Grand Exchange daily price series for one item, about the last 180 days. Pass exactly one of itemId or name. No auth and no side effects. Use summarize_price_history for min, max, and average instead of the raw series.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -62,6 +63,7 @@ export const itemTools: Tool[] = [
             },
             additionalProperties: false,
         },
+        outputSchema: jagexObjectOutputSchema,
         ...READ_ONLY_TOOL,
     },
 ];
@@ -89,7 +91,7 @@ export async function handleItemTool(name: string, args: ToolArguments): Promise
             if (matches.length === 0) {
                 return validationError(`No Grand Exchange items found for "${query}"`);
             }
-            return createSuccessResponse(`Item lookup for "${query}"`, matches);
+            return createSuccessResponse(`Item lookup for "${query}"`, matches, { matches });
         }
 
         case 'get_item_graph': {

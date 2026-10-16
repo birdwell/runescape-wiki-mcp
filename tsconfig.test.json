@@ -3,7 +3,9 @@
     "compilerOptions": {
         "rootDir": ".",
         "outDir": null,
-        "noEmit": true
+        "noEmit": true,
+        "module": "ESNext",
+        "types": ["jest", "node"]
     },
     "include": [
         "src/**/*",

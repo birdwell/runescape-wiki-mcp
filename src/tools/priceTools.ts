@@ -9,6 +9,7 @@ import {
     READ_ONLY_TOOL,
     categoryProperty,
     itemIdProperty,
+    jagexObjectOutputSchema,
     JSON_SCHEMA_2020_12,
 } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
@@ -38,20 +39,23 @@ export const priceTools: Tool[] = [
         name: 'get_item_price',
         title: 'Get Item Price',
         description:
-            'Get current Grand Exchange price, trends, and examine text for an item by itemId or exact/near-exact name.',
+            'Get current Grand Exchange price, trends, and examine text for an item. Pass exactly one of itemId or name.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
             properties: nameOrIdProperties,
             additionalProperties: false,
         },
+        outputSchema: jagexObjectOutputSchema,
         ...READ_ONLY_TOOL,
     },
     {
         name: 'get_ge_info',
         title: 'Grand Exchange Info',
-        description: 'Get Grand Exchange database metadata (lastConfigUpdateRuneday).',
+        description:
+            'Read Grand Exchange database metadata, including lastConfigUpdateRuneday. This is not item prices; use get_item_price or lookup_item for those. Takes no arguments. Public Jagex endpoint, no auth.',
         inputSchema: EMPTY_OBJECT_SCHEMA,
+        outputSchema: jagexObjectOutputSchema,
         ...READ_ONLY_TOOL,
     },
     {

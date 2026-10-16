@@ -3,7 +3,7 @@
 import type { Tool } from '@modelcontextprotocol/server';
 import { WEIRDGLOOP_EXCHANGE_API } from '../constants.js';
 import { resolveItemId } from '../itemResolve.js';
-import { itemIdProperty, JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
+import { itemIdProperty, JSON_SCHEMA_2020_12, priceSummaryOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
 import { createSuccessResponse, makeApiRequest } from '../utils.js';
 import { isToolResponse, optionalInteger, validationError } from '../validation.js';
@@ -37,7 +37,7 @@ export const historyTools: Tool[] = [
         name: 'summarize_price_history',
         title: 'Summarize Price History',
         description:
-            'Summarize recent Grand Exchange price trends for an item (min/max/average price, change, and average daily volume) by itemId or name. Returns a compact summary instead of raw data points — use get_item_graph when you need the full price series.',
+            'Summarize one item\'s recent Grand Exchange prices: min, max, average, change, and average daily volume. Pass exactly one of itemId or name, and optional days from 7 to 90 (default 30). Use get_item_graph for the full daily series.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -60,6 +60,7 @@ export const historyTools: Tool[] = [
             },
             additionalProperties: false,
         },
+        outputSchema: priceSummaryOutputSchema,
         ...READ_ONLY_TOOL,
     },
 ];

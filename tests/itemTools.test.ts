@@ -33,6 +33,9 @@ describe('Item Tools', () => {
             expect(result.content[0].text).toContain('4151');
             expect(result.content[0].text).toContain('Abyssal whip');
             expect(result.content[0].text).toContain('80797');
+            expect(result.structuredContent).toMatchObject({
+                matches: [{ id: 4151, name: 'Abyssal whip', price: 80797 }],
+            });
         });
 
         it('should fall back to wiki opensearch when exact match fails', async () => {

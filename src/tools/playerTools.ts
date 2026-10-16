@@ -2,7 +2,7 @@
 
 import type { Tool } from '@modelcontextprotocol/server';
 import { GAME_MODE_PATHS, RS3_HISCORES_ORIGIN, RS3_SKILLS } from '../constants.js';
-import { JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
+import { JSON_SCHEMA_2020_12, playerStatsOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { GameMode, PlayerStatsResponse, ToolArguments, ToolResponse } from '../types.js';
 import { createSuccessResponse, makeTextApiRequest } from '../utils.js';
 import {
@@ -43,6 +43,7 @@ export const playerTools: Tool[] = [
             required: ['username'],
             additionalProperties: false,
         },
+        outputSchema: playerStatsOutputSchema,
         ...READ_ONLY_TOOL,
     },
 ];

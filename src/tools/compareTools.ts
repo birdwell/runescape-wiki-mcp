@@ -60,6 +60,32 @@ export const compareTools: Tool[] = [
             },
             additionalProperties: false,
         },
+        outputSchema: {
+            $schema: JSON_SCHEMA_2020_12,
+            type: 'object',
+            properties: {
+                compared: { type: 'integer', description: 'Number of rows returned' },
+                rows: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            query: { type: 'string', description: 'Name or id that was requested' },
+                            id: { type: 'integer', description: 'Grand Exchange item ID' },
+                            name: { type: 'string' },
+                            price: { type: 'number', description: 'Latest price in coins' },
+                            volume: { type: 'number' },
+                            timestamp: { type: 'string' },
+                            error: { type: 'string', description: 'Present when this row could not be resolved' },
+                        },
+                        required: ['query'],
+                        additionalProperties: false,
+                    },
+                },
+            },
+            required: ['compared', 'rows'],
+            additionalProperties: false,
+        },
         ...READ_ONLY_TOOL,
     },
 ];

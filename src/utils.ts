@@ -1,6 +1,7 @@
 // Utility functions for RuneScape Wiki MCP Server
 
 import { USER_AGENT } from './constants.js';
+import { ToolResponse } from './types.js';
 
 /**
  * Makes an API request with proper error handling and user agent
@@ -63,19 +64,30 @@ export function createErrorResponse(error: unknown): {
 }
 
 /**
- * Creates a standardized success response
+ * Creates a standardized success response.
+ * Plain objects are also returned as structuredContent so clients can skip parsing the text.
+ * Pass structuredContent when the text payload is an array or a string.
  */
-export function createSuccessResponse(title: string, data: any): {
-    content: Array<{ type: 'text'; text: string }>;
-} {
+export function createSuccessResponse(
+    title: string,
+    data: unknown,
+    structuredContent?: Record<string, unknown>
+): ToolResponse {
+    const structured = structuredContent ?? (isPlainObject(data) ? data : undefined);
+    const body = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
     return {
         content: [
             {
                 type: 'text',
-                text: `${title}:\n\n${JSON.stringify(data, null, 2)}`,
+                text: `${title}:\n\n${body}`,
             },
         ],
+        ...(structured ? { structuredContent: structured } : {}),
     };
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 type ProcessLike = { env?: Record<string, string | undefined> };

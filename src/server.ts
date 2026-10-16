@@ -60,6 +60,7 @@ function setupServerHandlers(server: Server): void {
             debugLog(`Tool ${name} succeeded`, result);
             return {
                 content: result.content,
+                structuredContent: result.structuredContent,
                 isError: result.isError,
             };
         } catch (error) {

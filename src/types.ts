@@ -30,5 +30,6 @@ export interface ToolResponse {
         type: 'text';
         text: string;
     }>;
+    structuredContent?: Record<string, unknown>;
     isError?: boolean;
 }

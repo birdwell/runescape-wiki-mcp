@@ -31,3 +31,92 @@ export const categoryProperty = {
     maximum: 43,
     description: 'Category ID (0-43)',
 };
+
+export const itemMatchSchema = {
+    type: 'object' as const,
+    properties: {
+        id: { type: 'integer' as const, description: 'Grand Exchange item ID' },
+        name: { type: 'string' as const, description: 'Item name' },
+        price: { type: 'number' as const, description: 'Latest price in coins, when known' },
+        volume: { type: 'number' as const, description: 'Latest trade volume, when known' },
+        timestamp: { type: 'string' as const, description: 'ISO timestamp of the price sample' },
+        wikiUrl: { type: 'string' as const, description: 'RuneScape Wiki page URL' },
+        error: { type: 'string' as const, description: 'Why this row could not be resolved' },
+    },
+    required: ['id', 'name'],
+    additionalProperties: false,
+};
+
+export const lookupOutputSchema = {
+    $schema: JSON_SCHEMA_2020_12,
+    type: 'object' as const,
+    properties: {
+        matches: {
+            type: 'array' as const,
+            description: 'Matching Grand Exchange items, best match first',
+            items: itemMatchSchema,
+        },
+    },
+    required: ['matches'],
+    additionalProperties: false,
+};
+
+/** Jagex catalogue and graph payloads mix numbers with compact strings such as "80k". */
+export const jagexObjectOutputSchema = {
+    $schema: JSON_SCHEMA_2020_12,
+    type: 'object' as const,
+    description:
+        'Raw Jagex JSON. Price fields may be integers or compact strings such as "80k".',
+    additionalProperties: true,
+};
+
+export const priceSummaryOutputSchema = {
+    $schema: JSON_SCHEMA_2020_12,
+    type: 'object' as const,
+    properties: {
+        itemId: { type: 'integer' as const, description: 'Grand Exchange item ID' },
+        name: { type: 'string' as const, description: 'Name supplied by the caller, when given' },
+        windowDays: { type: 'integer' as const, description: 'Trailing window actually summarized' },
+        sampleCount: { type: 'integer' as const, description: 'Daily samples inside the window' },
+        latestPrice: { type: 'number' as const, description: 'Newest price in the window, in coins' },
+        oldestPriceInWindow: { type: 'number' as const, description: 'Oldest price in the window, in coins' },
+        minPrice: { type: 'number' as const, description: 'Lowest price in the window, in coins' },
+        maxPrice: { type: 'number' as const, description: 'Highest price in the window, in coins' },
+        avgPrice: { type: 'number' as const, description: 'Average price in the window, in coins' },
+        changeAbs: { type: 'number' as const, description: 'latestPrice minus oldestPriceInWindow' },
+        changePct: { type: 'number' as const, description: 'Percent change across the window' },
+        avgDailyVolume: { type: 'number' as const, description: 'Average daily volume, when the source provided it' },
+    },
+    required: [
+        'itemId',
+        'windowDays',
+        'sampleCount',
+        'latestPrice',
+        'oldestPriceInWindow',
+        'minPrice',
+        'maxPrice',
+        'avgPrice',
+        'changeAbs',
+        'changePct',
+    ],
+    additionalProperties: false,
+};
+
+export const playerStatsOutputSchema = {
+    $schema: JSON_SCHEMA_2020_12,
+    type: 'object' as const,
+    description: 'Map of RS3 skill name to hiscores row. Overall is included.',
+    additionalProperties: {
+        type: 'object',
+        properties: {
+            rank: {
+                description: 'Hiscores rank, or the string Unranked',
+                anyOf: [{ type: 'integer' }, { const: 'Unranked' }],
+            },
+            level: { type: 'integer', description: 'Skill level' },
+            experience: { type: 'integer', description: 'Skill experience' },
+        },
+        required: ['rank', 'level', 'experience'],
+        additionalProperties: false,
+    },
+};
