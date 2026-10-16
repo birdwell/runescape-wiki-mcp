@@ -1,5 +1,7 @@
 # RuneScape Wiki MCP Server
 
+[![RuneScape Wiki MCP Server MCP server – quality and maintenance score on Glama](https://glama.ai/mcp/servers/birdwell/runescape-wiki-mcp/badges/card.svg)](https://glama.ai/mcp/servers/birdwell/runescape-wiki-mcp)
+
 A Model Context Protocol (MCP) server for **RuneScape 3** Grand Exchange prices, item name lookup, player hiscores, and wiki page extracts.
 
 Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy 2025-era clients still supported.
