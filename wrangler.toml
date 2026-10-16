@@ -1,0 +1,7 @@
+name = "runescape-wiki-mcp"
+main = "src/worker.ts"
+compatibility_date = "2026-07-28"
+compatibility_flags = ["nodejs_compat", "global_fetch_strictly_public"]
+
+[observability]
+enabled = true

@@ -1,7 +1,25 @@
 {
   "name": "runescape-wiki-mcp",
-  "version": "1.1.0",
-  "description": "MCP server for RuneScape 3 Grand Exchange prices, item lookup, player hiscores, and wiki content",
+  "version": "1.2.0",
+  "description": "RS3 Grand Exchange prices, item lookup, player hiscores, and RuneScape Wiki content",
+  "mcpName": "io.github.birdwell/runescape-wiki-mcp",
+  "bin": {
+    "runescape-wiki-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "server.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/birdwell/runescape-wiki-mcp.git"
+  },
+  "homepage": "https://runescape-wiki-mcp.fly.dev",
+  "bugs": {
+    "url": "https://github.com/birdwell/runescape-wiki-mcp/issues"
+  },
   "main": "dist/index.js",
   "module": "src/smithery.ts",
   "type": "module",
@@ -10,16 +28,22 @@
     "dev": "tsc --watch & node --watch dist/index.js",
     "watch": "tsc --watch",
     "start": "node dist/index.js",
+    "start:http": "node dist/http.js",
     "debug": "DEBUG=true node dist/index.js",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
     "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "test:verbose": "NODE_OPTIONS='--experimental-vm-modules' jest --verbose",
     "inspector": "npx @modelcontextprotocol/inspector node dist/index.js",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "worker:dev": "wrangler dev",
+    "worker:deploy": "wrangler deploy",
+    "fly:deploy": "fly deploy --ha=false"
   },
   "keywords": [
     "mcp",
+    "mcp-server",
+    "modelcontextprotocol",
     "runescape",
     "rs3",
     "grand-exchange",
@@ -29,8 +53,8 @@
   "author": "Josh Birdwell",
   "license": "MIT",
   "dependencies": {
+    "@modelcontextprotocol/node": "^2.0.0",
     "@modelcontextprotocol/server": "^2.0.0",
-    "node-fetch": "^3.3.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -41,7 +65,8 @@
     "nock": "^14.0.15",
     "ts-jest": "^29.4.11",
     "tsx": "^4.22.4",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "wrangler": "^4.115.0"
   },
   "engines": {
     "node": ">=20.0.0"

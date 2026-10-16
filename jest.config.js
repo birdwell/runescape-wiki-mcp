@@ -13,7 +13,7 @@ export default {
         }],
     },
     transformIgnorePatterns: [
-        'node_modules/(?!(node-fetch)/)',
+        'node_modules/',
     ],
     testMatch: ['**/tests/**/*.test.ts'],
     setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],

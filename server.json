@@ -1,0 +1,19 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.birdwell/runescape-wiki-mcp",
+  "title": "RuneScape Wiki",
+  "description": "RS3 Grand Exchange prices, item lookup, player hiscores, and RuneScape Wiki content",
+  "repository": {
+    "url": "https://github.com/birdwell/runescape-wiki-mcp",
+    "source": "github",
+    "id": "1047256430"
+  },
+  "version": "1.2.0",
+  "websiteUrl": "https://runescape-wiki-mcp.fly.dev",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://runescape-wiki-mcp.fly.dev/mcp"
+    }
+  ]
+}

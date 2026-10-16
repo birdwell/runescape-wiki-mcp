@@ -2,7 +2,11 @@
 
 A Model Context Protocol (MCP) server for **RuneScape 3** Grand Exchange prices, item name lookup, player hiscores, and wiki page extracts.
 
-Speaks MCP **2026-07-28** (stateless) via `serveStdio`, with legacy 2025-era clients still supported.
+Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy 2025-era clients still supported.
+
+Remote endpoint: `https://runescape-wiki-mcp.fly.dev/mcp`
+
+Registry name: `io.github.birdwell/runescape-wiki-mcp`
 
 ## Prerequisites
 
@@ -19,7 +23,21 @@ npm test           # unit + protocol compliance
 npm run inspector  # MCP Inspector
 ```
 
-## Claude Desktop
+## Connect
+
+Remote (Streamable HTTP):
+
+```json
+{
+  "mcpServers": {
+    "runescape-wiki": {
+      "url": "https://runescape-wiki-mcp.fly.dev/mcp"
+    }
+  }
+}
+```
+
+Local stdio:
 
 ```json
 {
@@ -31,6 +49,11 @@ npm run inspector  # MCP Inspector
   }
 }
 ```
+
+Discovery:
+
+- Server card: `https://runescape-wiki-mcp.fly.dev/mcp/server-card`
+- AI Catalog: `https://runescape-wiki-mcp.fly.dev/.well-known/ai-catalog.json`
 
 ## Tools
 
@@ -82,7 +105,7 @@ get_item_graph { itemId: 4151 }
 - RuneScape Wiki MediaWiki API: `https://runescape.wiki/api.php`
 
 All requests send User-Agent:  
-`RuneScape Wiki MCP Server - github.com/joshbirdwell/runescape-wiki-mcp`
+`RuneScape Wiki MCP Server - github.com/birdwell/runescape-wiki-mcp`
 
 ## Project layout
 

@@ -69,7 +69,7 @@ get_player_stats { "username": "Zezima", "gameMode": "normal" }
 User-Agent (required):
 
 ```
-RuneScape Wiki MCP Server - github.com/joshbirdwell/runescape-wiki-mcp
+RuneScape Wiki MCP Server - github.com/birdwell/runescape-wiki-mcp
 ```
 
 ## Common item IDs

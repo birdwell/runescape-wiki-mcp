@@ -1,6 +1,5 @@
 // Utility functions for RuneScape Wiki MCP Server
 
-import fetch from 'node-fetch';
 import { USER_AGENT } from './constants.js';
 
 /**
@@ -9,7 +8,7 @@ import { USER_AGENT } from './constants.js';
 export async function makeApiRequest(url: string): Promise<any> {
     debugLog(`Making API request to: ${url}`);
 
-    const response = await fetch(url, {
+    const response = await globalThis.fetch(url, {
         headers: {
             'User-Agent': USER_AGENT,
         },
@@ -32,7 +31,7 @@ export async function makeApiRequest(url: string): Promise<any> {
  * Makes a text-based API request (for hiscores CSV data)
  */
 export async function makeTextApiRequest(url: string): Promise<string> {
-    const response = await fetch(url, {
+    const response = await globalThis.fetch(url, {
         headers: {
             'User-Agent': USER_AGENT,
         },
@@ -79,12 +78,19 @@ export function createSuccessResponse(title: string, data: any): {
     };
 }
 
-// Debug logging function
-export function debugLog(message: string, data?: any) {
-    if (process.env.DEBUG === 'true' || process.env.DEBUG === '1') {
-        console.error(`[DEBUG] ${new Date().toISOString()} - ${message}`, data ? JSON.stringify(data, null, 2) : '');
-    }
+type ProcessLike = { env?: Record<string, string | undefined> };
+
+function debugEnabled(): boolean {
+    const env = (globalThis as typeof globalThis & { process?: ProcessLike }).process?.env;
+    return env?.DEBUG === 'true' || env?.DEBUG === '1';
 }
 
-// Helper function to make API requests
-// ... existing code ... 
+// Debug logging function
+export function debugLog(message: string, data?: any) {
+    if (debugEnabled()) {
+        console.error(
+            `[DEBUG] ${new Date().toISOString()} - ${message}`,
+            data ? JSON.stringify(data, null, 2) : ''
+        );
+    }
+} 

@@ -21,12 +21,21 @@ export const GAME_MODE_PATHS = {
 
 // User agent for API requests
 export const USER_AGENT =
-    'RuneScape Wiki MCP Server - github.com/joshbirdwell/runescape-wiki-mcp';
+    'RuneScape Wiki MCP Server - github.com/birdwell/runescape-wiki-mcp';
 
-// Server configuration
+/** Official MCP Registry name (GitHub namespace). */
+export const REGISTRY_NAME = 'io.github.birdwell/runescape-wiki-mcp';
+export const SERVER_TITLE = 'RuneScape Wiki';
+export const PUBLIC_ORIGIN = 'https://runescape-wiki-mcp.fly.dev';
+export const MCP_PATH = '/mcp';
+export const REPOSITORY_URL = 'https://github.com/birdwell/runescape-wiki-mcp';
+/** GitHub repository id. Stable across renames. */
+export const REPOSITORY_ID = '1047256430';
+
+// Server configuration. description stays within the 100-character server-card limit.
 export const SERVER_CONFIG = {
     name: 'runescape-wiki-mcp',
-    version: '1.1.0',
+    version: '1.2.0',
     description:
         'RS3 Grand Exchange prices, item lookup, player hiscores, and RuneScape Wiki content',
 } as const;

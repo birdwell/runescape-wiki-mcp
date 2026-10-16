@@ -8,9 +8,14 @@ export const EMPTY_OBJECT_SCHEMA = {
     additionalProperties: false,
 };
 
+// Every tool reads public game data. openWorldHint is true because each call
+// reaches Jagex, Weirdgloop, or the RuneScape Wiki.
 export const READ_ONLY_TOOL = {
     annotations: {
         readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
     },
 };
 
