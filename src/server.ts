@@ -6,6 +6,7 @@ import {
     type CallToolRequest,
     type ReadResourceRequest,
 } from '@modelcontextprotocol/server';
+import * as Sentry from '@sentry/node';
 
 import { SERVER_CONFIG } from './constants.js';
 import { allTools, handleTool } from './tools/index.js';
@@ -38,6 +39,9 @@ export function createServer(): Server {
     const server = new Server(SERVER_CONFIG, SERVER_OPTIONS);
     setupServerHandlers(server);
     registerPromptHandlers(server);
+    if (Sentry.isInitialized()) {
+        return Sentry.wrapMcpServerWithSentry(server);
+    }
     return server;
 }
 

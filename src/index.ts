@@ -3,6 +3,7 @@
 // Main entry point for RuneScape Wiki MCP Server
 // Speaks MCP 2026-07-28 (and legacy 2025-era clients) via serveStdio.
 
+import './instrument.js';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { createServer } from './server.js';
 

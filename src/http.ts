@@ -1,5 +1,6 @@
 // Node HTTP entry — Streamable HTTP MCP for remote hosts (Fly, etc.).
 
+import './instrument.js';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { toNodeHandler } from '@modelcontextprotocol/node';
@@ -41,6 +42,12 @@ const server = createServer((req, res) => {
     const path = req.url?.split('?')[0] ?? '/';
     if (req.method === 'GET' && (path === '/' || path === '')) {
         serveHomepage(req, res);
+        return;
+    }
+
+    if (req.method === 'GET' && path === '/health') {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end('{"ok":true}');
         return;
     }
 
