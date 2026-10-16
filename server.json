@@ -8,8 +8,18 @@
     "source": "github",
     "id": "1047256430"
   },
-  "version": "1.2.0",
+  "version": "1.2.1",
   "websiteUrl": "https://runescape-wiki-mcp.fly.dev",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "runescape-wiki-mcp",
+      "version": "1.2.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ],
   "remotes": [
     {
       "type": "streamable-http",

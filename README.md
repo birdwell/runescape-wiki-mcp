@@ -37,6 +37,19 @@ Remote (Streamable HTTP):
 }
 ```
 
+stdio via npm:
+
+```json
+{
+  "mcpServers": {
+    "runescape-wiki": {
+      "command": "npx",
+      "args": ["-y", "runescape-wiki-mcp"]
+    }
+  }
+}
+```
+
 Local stdio:
 
 ```json

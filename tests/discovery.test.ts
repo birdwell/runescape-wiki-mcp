@@ -23,12 +23,16 @@ describe('discovery documents', () => {
             name: string;
             version: string;
             description: string;
+            packages: Array<{ identifier: string; version: string }>;
         };
 
         expect(pkg.version).toBe(SERVER_CONFIG.version);
         expect(pkg.mcpName).toBe(REGISTRY_NAME);
         expect(serverJson.name).toBe(REGISTRY_NAME);
-        expect(serverJson.version).toBe(SERVER_CONFIG.version);
+        expect(serverJson.packages[0]).toMatchObject({
+            identifier: 'runescape-wiki-mcp',
+            version: pkg.version,
+        });
         expect(serverJson.description.length).toBeLessThanOrEqual(100);
         expect(SERVER_CONFIG.description.length).toBeLessThanOrEqual(100);
     });
