@@ -1,0 +1,19 @@
+name: Bug report
+description: Something in the RuneScape Wiki MCP server is wrong
+title: "[Bug] "
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you called, and what came back.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: npm version, or the remote URL you used.
+      placeholder: 1.2.1 or https://runescape-wiki-mcp.fly.dev/mcp
+    validations:
+      required: false
