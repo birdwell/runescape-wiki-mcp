@@ -34,8 +34,8 @@
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
     "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "test:verbose": "NODE_OPTIONS='--experimental-vm-modules' jest --verbose",
-    "inspector": "npx @modelcontextprotocol/inspector node dist/index.js",
-    "prepare": "npm run build",
+    "inspector": "bunx @modelcontextprotocol/inspector node dist/index.js",
+    "prepare": "tsc",
     "worker:dev": "wrangler dev",
     "worker:deploy": "wrangler deploy",
     "fly:deploy": "fly deploy --ha=false"
@@ -74,5 +74,6 @@
   },
   "engines": {
     "node": ">=20.0.0"
-  }
+  },
+  "packageManager": "bun@1.4.3"
 }

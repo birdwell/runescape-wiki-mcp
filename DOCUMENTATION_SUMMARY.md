@@ -36,11 +36,11 @@ Testing notes and findings about Frost Dragon Bones
 ### Quick Start
 ```bash
 # Build and start server
-npm run build
-npm start
+bun run build
+bun run start
 
 # Debug mode
-npm run debug
+bun run debug
 ```
 
 ### Essential Item IDs
