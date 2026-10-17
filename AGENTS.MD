@@ -85,10 +85,10 @@ Bond: 29492
 ## Debugging
 
 ```bash
-npm run build
-npm run debug
-npm test
-npm run inspector
+bun run build
+bun run debug
+bun run test
+bun run inspector
 ```
 
 Wire smoke:

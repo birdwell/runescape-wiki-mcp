@@ -9,7 +9,7 @@ MCP (Model Context Protocol) servers communicate via stdio (standard input/outpu
 ### Quick Start
 ```bash
 # Run with debug logging enabled
-npm run debug
+bun run debug
 
 # Or manually:
 DEBUG=true node dist/index.js
@@ -29,13 +29,13 @@ The MCP Inspector provides a visual interface for testing your server:
 
 ```bash
 # Install globally
-npm install -g @modelcontextprotocol/inspector
+bun add -g @modelcontextprotocol/inspector
 
 # Run your server with the inspector
-npx @modelcontextprotocol/inspector node dist/index.js
+bunx @modelcontextprotocol/inspector node dist/index.js
 
 # Or use the npm script
-npm run inspector
+bun run inspector
 ```
 
 The inspector allows you to:
@@ -68,7 +68,7 @@ For items like Frost Dragon Bones:
 ### Server Won't Start
 
 If the server fails to start:
-1. Check for build errors: `npm run build`
+1. Check for build errors: `bun run build`
 2. Look for port conflicts (MCP uses stdio, not ports)
 3. Verify Node.js version: `node --version` (requires >= 18.0.0)
 
@@ -83,13 +83,13 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_item_price","
 ### Unit Tests
 ```bash
 # Run all tests
-npm test
+bun run test
 
 # Run specific test file
-npm test -- tests/priceTools.test.ts
+bun run test tests/priceTools.test.ts
 
 # Run with coverage
-npm run test:coverage
+bun run test:coverage
 ```
 
 ## 5. Adding Custom Debug Points
@@ -124,7 +124,7 @@ export async function someFunction(params: any) {
 ## 7. Monitoring in Production
 
 For production debugging:
-1. Redirect stderr to a log file: `npm start 2> debug.log`
+1. Redirect stderr to a log file: `bun run start 2> debug.log`
 2. Use environment variables for different log levels
 3. Consider adding timestamps and request IDs for tracking
 
@@ -132,7 +132,7 @@ For production debugging:
 
 ```bash
 # Terminal 1: Start server with debugging
-DEBUG=true npm start 2> debug.log
+DEBUG=true bun run start 2> debug.log
 
 # Terminal 2: Tail the debug log
 tail -f debug.log

@@ -59,7 +59,7 @@ stdio via npm:
 }
 ```
 
-Local stdio, after `npm install` and `npm run build`:
+Local stdio, after `bun install` and `bun run build`:
 
 ```json
 {
@@ -137,11 +137,11 @@ All requests send User-Agent:
 - npm
 
 ```bash
-npm install
-npm run build
-npm start          # stdio MCP server
-npm test           # unit + protocol compliance
-npm run inspector  # MCP Inspector
+bun install
+bun run build
+bun run start          # stdio MCP server
+bun run test           # unit + protocol compliance
+bun run inspector  # MCP Inspector
 ```
 
 ## Project layout

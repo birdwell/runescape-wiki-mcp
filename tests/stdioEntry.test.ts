@@ -22,7 +22,12 @@ afterEach(async () => {
     child = undefined;
 });
 
-async function runStdioRpc(messages: object[], settleMs = 600): Promise<string> {
+// Waits for one complete response line per request that carries an `id`, or for
+// the server to exit, instead of a fixed delay: cold start (Sentry + MCP SDK
+// load) is CPU-bound and can exceed a few hundred ms on a loaded CI runner.
+// `timeoutMs` only guards against a hung server.
+async function runStdioRpc(messages: object[], timeoutMs = 25_000): Promise<string> {
+    const expectedResponses = messages.filter(message => 'id' in message).length;
     child = spawn(process.execPath, [entry], {
         cwd: root,
         stdio: ['pipe', 'pipe', 'pipe'],
@@ -40,11 +45,18 @@ async function runStdioRpc(messages: object[], settleMs = 600): Promise<string> 
     child.stdin.end();
 
     await new Promise<void>(resolve => {
-        const timer = setTimeout(() => resolve(), settleMs);
+        const timer = setTimeout(() => resolve(), timeoutMs);
         timer.unref();
-        child?.once('exit', () => {
+        const finish = () => {
             clearTimeout(timer);
             resolve();
+        };
+        child?.once('exit', finish);
+        child?.stdout.on('data', () => {
+            const responseLines = stdout.split('\n').filter(line => line.trim() !== '');
+            if (stdout.endsWith('\n') && responseLines.length >= expectedResponses) {
+                finish();
+            }
         });
     });
 
@@ -82,7 +94,7 @@ describe('stdio entry (serveStdio)', () => {
         expect(stdout).toContain('"id":1');
         expect(stdout).toContain('2026-07-28');
         expect(stdout).toContain('runescape-wiki-mcp');
-    });
+    }, 30_000);
 
     it('should serve legacy initialize', async () => {
         const stdout = await runStdioRpc([
@@ -101,5 +113,5 @@ describe('stdio entry (serveStdio)', () => {
         expect(stdout).toContain('"id":1');
         expect(stdout).toContain('2025-11-25');
         expect(stdout).toContain('runescape-wiki-mcp');
-    });
+    }, 30_000);
 });
