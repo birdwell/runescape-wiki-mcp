@@ -6,6 +6,8 @@
 
 [![RuneScape Wiki MCP Server MCP server – quality and maintenance score on Glama](https://glama.ai/mcp/servers/birdwell/runescape-wiki-mcp/badges/card.svg)](https://glama.ai/mcp/servers/birdwell/runescape-wiki-mcp)
 
+[![RuneScape Wiki MCP server](https://mcprush.com/badge/runescape-wiki-mcp/card.svg)](https://mcprush.com/to/runescape-wiki-mcp?ref=badge)
+
 **RuneScape 3 MCP Server (RS3)** — Connect Claude, ChatGPT, Cursor, and other AI assistants to RuneScape Wiki, Grand Exchange prices, player hiscores, item comparisons, and money-making tools. Available as a hosted MCP server or npm package.
 
 The GitHub repository is `runescape-wiki-mcp`. The server covers Grand Exchange market data and player hiscores as well as the wiki.
