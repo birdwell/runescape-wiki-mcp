@@ -42,7 +42,7 @@ export const prompts: Prompt[] = [
         name: 'check_item_price',
         title: 'Check Item Price',
         description:
-            'Look up the current Grand Exchange price and recent trend for an item by name, resolving the exact item first.',
+            'Look up the Grand Exchange guide price and recent trend for an item by name, resolving the exact item first. Guide prices lag the live market.',
         arguments: [
             {
                 name: 'itemName',
@@ -55,7 +55,7 @@ export const prompts: Prompt[] = [
         name: 'compare_ge_items',
         title: 'Compare Grand Exchange Items',
         description:
-            'Compare current Grand Exchange prices for a list of items side by side in one call.',
+            'Compare Grand Exchange guide prices for a list of items side by side in one call. Guide prices lag the live market.',
         arguments: [
             {
                 name: 'items',
@@ -68,7 +68,7 @@ export const prompts: Prompt[] = [
         name: 'estimate_item_flip',
         title: 'Estimate Item Flip',
         description:
-            'Estimate the profitability of flipping an item on the Grand Exchange, including GE tax and margin.',
+            'Estimate the profitability of flipping an item on the Grand Exchange, including GE tax and margin. Default prices lag the live market.',
         arguments: [
             {
                 name: 'itemName',
@@ -106,14 +106,14 @@ export function getPrompt(name: string, args: Record<string, string> = {}): GetP
         case 'check_item_price': {
             const itemName = requireArg(name, args, 'itemName');
             return {
-                description: `Check the current Grand Exchange price for "${itemName}"`,
+                description: `Check the Grand Exchange guide price for "${itemName}"`,
                 messages: [
                     userMessage(
-                        `Check the current Grand Exchange price for "${itemName}".\n` +
+                        `Check the Grand Exchange guide price for "${itemName}".\n` +
                             `1. Call \`lookup_item\` with query="${itemName}" to resolve the exact item name and Grand Exchange ID (skip this if you already have an exact match).\n` +
-                            `2. Call \`get_item_price\` with the resolved itemId or name to get the current price, trend, and examine text.\n` +
+                            `2. Call \`get_item_price\` with the resolved itemId or name to get the guide price, trend, and examine text.\n` +
                             `3. Optionally call \`summarize_price_history\` with the same itemId/name to see the min/max/average price and % change over the last 30 days.\n` +
-                            `Report the current price, trend, and any notable recent price movement.`
+                            `Report the guide price, trend, and any notable recent price movement. Say that these prices lag the live market.`
                     ),
                 ],
             };
@@ -125,7 +125,7 @@ export function getPrompt(name: string, args: Record<string, string> = {}): GetP
                 description: `Compare Grand Exchange prices for: ${items}`,
                 messages: [
                     userMessage(
-                        `Compare the current Grand Exchange prices for these items: ${items}.\n` +
+                        `Compare the Grand Exchange guide prices for these items: ${items}.\n` +
                             `1. Split the comma-separated list into individual item names, trimming whitespace.\n` +
                             `2. Call \`compare_items\` once with the \`names\` array containing all of them (up to 10 items per call).\n` +
                             `3. Present a clear comparison of price and volume per item, and call out any names that could not be resolved.`
@@ -146,7 +146,7 @@ export function getPrompt(name: string, args: Record<string, string> = {}): GetP
                             `1. Call \`lookup_item\` with query="${itemName}" if you need to resolve the exact item name or ID first.\n` +
                             `2. Call \`estimate_flip\` with the resolved item` +
                             `${quantity ? ` and quantity=${quantity}` : ' (default quantity)'} to get projected buy/sell prices, GE tax, and estimated profit.\n` +
-                            `3. Summarize the estimated margin, GE tax, and total profit/loss, noting that Grand Exchange prices can move before the flip completes.`
+                            `3. Summarize the estimated margin, GE tax, and total profit/loss. Say that the default prices lag the live market and can move before the flip completes.`
                     ),
                 ],
             };

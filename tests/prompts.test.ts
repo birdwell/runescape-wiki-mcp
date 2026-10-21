@@ -52,6 +52,8 @@ describe('Prompts', () => {
             expect(text).toContain('get_item_price');
             expect(text).toContain('summarize_price_history');
             expect(text).toContain('Abyssal whip');
+            expect(text).toContain('guide price');
+            expect(text).toContain('lag the live market');
         });
 
         it('check_item_price should require itemName', () => {

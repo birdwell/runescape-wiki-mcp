@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.birdwell/runescape-wiki-mcp",
   "title": "RuneScape 3 MCP Server",
-  "description": "RuneScape 3 prices, hiscores, flips, and wiki pages for AI assistants.",
+  "description": "RS3 guide prices and history, flip tax, hiscores, and wiki. Lags the live GE.",
   "repository": {
     "url": "https://github.com/birdwell/runescape-wiki-mcp",
     "source": "github",

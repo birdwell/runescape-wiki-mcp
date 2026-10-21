@@ -37,8 +37,12 @@ export const SERVER_CONFIG = {
     name: 'runescape-wiki-mcp',
     version: '1.2.0',
     description:
-        'RuneScape 3 prices, hiscores, flips, and wiki pages for AI assistants.',
+        'RS3 guide prices and history, flip tax, hiscores, and wiki. Lags the live GE.',
 } as const;
+
+/** Shown to MCP clients before they pick a tool. */
+export const SERVER_INSTRUCTIONS =
+    'RS3 only. Prices are Jagex guide prices and Weirdgloop daily history, and they lag the live high/low market at prices.runescape.wiki. Do not call them real-time. Do not rank the whole Grand Exchange. Resolve names with lookup_item. get_player_stats works for normal mode; ironman and hardcore currently return HTTP 404 from Jagex. estimate_flip is an estimate after the 2% seller tax. Unofficial, not affiliated with Jagex or the RuneScape Wiki.';
 
 // RuneScape 3 skills in order (30 skills total)
 export const RS3_SKILLS = [

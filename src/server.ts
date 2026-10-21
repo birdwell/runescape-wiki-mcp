@@ -8,13 +8,14 @@ import {
 } from '@modelcontextprotocol/server';
 import * as Sentry from '@sentry/node';
 
-import { SERVER_CONFIG } from './constants.js';
+import { SERVER_CONFIG, SERVER_INSTRUCTIONS } from './constants.js';
 import { allTools, handleTool } from './tools/index.js';
 import { resources, handleResource } from './resources.js';
 import { registerPromptHandlers } from './prompts.js';
 import { createErrorResponse, debugLog } from './utils.js';
 
 const SERVER_OPTIONS = {
+    instructions: SERVER_INSTRUCTIONS,
     capabilities: {
         tools: {},
         resources: {},
