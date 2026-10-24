@@ -9,10 +9,12 @@ import { RESOURCE_URIS, RS3_GE_API } from '../src/constants.js';
 describe('Integration Tests', () => {
     beforeEach(() => {
         nock.cleanAll();
+        nock.disableNetConnect();
     });
 
     afterEach(() => {
         nock.cleanAll();
+        nock.enableNetConnect();
     });
 
     describe('Tool Integration', () => {
@@ -20,6 +22,7 @@ describe('Integration Tests', () => {
             nock('https://api.weirdgloop.org')
                 .get('/exchange/history/rs/latest')
                 .query({ name: 'Abyssal whip' })
+                .twice() // lookup_item and the subsequent price-by-name call both resolve the name.
                 .reply(200, {
                     'Abyssal whip': { id: '4151', price: 80797, volume: 10 },
                 });

@@ -30,7 +30,7 @@
     "start": "node dist/index.js",
     "start:http": "node dist/http.js",
     "debug": "DEBUG=true node dist/index.js",
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test": "node --test scripts/*.test.mjs && NODE_OPTIONS='--experimental-vm-modules' jest",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
     "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "test:verbose": "NODE_OPTIONS='--experimental-vm-modules' jest --verbose",
@@ -38,7 +38,8 @@
     "prepare": "tsc",
     "worker:dev": "wrangler dev",
     "worker:deploy": "wrangler deploy",
-    "fly:deploy": "fly deploy --ha=false"
+    "fly:deploy": "fly deploy --ha=false",
+    "analytics:downloads": "node scripts/npm-downloads.mjs"
   },
   "keywords": [
     "mcp",
@@ -59,6 +60,7 @@
     "@modelcontextprotocol/node": "^2.1.2",
     "@modelcontextprotocol/server": "^2.4.0",
     "@sentry/node": "^11.9.0",
+    "posthog-node": "^5.57.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

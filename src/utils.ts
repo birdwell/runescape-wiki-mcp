@@ -2,47 +2,47 @@
 
 import { USER_AGENT } from './constants.js';
 import { ToolResponse } from './types.js';
+import { recordUpstreamRequest } from './analytics.js';
 
 /**
  * Makes an API request with proper error handling and user agent
  */
 export async function makeApiRequest(url: string): Promise<any> {
-    debugLog(`Making API request to: ${url}`);
-
-    const response = await globalThis.fetch(url, {
-        headers: {
-            'User-Agent': USER_AGENT,
-        },
-    });
-
-    debugLog(`API response status: ${response.status} ${response.statusText}`);
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        debugLog(`API error response:`, errorText);
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    debugLog(`API response data:`, data);
-    return data;
+    return measuredApiRequest(url, response => response.json());
 }
 
 /**
  * Makes a text-based API request (for hiscores CSV data)
  */
 export async function makeTextApiRequest(url: string): Promise<string> {
-    const response = await globalThis.fetch(url, {
-        headers: {
-            'User-Agent': USER_AGENT,
-        },
-    });
+    return measuredApiRequest(url, response => response.text());
+}
 
-    if (!response.ok) {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+async function measuredApiRequest<T>(url: string, read: (response: Response) => Promise<T>): Promise<T> {
+    const started = performance.now();
+    let status: number | undefined;
+    let success = false;
+    let errorKind: 'http' | 'network' | 'parse' = 'network';
+    try {
+        const response = await globalThis.fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+        status = response.status;
+        if (!response.ok) {
+            errorKind = 'http';
+            await response.body?.cancel();
+            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+        errorKind = 'parse';
+        const data = await read(response);
+        success = true;
+        return data;
+    } finally {
+        recordUpstreamRequest(url, {
+            status_code: status,
+            success,
+            duration_ms: Math.round(performance.now() - started),
+            ...(success ? {} : { error_kind: errorKind }),
+        });
     }
-
-    return response.text();
 }
 
 /**
@@ -105,4 +105,4 @@ export function debugLog(message: string, data?: any) {
             data ? JSON.stringify(data, null, 2) : ''
         );
     }
-} 
+}

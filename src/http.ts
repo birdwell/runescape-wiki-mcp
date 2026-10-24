@@ -2,12 +2,16 @@
 
 import './instrument.js';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import { handleDiscoveryRequest } from './discovery.js';
 import { homepageHtml } from './homepage.js';
 import { clientKeyFromHeaders, consumeRateLimit } from './rateLimit.js';
 import { createServer as createMcpServer } from './server.js';
+import { initializeAnalytics, recordHttpRequest, shutdownAnalytics, withRequestContext } from './analytics.js';
+
+await initializeAnalytics('http');
 
 const port = Number(process.env.PORT ?? 8080);
 const host = process.env.HOST ?? '0.0.0.0';
@@ -53,6 +57,25 @@ const server = createServer((req, res) => {
         return;
     }
 
+    const requestId = randomUUID();
+    if (path === '/mcp' || path === '/mcp/') {
+        const started = performance.now();
+        let recorded = false;
+        const record = (outcome: 'finished' | 'aborted') => {
+            if (recorded) return;
+            recorded = true;
+            recordHttpRequest({
+                request_id: requestId,
+                method: req.method ?? 'OTHER',
+                status_code: res.statusCode,
+                duration_ms: Math.round(performance.now() - started),
+                outcome,
+            });
+        };
+        res.once('finish', () => record('finished'));
+        res.once('close', () => record('aborted'));
+    }
+
     const limit = consumeRateLimit(
         clientKeyFromHeaders({
             get(name: string) {
@@ -73,7 +96,7 @@ const server = createServer((req, res) => {
         return;
     }
 
-    void nodeHandler(req, res);
+    withRequestContext(requestId, () => { void nodeHandler(req, res); });
 });
 
 async function writeWebResponse(response: Response, res: ServerResponse): Promise<void> {
@@ -86,7 +109,9 @@ async function writeWebResponse(response: Response, res: ServerResponse): Promis
 }
 
 server.listen(port, host, () => {
-    console.error(`RuneScape 3 MCP Server listening on http://${host}:${port}/mcp`);
+    const address = server.address();
+    const listeningPort = typeof address === 'object' && address ? address.port : port;
+    console.error(`RuneScape 3 MCP Server listening on http://${host}:${listeningPort}/mcp`);
 });
 
 async function shutdown(): Promise<void> {
@@ -94,6 +119,7 @@ async function shutdown(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
         server.close(error => (error ? reject(error) : resolve()));
     });
+    await shutdownAnalytics();
     process.exit(0);
 }
 

@@ -1,0 +1,359 @@
+{
+  "project_id": 685914,
+  "dashboard_id": 2255173,
+  "url": "https://us.posthog.com/project/685914/dashboard/2255173",
+  "charts": [
+    {
+      "name": "Tool calls per day",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "rs_mcp_tool_call",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "production"
+                  ]
+                },
+                {
+                  "key": "transport",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "http"
+                  ]
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "tool_name",
+                "type": "event"
+              }
+            ]
+          },
+          "trendsFilter": {
+            "display": "ActionsLineGraph",
+            "showLegend": true
+          }
+        }
+      }
+    },
+    {
+      "name": "Failed tool calls per day",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "rs_mcp_tool_call",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "production"
+                  ]
+                },
+                {
+                  "key": "transport",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "http"
+                  ]
+                },
+                {
+                  "key": "success",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "false"
+                  ]
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "tool_name",
+                "type": "event"
+              }
+            ]
+          },
+          "trendsFilter": {
+            "display": "ActionsLineGraph",
+            "showLegend": true
+          }
+        }
+      }
+    },
+    {
+      "name": "Upstream API calls per day",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "upstream_api_call",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "production"
+                  ]
+                },
+                {
+                  "key": "transport",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "http"
+                  ]
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "provider",
+                "type": "event"
+              }
+            ]
+          },
+          "trendsFilter": {
+            "display": "ActionsLineGraph",
+            "showLegend": true
+          }
+        }
+      }
+    },
+    {
+      "name": "Failed API calls per day",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "upstream_api_call",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "production"
+                  ]
+                },
+                {
+                  "key": "transport",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "http"
+                  ]
+                },
+                {
+                  "key": "success",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "false"
+                  ]
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "provider",
+                "type": "event"
+              }
+            ]
+          },
+          "trendsFilter": {
+            "display": "ActionsLineGraph",
+            "showLegend": true
+          }
+        }
+      }
+    },
+    {
+      "name": "Hosted requests per day",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "mcp_http_request",
+              "math": "total",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "production"
+                  ]
+                },
+                {
+                  "key": "transport",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "http"
+                  ]
+                },
+                {
+                  "key": "outcome",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "finished"
+                  ]
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "status_code",
+                "type": "event"
+              }
+            ]
+          },
+          "trendsFilter": {
+            "display": "ActionsLineGraph",
+            "showLegend": true
+          }
+        }
+      }
+    },
+    {
+      "name": "Tool latency (p95)",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "rs_mcp_tool_call",
+              "math": "p95",
+              "math_property": "duration_ms",
+              "properties": [
+                {
+                  "key": "environment",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "production"
+                  ]
+                },
+                {
+                  "key": "transport",
+                  "type": "event",
+                  "operator": "exact",
+                  "value": [
+                    "http"
+                  ]
+                }
+              ]
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "breakdownFilter": {
+            "breakdowns": [
+              {
+                "property": "tool_name",
+                "type": "event"
+              }
+            ]
+          },
+          "trendsFilter": {
+            "display": "ActionsLineGraph",
+            "showLegend": true,
+            "aggregationAxisFormat": "duration_ms"
+          }
+        }
+      }
+    },
+    {
+      "name": "npm downloads per day",
+      "query": {
+        "kind": "InsightVizNode",
+        "source": {
+          "kind": "TrendsQuery",
+          "series": [
+            {
+              "kind": "EventsNode",
+              "event": "npm_downloads_daily",
+              "math": "sum",
+              "math_property": "downloads",
+              "properties": []
+            }
+          ],
+          "dateRange": {
+            "date_from": "-30d"
+          },
+          "interval": "day",
+          "trendsFilter": {
+            "display": "ActionsLineGraph",
+            "showLegend": false
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+name: Collect npm download totals
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      period:
+        description: 'Optional backfill: last-month or YYYY-MM-DD:YYYY-MM-DD'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-download-import
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      POSTHOG_PROJECT_KEY: ${{ secrets.POSTHOG_PROJECT_KEY }}
+      POSTHOG_HOST: ${{ vars.POSTHOG_HOST || 'https://us.i.posthog.com' }}
+      DOWNLOAD_PERIOD: ${{ inputs.period }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Import totals
+        run: |
+          if [ -z "$POSTHOG_PROJECT_KEY" ]; then
+            echo 'Set the POSTHOG_PROJECT_KEY repository secret to enable collection.'
+            exit 1
+          fi
+          if [ -n "$DOWNLOAD_PERIOD" ]; then
+            node scripts/npm-downloads.mjs "$DOWNLOAD_PERIOD"
+          else
+            node scripts/npm-downloads.mjs
+          fi

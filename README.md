@@ -28,6 +28,10 @@ Price questions use `lookup_item`, `get_item_price`, `compare_items`, `summarize
 
 ## Connect
 
+Operators can track hosted tool calls, upstream API requests, and daily npm downloads
+using the optional [PostHog integration](docs/analytics.md). Local npm/stdio usage reporting
+is off by default and requires explicit opt-in. Counts do not represent unique users.
+
 Hosted endpoint: `https://runescape-wiki-mcp.fly.dev/mcp`
 
 Paste this into Claude Desktop, Cursor, or any client that accepts a remote MCP URL. The hosted URL needs no install.

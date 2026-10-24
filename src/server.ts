@@ -13,6 +13,7 @@ import { allTools, handleTool } from './tools/index.js';
 import { resources, handleResource } from './resources.js';
 import { registerPromptHandlers } from './prompts.js';
 import { createErrorResponse, debugLog } from './utils.js';
+import { observeTool } from './analytics.js';
 
 const SERVER_OPTIONS = {
     instructions: SERVER_INSTRUCTIONS,
@@ -54,27 +55,29 @@ function setupServerHandlers(server: Server): void {
     server.setRequestHandler('tools/call', async (request: CallToolRequest) => {
         const { name, arguments: args } = request.params;
 
-        debugLog(`Tool called: ${name}`, args);
+        return observeTool(allTools.some(tool => tool.name === name) ? name : 'unknown', async () => {
+            debugLog(`Tool called: ${name}`, args);
 
-        try {
-            const result = await handleTool(name, args || {});
-            debugLog(`Tool ${name} succeeded`, result);
-            return {
-                content: result.content,
-                structuredContent: result.structuredContent,
-                isError: result.isError,
-            };
-        } catch (error) {
-            if (error instanceof ProtocolError) {
-                throw error;
+            try {
+                const result = await handleTool(name, args || {});
+                debugLog(`Tool ${name} succeeded`, result);
+                return {
+                    content: result.content,
+                    structuredContent: result.structuredContent,
+                    isError: result.isError,
+                };
+            } catch (error) {
+                if (error instanceof ProtocolError) {
+                    throw error;
+                }
+                debugLog(`Tool ${name} failed`, error);
+                const errorResponse = createErrorResponse(error);
+                return {
+                    content: errorResponse.content,
+                    isError: errorResponse.isError,
+                };
             }
-            debugLog(`Tool ${name} failed`, error);
-            const errorResponse = createErrorResponse(error);
-            return {
-                content: errorResponse.content,
-                isError: errorResponse.isError,
-            };
-        }
+        });
     });
 
     server.setRequestHandler('resources/list', async () => {
