@@ -39,7 +39,7 @@ export const priceTools: Tool[] = [
         name: 'get_item_price',
         title: 'Get Item Price',
         description:
-            'Get current Grand Exchange price, trends, and examine text for an item. Pass exactly one of itemId or name.',
+            'Get the Jagex Grand Exchange guide price, trend, and examine text for an item. Guide prices lag the live market. Pass exactly one of itemId or name.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

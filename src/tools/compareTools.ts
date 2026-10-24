@@ -38,7 +38,7 @@ export const compareTools: Tool[] = [
         name: 'compare_items',
         title: 'Compare Items',
         description:
-            'Compare latest Grand Exchange prices for up to 10 items in one call. Provide either names or itemIds. Returns one row per entry with id, name, price, volume and timestamp; entries that cannot be resolved come back as error rows instead of failing the call.',
+            'Compare Grand Exchange guide or Weirdgloop prices for up to 10 items in one call. Provide either names or itemIds. Returns one row per entry with id, name, price, volume and timestamp; entries that cannot be resolved come back as error rows instead of failing the call. These prices lag the live market.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

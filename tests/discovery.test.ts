@@ -35,6 +35,8 @@ describe('discovery documents', () => {
         });
         expect(serverJson.description.length).toBeLessThanOrEqual(100);
         expect(SERVER_CONFIG.description.length).toBeLessThanOrEqual(100);
+        expect(serverJson.description).toBe(SERVER_CONFIG.description);
+        expect(serverJson.description.toLowerCase()).not.toContain('real-time');
     });
 
     it('publishes a server card for the canonical remote', () => {

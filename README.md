@@ -8,35 +8,29 @@
 
 [![RuneScape Wiki MCP server](https://mcprush.com/badge/runescape-wiki-mcp/card.svg)](https://mcprush.com/to/runescape-wiki-mcp?ref=badge)
 
-**RuneScape 3 MCP Server (RS3)** — Connect Claude, ChatGPT, Cursor, and other AI assistants to RuneScape Wiki, Grand Exchange prices, player hiscores, item comparisons, and money-making tools. Available as a hosted MCP server or npm package.
+**Ask what it's worth, whether the flip clears tax, and what to train next.**
 
-The GitHub repository is `runescape-wiki-mcp`. The server covers Grand Exchange market data and player hiscores as well as the wiki.
+Connect Claude, Cursor, and other assistants to RuneScape 3 Grand Exchange guide prices, 7–90 day history, flip math after the 2% tax, normal-mode hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.
 
-## What it does
+Prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Live high and low prices are a separate feed at [prices.runescape.wiki](https://prices.runescape.wiki/rs).
 
-Connects an AI assistant to RuneScape 3 data: item prices, 7–90 day trends, side-by-side comparisons, flip estimates after the 2% Grand Exchange tax, player hiscores, and RuneScape Wiki pages.
+## Questions to ask
 
-## Why use it
+- What's the guide price of a Noxious scythe, and how did it move over 30 days?
+- Compare a Noxious scythe, a Dragon rider lance, and an Abyssal whip.
+- Estimate the profit from flipping 100 Dragon rider lances after tax.
+- Look up my stats and tell me the weakest skill to train. Normal mode.
+- What does the special attack on an Abyssal whip actually do?
 
-Research items, compare prices, estimate a flip, and look up a player without leaving the assistant. Ask in plain language. The assistant calls the tools.
+The server answers questions about items you name. It does not rank the whole Grand Exchange.
 
-## Example questions
-
-- What's the current price of a Noxious scythe?
-- Compare the price trends of a Noxious scythe, a Dragon rider lance, and an Abyssal whip.
-- How has the price of a Noxious scythe changed over the past 30 days?
-- Estimate the profit from flipping 100 Dragon rider lances.
-- Look up my RuneScape stats and recommend what to train next.
-
-Price questions use `lookup_item`, `get_item_price`, `compare_items`, `summarize_price_history`, and `estimate_flip`. Stats questions use `get_player_stats`; the assistant turns those levels into a training suggestion. Wiki questions use `search_wiki`, then `get_wiki_page_content`.
-
-The server summarizes items you name. It does not rank the whole Grand Exchange by 30-day gain.
+Price questions use `lookup_item`, `get_item_price`, `compare_items`, `summarize_price_history`, and `estimate_flip`. Stats questions use `get_player_stats` on the normal hiscores; the assistant turns those levels into a training suggestion. Wiki questions use `search_wiki`, then `get_wiki_page_content`.
 
 ## Connect
 
 Hosted endpoint: `https://runescape-wiki-mcp.fly.dev/mcp`
 
-Cursor, Claude Desktop, and other clients that accept a remote MCP URL:
+Paste this into Claude Desktop, Cursor, or any client that accepts a remote MCP URL. The hosted URL needs no install.
 
 ```json
 {
@@ -74,7 +68,7 @@ Local stdio, after `bun install` and `bun run build`:
 }
 ```
 
-Discovery:
+Also listed on:
 
 - Server card: `https://runescape-wiki-mcp.fly.dev/mcp/server-card`
 - AI Catalog: `https://runescape-wiki-mcp.fly.dev/.well-known/ai-catalog.json`
@@ -85,12 +79,12 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 
 ## Tools
 
-- `lookup_item` — Resolve an item name to a Grand Exchange ID and the latest price. Start here when you only know the name.
-- `get_item_price` — Current Grand Exchange detail and trend for one item, by `itemId` or `name`.
+- `lookup_item` — Resolve an item name to a Grand Exchange ID and the latest guide or Weirdgloop price. Start here when you only know the name.
+- `get_item_price` — Jagex guide price, trend, and examine text for one item, by `itemId` or `name`. Guide prices lag the live market.
 - `get_item_graph` — About 180 days of daily prices, by `itemId` or `name`.
-- `summarize_price_history` — Min, max, average, change, and volume over 7–90 days (default 30).
+- `summarize_price_history` — Min, max, average, change, and volume over 7–90 days (default 30). History lags the live market.
 - `compare_items` — Compare up to 10 items by `names` or `itemIds`.
-- `estimate_flip` — Estimated flip profit after the RS3 2% Grand Exchange sales tax.
+- `estimate_flip` — Estimated flip profit after the RS3 2% Grand Exchange sales tax. Default prices lag the live market.
 - `browse_items` — Browse one Grand Exchange category by starting letter. This is not a name search.
 - `get_all_categories` — Category IDs 0–43 and their names.
 - `get_category_info` — How many items sit under each letter in one category.
@@ -125,6 +119,8 @@ search_wiki { query: "abyssal whip special attack" }
 
 ## Data sources
 
+Guide prices come from Jagex. Daily history comes from Weirdgloop. Both lag the live high/low feed published at `https://prices.runescape.wiki/api/v2/rs`. This server does not call that feed.
+
 - Jagex GE: `https://secure.runescape.com/m=itemdb_rs/api`
 - Jagex hiscores lite: `https://secure.runescape.com/m=hiscore/index_lite.ws`
 - Weirdgloop RS exchange: `https://api.weirdgloop.org/exchange/history/rs`
@@ -136,14 +132,14 @@ All requests send User-Agent:
 ## Develop
 
 - Node.js 20+
-- npm
+- bun
 
 ```bash
 bun install
 bun run build
 bun run start          # stdio MCP server
 bun run test           # unit + protocol compliance
-bun run inspector  # MCP Inspector
+bun run inspector      # MCP Inspector
 ```
 
 ## Project layout
@@ -162,6 +158,7 @@ src/
 ## Notes
 
 - **RS3 only**, not OSRS (different IDs and endpoints).
+- Guide prices and Weirdgloop history lag the live market. Pass your own buy and sell prices to `estimate_flip` when you have them.
 - Ironman/hardcore `index_lite` endpoints are documented by Jagex but currently return HTTP 404; the tool reports that instead of silently returning normal-mode data.
 - Smithery hosts should rebuild the server card after tool changes so the published schema matches this README.
 

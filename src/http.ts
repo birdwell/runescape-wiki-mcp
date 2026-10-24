@@ -4,40 +4,20 @@ import './instrument.js';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { toNodeHandler } from '@modelcontextprotocol/node';
-import { PUBLIC_ORIGIN } from './constants.js';
-import { CANONICAL_MCP_URL, handleDiscoveryRequest, serverCardUrl } from './discovery.js';
+import { handleDiscoveryRequest } from './discovery.js';
+import { homepageHtml } from './homepage.js';
 import { clientKeyFromHeaders, consumeRateLimit } from './rateLimit.js';
 import { createServer as createMcpServer } from './server.js';
 
 const port = Number(process.env.PORT ?? 8080);
 const host = process.env.HOST ?? '0.0.0.0';
-const SMITHERY_URL = 'https://smithery.ai/servers/birdwell/runescape-wiki-mcp';
 
 const handler = createMcpHandler(createMcpServer);
 const nodeHandler = toNodeHandler(handler);
 
 function serveHomepage(_req: IncomingMessage, res: ServerResponse): void {
-    const html = `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>RuneScape 3 MCP Server</title>
-  <meta name="description" content="Connect Claude, ChatGPT, Cursor, and other AI assistants to RuneScape 3 Grand Exchange prices, player hiscores, and the RuneScape Wiki." />
-</head>
-<body>
-  <h1>RuneScape 3 MCP Server</h1>
-  <p>Grand Exchange prices, item comparisons, flip estimates, player hiscores, and RuneScape Wiki pages over MCP.</p>
-  <ul>
-    <li><a href="${CANONICAL_MCP_URL}">MCP endpoint</a></li>
-    <li><a href="${serverCardUrl(PUBLIC_ORIGIN)}">Server card</a></li>
-    <li><a href="${SMITHERY_URL}">Smithery</a></li>
-    <li><a href="https://github.com/birdwell/runescape-wiki-mcp">GitHub</a></li>
-  </ul>
-</body>
-</html>`;
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-    res.end(html);
+    res.end(homepageHtml());
 }
 
 const server = createServer((req, res) => {

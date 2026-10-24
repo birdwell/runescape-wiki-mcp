@@ -11,7 +11,7 @@ import nock from 'nock';
 import { handleTool } from '../src/tools/index.js';
 import { handlePriceTool } from '../src/tools/priceTools.js';
 import { createServer } from '../src/server.js';
-import { RS3_GE_API, RESOURCE_URIS, SERVER_CONFIG } from '../src/constants.js';
+import { RS3_GE_API, RESOURCE_URIS, SERVER_CONFIG, SERVER_INSTRUCTIONS } from '../src/constants.js';
 
 const PROTOCOL_VERSION = '2026-07-28';
 
@@ -312,6 +312,7 @@ describe('MCP specification compliance', () => {
                     name: SERVER_CONFIG.name,
                     version: SERVER_CONFIG.version,
                 },
+                instructions: SERVER_INSTRUCTIONS,
             });
         });
     });

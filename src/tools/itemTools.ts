@@ -19,7 +19,7 @@ export const itemTools: Tool[] = [
         name: 'lookup_item',
         title: 'Lookup Item',
         description:
-            'Resolve an item name to Grand Exchange ID and latest price. Uses exact name match first, then wiki opensearch. Prefer this before get_item_price when you only know the name.',
+            'Resolve an item name to a Grand Exchange ID and the latest guide or Weirdgloop price. Uses exact name match first, then wiki opensearch. Prefer this before get_item_price when you only know the name. This is not the live high/low feed.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

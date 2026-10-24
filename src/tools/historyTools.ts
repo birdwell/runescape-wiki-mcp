@@ -37,7 +37,7 @@ export const historyTools: Tool[] = [
         name: 'summarize_price_history',
         title: 'Summarize Price History',
         description:
-            'Summarize one item\'s recent Grand Exchange prices: min, max, average, change, and average daily volume. Pass exactly one of itemId or name, and optional days from 7 to 90 (default 30). Use get_item_graph for the full daily series.',
+            'Summarize one item\'s recent Grand Exchange history: min, max, average, change, and average daily volume. Pass exactly one of itemId or name, and optional days from 7 to 90 (default 30). History lags the live market. Use get_item_graph for the full daily series.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
