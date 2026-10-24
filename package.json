@@ -56,21 +56,22 @@
   "author": "Josh Birdwell",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/node": "^2.0.0",
-    "@modelcontextprotocol/server": "^2.0.0",
-    "@sentry/node": "^11.8.0",
-    "zod": "^4.4.3"
+    "@modelcontextprotocol/node": "^2.1.2",
+    "@modelcontextprotocol/server": "^2.4.0",
+    "@sentry/node": "^11.9.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@smithery/cli": "^4.11.1",
     "@types/jest": "^30.0.0",
-    "@types/node": "^26.0.0",
-    "jest": "^30.4.2",
-    "nock": "^14.0.15",
-    "ts-jest": "^29.4.11",
-    "tsx": "^4.22.4",
-    "typescript": "^6.0.3",
-    "wrangler": "^4.115.0"
+    "@types/node": "^26.6.5",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "jest": "^30.5.2",
+    "nock": "^15.0.5",
+    "ts-jest": "^29.4.15",
+    "tsx": "^4.23.15",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "wrangler": "^4.152.0"
   },
   "engines": {
     "node": ">=20.0.0"
