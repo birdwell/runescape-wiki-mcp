@@ -35,7 +35,7 @@ await mkdir(`${output}assets`, { recursive: true });
 const manifest = {
     $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json',
     name: 'runescape-wiki', version: '1.0.0', description: listing.summary,
-    author: { name: 'birdwell', url: 'https://github.com/birdwell' },
+    author: { name: config.developerName ?? 'birdwell', url: 'https://github.com/birdwell' },
     homepage: listing.website, repository: listing.repository, license: 'MIT', keywords: listing.keywords,
     extensions: { 'com.openai': {
         interface: {

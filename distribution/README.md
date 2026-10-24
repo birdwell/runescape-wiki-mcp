@@ -75,7 +75,9 @@ test or public directory approval.
 
 The Claude draft has its listing copy, categories (Media & Entertainment and
 Data & Analytics), use cases and public support/docs links filled. A published
-privacy URL is required before the Listing step validates. Company identity,
+privacy URL is required before the Listing step validates. The publisher selected
+by the maintainer is **Birdwell Labs**, recorded in `submission-config.json`.
+Company website,
 data-handling review, real-client testing and compliance acknowledgments remain.
 The form warns that uncontrolled third-party API wrappers are typically not
 accepted. The draft accurately identifies our use of third-party APIs; it does
@@ -94,12 +96,13 @@ system temporary directory; the command prints its exact path. This is an incomp
 do not upload it as a finished submission. Its plugin version is independent of
 the npm/server version.
 
-Before creating the final ZIP, add `distribution/submission-config.json` with the
-following **real, reviewed values**, not placeholder URLs:
+Before creating the final ZIP, complete `distribution/submission-config.json`
+with the following **real, reviewed values**, not placeholder URLs. Birdwell Labs
+is the selected publisher; the publishing platform still needs to verify that identity:
 
 ```json
 {
-  "developerName": "the name of the verified publishing identity",
+  "developerName": "Birdwell Labs",
   "category": "an applicable category selected in the dashboard",
   "privacyPolicyURL": "the published HTTPS privacy policy URL",
   "termsOfServiceURL": "the published HTTPS terms URL",
