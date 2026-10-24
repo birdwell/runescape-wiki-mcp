@@ -20,6 +20,7 @@ describe('Integration Tests', () => {
             nock('https://api.weirdgloop.org')
                 .get('/exchange/history/rs/latest')
                 .query({ name: 'Abyssal whip' })
+                .twice() // lookup_item and get_item_price(name) each resolve the name.
                 .reply(200, {
                     'Abyssal whip': { id: '4151', price: 80797, volume: 10 },
                 });

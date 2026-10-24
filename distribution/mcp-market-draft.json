@@ -1,0 +1,86 @@
+[
+  {
+    "field": "owner-try-now",
+    "value": ""
+  },
+  {
+    "field": "edit-npm-package",
+    "value": "runescape-wiki-mcp"
+  },
+  {
+    "field": "edit-description",
+    "value": "Ask your assistant about RS3 Grand Exchange guide prices, daily trends, flip estimates, normal-mode hiscores and wiki pages. Prices lag the live market."
+  },
+  {
+    "field": "edit-long_description",
+    "value": "A read-only RuneScape 3 helper for Claude, ChatGPT and other MCP clients. Look up items by name, compare Grand Exchange guide prices, summarize 7–90 days of daily price history, estimate flip profit after the 2% seller tax, check normal-mode player hiscores, and read RuneScape Wiki pages. Connect https://runescape-wiki-mcp.fly.dev/mcp using Streamable HTTP with no authentication, API key or local installation. Prices come from Jagex guide data and Weirdgloop daily history; they lag the live market. RS3 only: Old School RuneScape, live bid/ask quotes, automated trading, and ironman/hardcore hiscores are not supported. An unofficial community project, unaffiliated with Jagex or the RuneScape Wiki."
+  },
+  {
+    "field": "Feature 1",
+    "value": "RS3 Grand Exchange guide prices from Jagex and Weirdgloop; prices lag the live market"
+  },
+  {
+    "field": "Feature 2",
+    "value": "Resolve item names to IDs and compare multiple RS3 items"
+  },
+  {
+    "field": "Feature 3",
+    "value": "Summarize 7–90 days of daily price history"
+  },
+  {
+    "field": "Feature 4",
+    "value": "Look up public normal-mode RS3 hiscores"
+  },
+  {
+    "field": "Feature 5",
+    "value": "Read RuneScape Wiki page content"
+  },
+  {
+    "field": "Feature 6",
+    "value": "Read-only tools, including hypothetical flip estimates after the 2% seller tax"
+  },
+  {
+    "field": "Use case 1",
+    "value": "Ask Claude or ChatGPT for an RS3 item’s guide price and recent daily trend"
+  },
+  {
+    "field": "Use case 2",
+    "value": "Compare RS3 items and calculate hypothetical flip profit after tax"
+  },
+  {
+    "field": "Use case 3",
+    "value": "Look up normal-mode hiscores or read a RuneScape Wiki page in chat"
+  },
+  {
+    "field": "edit-faq-10-question",
+    "value": "What data can I access with the RuneScape Wiki API tool?"
+  },
+  {
+    "field": "edit-faq-10-answer",
+    "value": "RS3 item lookup, Grand Exchange guide prices, daily price history, flip estimates, normal-mode hiscores and wiki page content. Sources include Jagex, Weirdgloop and the RuneScape Wiki. Prices lag the live market; live bid/ask quotes and 5-minute or 1-hour feeds are not provided."
+  },
+  {
+    "field": "edit-faq-11-question",
+    "value": "Does it support different RuneScape 3 game modes?"
+  },
+  {
+    "field": "edit-faq-11-answer",
+    "value": "Normal-mode RS3 hiscores are supported. Ironman and hardcore hiscores are currently unsupported because the upstream endpoints return errors. Old School RuneScape is not supported."
+  },
+  {
+    "field": "edit-faq-12-question",
+    "value": "Can I get historical Grand Exchange prices?"
+  },
+  {
+    "field": "edit-faq-12-answer",
+    "value": "Yes. summarize_price_history returns a compact 7–90 day summary from Weirdgloop daily samples. get_item_graph exposes Jagex’s historical graph. Coverage depends on the upstream data available for that item; these are not intraday price feeds."
+  },
+  {
+    "field": "edit-faq-13-question",
+    "value": "How do I connect, and can it trade for me?"
+  },
+  {
+    "field": "edit-faq-13-answer",
+    "value": "Connect https://runescape-wiki-mcp.fly.dev/mcp using Streamable HTTP and no authentication. No game login, API key or local installation is needed. All tools are read-only: they cannot place offers or execute trades. Flip calculations are estimates, not guaranteed profit."
+  }
+]
