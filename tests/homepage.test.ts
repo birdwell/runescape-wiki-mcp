@@ -12,6 +12,10 @@ describe('public copy', () => {
         expect(html).toContain('https://prices.runescape.wiki/rs');
         expect(html.toLowerCase()).not.toContain('real-time');
         expect(html.indexOf('<h1>')).toBeLessThan(html.indexOf('GitHub'));
+        expect(html).toContain('Connect Claude or ChatGPT');
+        expect(html.indexOf('data-open="claude-setup"')).toBeLessThan(html.indexOf('id="other-apps"'));
+        expect(html.indexOf('data-open="chatgpt-setup"')).toBeLessThan(html.indexOf('id="other-apps"'));
+        expect(html.indexOf('Add to Cursor')).toBeGreaterThan(html.indexOf('id="other-apps"'));
     });
 
     it('uses the same honest summary in the README and the server card', () => {

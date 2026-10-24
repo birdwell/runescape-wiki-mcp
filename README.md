@@ -10,7 +10,7 @@
 
 **Ask what it's worth, whether the flip clears tax, and what to train next.**
 
-Connect Claude, Cursor, and other assistants to RuneScape 3 Grand Exchange guide prices, 7–90 day history, flip math after the 2% tax, normal-mode hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.
+Connect Claude, ChatGPT, and other assistants to RuneScape 3 Grand Exchange guide prices, 7–90 day history, flip math after the 2% tax, normal-mode hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.
 
 Prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Live high and low prices are a separate feed at [prices.runescape.wiki](https://prices.runescape.wiki/rs).
 
@@ -30,16 +30,32 @@ Price questions use `lookup_item`, `get_item_price`, `compare_items`, `summarize
 
 Use the hosted server without installing a package or setting up an API key.
 
-[![Add to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=runescape-wiki&config=eyJ1cmwiOiJodHRwczovL3J1bmVzY2FwZS13aWtpLW1jcC5mbHkuZGV2L21jcCJ9)
-[![Add to VS Code](https://img.shields.io/badge/VS_Code-Add_server-007ACC?style=flat-square)](https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522runescape-wiki%2522%252C%2522type%2522%253A%2522http%2522%252C%2522url%2522%253A%2522https%253A%252F%252Frunescape-wiki-mcp.fly.dev%252Fmcp%2522%257D)
-
-Review the server in your app to finish adding it. If a button does not open your app, use the matching manual setup below.
+[Set up in Claude](#claude-and-claude-desktop) · [Set up in ChatGPT](#chatgpt)
 
 Hosted endpoint: `https://runescape-wiki-mcp.fly.dev/mcp`
 
 ### Claude and Claude Desktop
 
 Open [Customize > Connectors](https://claude.ai/customize/connectors), choose **+ Add > Add custom connector**, and name it **RuneScape 3**. Paste the hosted endpoint, continue through setup, and choose **No sign in** for this public server. Enable it from your chat's connectors menu. Organization settings may require an owner to add the connector. [Claude setup guide](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+
+### ChatGPT
+
+1. Open [ChatGPT Plugins](https://chatgpt.com/plugins), select **+**, then **Add custom MCP server**.
+2. Name it **RuneScape 3**, paste the hosted endpoint, and choose **No authentication**.
+3. Review the connection warning and select **Create as a plugin**. Open it in your personal plugins and install it with **+**.
+4. Start a **Work** chat, type **@**, select **RuneScape 3**, and ask your question.
+
+Custom MCP setup depends on account and workspace permissions. If the option is missing, check your workspace settings or ask its owner. See the [official ChatGPT setup guide](https://developers.openai.com/api/docs/guides/custom-mcp-server).
+
+### Confirm the connection
+
+Ask: **"Use RuneScape 3 to look up the guide price of an Abyssal whip."** Your assistant should use `lookup_item` or `get_item_price` and return a guide-price answer.
+
+<details>
+<summary>Other apps and local setup</summary>
+
+[![Add to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=runescape-wiki&config=eyJ1cmwiOiJodHRwczovL3J1bmVzY2FwZS13aWtpLW1jcC5mbHkuZGV2L21jcCJ9)
+[![Add to VS Code](https://img.shields.io/badge/VS_Code-Add_server-007ACC?style=flat-square)](https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522runescape-wiki%2522%252C%2522type%2522%253A%2522http%2522%252C%2522url%2522%253A%2522https%253A%252F%252Frunescape-wiki-mcp.fly.dev%252Fmcp%2522%257D)
 
 ### Claude Code
 
@@ -76,10 +92,6 @@ Merge this into `.vscode/mcp.json`:
 }
 ```
 
-### Confirm the connection
-
-Ask: **"Use RuneScape 3 to look up the guide price of an Abyssal whip."** Your assistant should use `lookup_item` or `get_item_price` and return a guide-price answer.
-
 ### Local stdio
 
 stdio via npm:
@@ -107,6 +119,8 @@ Local stdio, after `bun install` and `bun run build`:
   }
 }
 ```
+
+</details>
 
 Also listed on:
 

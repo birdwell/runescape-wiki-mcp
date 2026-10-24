@@ -103,16 +103,15 @@ export function homepageHtml(): string {
 </head>
 <body>
   <h1>Ask what it's worth, whether the flip clears tax, and what to train next.</h1>
-  <p>Connect Claude or Cursor to RuneScape 3 Grand Exchange guide prices, 30-day history, flip math after the 2% tax, normal-mode hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.</p>
+  <p>Connect Claude or ChatGPT to RuneScape 3 Grand Exchange guide prices, 30-day history, flip math after the 2% tax, normal-mode hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.</p>
   <p>Prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Live high and low prices are a separate feed at <a href="https://prices.runescape.wiki/rs">prices.runescape.wiki</a>.</p>
   <h2 id="connect">Connect your assistant</h2>
   <p>Use the hosted server without installing a package or setting up an API key.</p>
   <div class="install-actions" aria-label="Install in your app">
-    <a class="install-button" href="${escapeHtml(INSTALL_LINKS.cursor)}">Add to Cursor</a>
-    <a class="install-button" href="${escapeHtml(INSTALL_LINKS.vscode)}">Add to VS Code</a>
     <a class="install-button" href="#claude-setup" data-open="claude-setup">Set up in Claude</a>
+    <a class="install-button" href="#chatgpt-setup" data-open="chatgpt-setup">Set up in ChatGPT</a>
   </div>
-  <p class="hint">Cursor and VS Code buttons open the app's install flow. Review the server there to finish adding it. If the app does not open, use the manual setup below.</p>
+  <p class="hint">Choose your chat app for setup instructions. Copy this server URL when it asks for one:</p>
   <div class="endpoint">
     <code id="server-url">${CANONICAL_MCP_URL}</code>
     <button class="copy-button" type="button" data-copy="server-url" data-label="server URL">Copy server URL</button>
@@ -127,6 +126,33 @@ export function homepageHtml(): string {
     </ol>
     <p class="hint">Organization settings may require an owner to add custom connectors. <a href="https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp">Claude setup guide</a></p>
   </details>
+  <details id="chatgpt-setup">
+    <summary>ChatGPT on the web</summary>
+    <ol>
+      <li>Open <a href="https://chatgpt.com/plugins" target="_blank" rel="noopener noreferrer">ChatGPT Plugins</a>, select <strong>+</strong>, then <strong>Add custom MCP server</strong>.</li>
+      <li>Name it <strong>RuneScape 3</strong>, paste the server URL above, and choose <strong>No authentication</strong>.</li>
+      <li>Review the connection warning, then select <strong>Create as a plugin</strong>. Open the new plugin in your personal plugins and install it with <strong>+</strong>.</li>
+      <li>Start a <strong>Work</strong> chat. Type <strong>@</strong> in the message box, select <strong>RuneScape 3</strong>, and ask your question.</li>
+    </ol>
+    <p class="hint">Custom MCP setup depends on your account and workspace permissions. If the option is missing, check your workspace settings or ask its owner. <a href="https://developers.openai.com/api/docs/guides/custom-mcp-server">Official ChatGPT setup guide</a></p>
+  </details>
+  <h2>Try your first question</h2>
+  <p>Ask: <strong>“Use RuneScape 3 to look up the guide price of an Abyssal whip.”</strong></p>
+  <p class="hint">Your assistant should use <code>lookup_item</code> or <code>get_item_price</code>. A guide-price answer confirms the connection works.</p>
+  <h2>Questions to ask</h2>
+  <ul>
+    <li>What's the guide price of a Noxious scythe, and how did it move over 30 days?</li>
+    <li>Compare a Noxious scythe, a Dragon rider lance, and an Abyssal whip.</li>
+    <li>Estimate the profit from flipping 100 Dragon rider lances after tax.</li>
+  </ul>
+  <details id="other-apps">
+    <summary>Other apps and local setup</summary>
+    <p>Already using an editor or a local MCP client?</p>
+    <div class="install-actions" aria-label="Editor install options">
+      <a class="install-button" href="${escapeHtml(INSTALL_LINKS.cursor)}">Add to Cursor</a>
+      <a class="install-button" href="${escapeHtml(INSTALL_LINKS.vscode)}">Add to VS Code</a>
+    </div>
+    <p class="hint">These buttons open the editor's install flow. Review the server in your app to finish adding it. Manual setup is below if the app does not open.</p>
   <details>
     <summary>Claude Code</summary>
     <p>Run this command to add it for your user account:</p>
@@ -148,15 +174,7 @@ export function homepageHtml(): string {
     <pre><code id="stdio-config">${escapeHtml(STDIO_CONFIG)}</code></pre>
     <button class="copy-button" type="button" data-copy="stdio-config" data-label="local npm configuration">Copy npm config</button>
   </details>
-  <h2>Try your first question</h2>
-  <p>Ask: <strong>“Use RuneScape 3 to look up the guide price of an Abyssal whip.”</strong></p>
-  <p class="hint">Your assistant should use <code>lookup_item</code> or <code>get_item_price</code>. A guide-price answer confirms the connection works.</p>
-  <h2>Questions to ask</h2>
-  <ul>
-    <li>What's the guide price of a Noxious scythe, and how did it move over 30 days?</li>
-    <li>Compare a Noxious scythe, a Dragon rider lance, and an Abyssal whip.</li>
-    <li>Estimate the profit from flipping 100 Dragon rider lances after tax.</li>
-  </ul>
+  </details>
   <p class="links">
     <a href="${REPOSITORY_URL}">GitHub</a>
     <a href="${NPM_URL}">npm</a>
@@ -192,7 +210,8 @@ export function homepageHtml(): string {
         details.scrollIntoView({ block: 'start' });
       });
     });
-    if (location.hash === '#claude-setup') document.getElementById('claude-setup').open = true;
+    const initialSetup = document.getElementById(location.hash.slice(1));
+    if (initialSetup?.tagName === 'DETAILS') initialSetup.open = true;
   </script>
 </body>
 </html>`;
