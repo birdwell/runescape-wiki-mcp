@@ -28,9 +28,28 @@ Price questions use `lookup_item`, `get_item_price`, `compare_items`, `summarize
 
 ## Connect
 
+Use the hosted server without installing a package or setting up an API key.
+
+[![Add to Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=runescape-wiki&config=eyJ1cmwiOiJodHRwczovL3J1bmVzY2FwZS13aWtpLW1jcC5mbHkuZGV2L21jcCJ9)
+[![Add to VS Code](https://img.shields.io/badge/VS_Code-Add_server-007ACC?style=flat-square)](https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522runescape-wiki%2522%252C%2522type%2522%253A%2522http%2522%252C%2522url%2522%253A%2522https%253A%252F%252Frunescape-wiki-mcp.fly.dev%252Fmcp%2522%257D)
+
+Review the server in your app to finish adding it. If a button does not open your app, use the matching manual setup below.
+
 Hosted endpoint: `https://runescape-wiki-mcp.fly.dev/mcp`
 
-Paste this into Claude Desktop, Cursor, or any client that accepts a remote MCP URL. The hosted URL needs no install.
+### Claude and Claude Desktop
+
+Open [Customize > Connectors](https://claude.ai/customize/connectors), choose **+ Add > Add custom connector**, and name it **RuneScape 3**. Paste the hosted endpoint, continue through setup, and choose **No sign in** for this public server. Enable it from your chat's connectors menu. Organization settings may require an owner to add the connector. [Claude setup guide](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp).
+
+### Claude Code
+
+```sh
+claude mcp add --transport http --scope user runescape-wiki https://runescape-wiki-mcp.fly.dev/mcp
+```
+
+### Manual Cursor setup
+
+Merge this into `~/.cursor/mcp.json`:
 
 ```json
 {
@@ -41,6 +60,27 @@ Paste this into Claude Desktop, Cursor, or any client that accepts a remote MCP 
   }
 }
 ```
+
+### Manual VS Code setup
+
+Merge this into `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "runescape-wiki": {
+      "type": "http",
+      "url": "https://runescape-wiki-mcp.fly.dev/mcp"
+    }
+  }
+}
+```
+
+### Confirm the connection
+
+Ask: **"Use RuneScape 3 to look up the guide price of an Abyssal whip."** Your assistant should use `lookup_item` or `get_item_price` and return a guide-price answer.
+
+### Local stdio
 
 stdio via npm:
 
