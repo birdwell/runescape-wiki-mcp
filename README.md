@@ -1,18 +1,19 @@
 # RuneScape 3 MCP Server
 
 [![npm](https://img.shields.io/npm/v/runescape-wiki-mcp)](https://www.npmjs.com/package/runescape-wiki-mcp)
+[![npm downloads per month](https://img.shields.io/npm/dm/runescape-wiki-mcp)](https://www.npmjs.com/package/runescape-wiki-mcp)
 [![CI](https://github.com/birdwell/runescape-wiki-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/birdwell/runescape-wiki-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/birdwell/runescape-wiki-mcp)](https://github.com/birdwell/runescape-wiki-mcp/blob/main/LICENSE)
-
-[![RuneScape Wiki MCP Server MCP server – quality and maintenance score on Glama](https://glama.ai/mcp/servers/birdwell/runescape-wiki-mcp/badges/card.svg)](https://glama.ai/mcp/servers/birdwell/runescape-wiki-mcp)
-
-[![RuneScape Wiki MCP server](https://mcprush.com/badge/runescape-wiki-mcp/card.svg)](https://mcprush.com/to/runescape-wiki-mcp?ref=badge)
+[![Glama connector quality and endpoint health](https://glama.ai/mcp/connectors/io.github.birdwell/runescape-wiki-mcp/badges/score.svg)](https://glama.ai/mcp/connectors/io.github.birdwell/runescape-wiki-mcp)
 
 **Ask what it's worth, whether the flip clears tax, and what to train next.**
 
-Connect Claude, Cursor, and other assistants to RuneScape 3 Grand Exchange guide prices, 7–90 day history, flip math after the 2% tax, normal-mode hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.
+Connect Claude, ChatGPT, Cursor, and other assistants to RuneScape 3 Grand Exchange guide prices, 7–90 day history, flip math after the 2% tax, normal-mode hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.
 
 Prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Live high and low prices are a separate feed at [prices.runescape.wiki](https://prices.runescape.wiki/rs).
+
+[![Claude setup](https://img.shields.io/badge/Claude-Setup-D97757?style=for-the-badge)](#claude-setup)
+[![ChatGPT setup](https://img.shields.io/badge/ChatGPT-Setup-087F5B?style=for-the-badge)](#chatgpt-setup)
 
 ## Questions to ask
 
@@ -30,7 +31,29 @@ Price questions use `lookup_item`, `get_item_price`, `compare_items`, `summarize
 
 Hosted endpoint: `https://runescape-wiki-mcp.fly.dev/mcp`
 
-Paste this into Claude Desktop, Cursor, or any client that accepts a remote MCP URL. The hosted URL needs no install.
+No server account, API key, game login or local installation is needed. Use Streamable HTTP with no authentication.
+
+### Claude setup
+
+1. Open **Customize → Connectors**, then **+ Add → Add custom connector**.
+2. Name it **RuneScape Wiki MCP** and enter the hosted endpoint above.
+3. Choose **No sign in** when asked about authentication, then finish adding the connector.
+4. In a chat, enable it through **+ → Connectors** and ask: “What is the RS3 guide price of an Abyssal whip?”
+
+Team and Enterprise users may need an owner to add the connector first. See [Claude's custom connector guide](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) for your account's setup flow.
+
+### ChatGPT setup
+
+1. On ChatGPT web, open **Plugins**, select **+**, then **Add custom MCP server**.
+2. Name it **RuneScape Wiki MCP**, enter the hosted endpoint above, and select **No authentication**.
+3. Review the connection warning, then choose **Create as a plugin**.
+4. Install the resulting personal plugin. In a chat, type **@**, select it, and ask: “Compare Dragon bones and Frost dragon bones.”
+
+Custom MCP access depends on your workspace permissions and security settings. See [OpenAI's custom MCP guide](https://developers.openai.com/api/docs/guides/custom-mcp-server) if the option is unavailable.
+
+### Other MCP clients
+
+For clients that accept remote MCP configuration, use:
 
 ```json
 {
@@ -42,7 +65,7 @@ Paste this into Claude Desktop, Cursor, or any client that accepts a remote MCP 
 }
 ```
 
-stdio via npm:
+For clients that require local stdio, install through npm:
 
 ```json
 {
@@ -70,6 +93,8 @@ Local stdio, after `bun install` and `bun run build`:
 
 Also listed on:
 
+- [Glama hosted connector](https://glama.ai/mcp/connectors/io.github.birdwell/runescape-wiki-mcp)
+- [MCPRush](https://mcprush.com/to/runescape-wiki-mcp?ref=badge)
 - Server card: `https://runescape-wiki-mcp.fly.dev/mcp/server-card`
 - AI Catalog: `https://runescape-wiki-mcp.fly.dev/.well-known/ai-catalog.json`
 - Official MCP Registry: [`io.github.birdwell/runescape-wiki-mcp`](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.birdwell/runescape-wiki-mcp)
