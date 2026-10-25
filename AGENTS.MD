@@ -108,3 +108,9 @@ echo '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.
 - Do not invent item IDs — call `lookup_item`
 - Rebuild Smithery server card after tool schema changes
 - Respect API rate limits
+
+Raw history: `get_item_graph` defaults to Jagex daily/average maps. Set `source: "weirdgloop"` for chronological daily `samples` with Unix-millisecond timestamps, prices and available volume. Inclusive UTC `from`/`to` bounds apply to either provider. Use `summarize_price_history` for computed statistics.
+
+Wiki search defaults to articles. Query prefixes such as `prefix:Category:Weapons` select other Wiki namespaces. Search returns references only; page text remains subject to the existing exact revision/content review policy.
+
+`get_item_graph` accepts optional `source` (`jagex`, default, or `weirdgloop`). Weirdgloop returns raw daily samples with millisecond timestamps and available volume; UTC date bounds work on both sources. Wiki namespace prefixes such as `prefix:Category:Weapons` override the article search default without enabling unreviewed text.

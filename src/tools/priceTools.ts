@@ -45,7 +45,7 @@ export const priceTools: Tool[] = [
         name: 'get_item_price',
         title: 'Get Item Metadata and Guide Prices',
         description:
-            "Fetch Jagex catalogue details: examine text, type, membership, icons, guide price and trends. itemId or name returns item directly; itemIds returns results[].data.item, even for a one-ID array.\n" +
+            "Fetch Jagex catalogue details: examine text, type, membership, icons, guide price and Jagex's fixed 30/90/180-day trend fields. itemId or name returns item directly; itemIds returns results[].data.item, even for a one-ID array.\n" +
             "IDs are GE IDs from lookup_item. Choose exactly one selector; name resolves first and ambiguous names fail with candidates. Batches preserve ID order with per-row data/errors; all failed rows make the call an error. At most two upstream requests run concurrently; upstream 429 stops queued work.\n" +
             "Use compare_items for numeric Weirdgloop snapshot comparisons, not catalogue metadata; get_item_graph for dated observations; summarize_price_history for aggregate statistics.\n" +
             "Jagex prices can be compact strings and lag live offers. No auth or local cache. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",

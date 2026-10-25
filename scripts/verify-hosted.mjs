@@ -64,6 +64,14 @@ try {
  const filtered=await call('get_item_graph',{itemId,from:day,to:day});
  const keys=Object.keys(filtered.structuredContent.daily);
  if(!keys.length||keys.some(key=>new Date(Number(key)).toISOString().slice(0,10)!==day)) throw new Error('UTC date filter failed');
+ const raw=await call('get_item_graph',{itemId,source:'weirdgloop'});
+ const samples=raw.structuredContent?.samples;
+ if(raw.structuredContent?.source!=='weirdgloop'||raw.structuredContent.itemId!==itemId||!samples?.length||samples.some((point,i)=>!Number.isSafeInteger(point.timestamp)||!Number.isFinite(point.price)||(i>0&&point.timestamp<samples[i-1].timestamp))) throw new Error('Raw Weirdgloop observations failed');
+ const rawDay=new Date(samples[0].timestamp).toISOString().slice(0,10);
+ const rawFiltered=await call('get_item_graph',{itemId,source:'weirdgloop',from:rawDay,to:rawDay});
+ if(!rawFiltered.structuredContent.samples.length||rawFiltered.structuredContent.samples.some(point=>new Date(point.timestamp).toISOString().slice(0,10)!==rawDay)) throw new Error('Weirdgloop UTC filter failed');
+ const namespaces=await call('search_wiki',{query:'prefix:Category:Weapons',limit:3});
+ if(!namespaces.structuredContent.results.some(hit=>hit.title.startsWith('Category:'))||namespaces.structuredContent.results.some(hit=>hit.contentStatus!=='link_only'||hit.snippet!=='')) throw new Error('Wiki namespace references failed');
  const scenario=await call('estimate_flip',{itemId,buyPrice:1000,sellPrice:1200,quantity:2,buyLimitRemaining:1,fillTimeMinutes:30});
  const execution=scenario.structuredContent.executionScenario;
  if(execution.quantityWithinBuyLimit!==1||execution.quantityOverBuyLimit!==1||execution.netProfitWithinBuyLimit!==176||execution.assumedNetProfitPerHour!==704) throw new Error('Execution scenario math failed');

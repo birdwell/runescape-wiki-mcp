@@ -37,7 +37,7 @@ export const historyTools: Tool[] = [
         name: 'summarize_price_history',
         title: 'Summarize Daily Price Statistics',
         description:
-            "Calculate min/max, mean and start-to-end change from Weirdgloop daily prices; this tool returns statistics, not a time series. For timestamped Jagex guide-price observations or UTC date bounds, call get_item_graph instead. Use get_item_price for catalogue detail.\n" +
+            "Compute one min/max/mean/change aggregate for a chosen daily-sample window, not timestamped observations. Use get_item_graph with source weirdgloop for the underlying series or UTC date bounds. get_item_price provides catalogue details and Jagex's predefined trend fields.\n" +
             "- Choose itemId to skip name resolution, or name to resolve first. days selects trailing usable samples from a fixed 90-day fetch; it does not change fetch size. Fewer available samples reduce windowDays.\n" +
             "- Return one aggregate: sample min/max, unweighted mean, newest-minus-oldest change and percentage relative to oldest. Volume averages exclude unreported values. There are no forecasts; no usable history is an error.\n" +
             "- Daily history lags live offers. No auth or local cache. Shared HTTP budget: 60 requests/IP/minute; retry 429 after Retry-After.",

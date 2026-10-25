@@ -81,12 +81,12 @@ const wikiBatchOutput = batchOutputSchema({ type: 'string' }, wikiPageOutputSche
 export const wikiTools: Tool[] = [
     {
         name: 'search_wiki',
-        title: 'Search Wiki Articles',
+        title: 'Search Wiki Pages',
         description:
-            "Search RS3 Wiki articles and return matching titles and links. Use get_wiki_page_content for page content/references, lookup_item for GE IDs, or get_item_price for guide prices.\n" +
+            "Search RS3 Wiki pages and return matching titles and links. Use get_wiki_page_content for page content/references, lookup_item for GE IDs, or get_item_price for guide prices.\n" +
             "- query searches article text by default. Quotes group phrases: \"Abyssal whip\" \"special attack\" finds pages discussing both. intitle:\"Abyssal whip\" focuses title matches. Pass raw syntax; the server handles URL encoding.\n" +
             "- limit caps the first relevance-ranked set. It is not an offset, and no continuation cursor exists. Refine query to change the matches.\n" +
-            "- Searches article namespace 0 and returns references without copied snippets. An empty results array means no matches; invalid queries and upstream failures return tool errors.\n" +
+            "- Search defaults to articles. prefix:Category:Weapons searches Wiki category pages; namespace prefixes can override that default. Results are references without copied snippets. Empty results mean no matches; invalid queries and API failures are tool errors.\n" +
             "- No authentication is required, and results are not cached here. The shared HTTP budget defaults to 60 requests/IP/minute. On 429, wait for Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,

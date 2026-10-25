@@ -8,7 +8,7 @@ export const dateProperty = {
     description: 'Inclusive UTC calendar date, YYYY-MM-DD',
 };
 
-interface DateRange { start?: number; endExclusive?: number }
+export interface DateRange { start?: number; endExclusive?: number }
 
 function optionalDate(value: unknown, label: string): number | ToolResponse | undefined {
     if (value === undefined) return undefined;
@@ -33,11 +33,12 @@ export function parseDateRange(from: unknown, to: unknown): DateRange | ToolResp
     return { start, endExclusive: end === undefined ? undefined : end + 86_400_000 };
 }
 
+export function isWithinDateRange(timestamp: number, range: DateRange): boolean {
+    return Number.isFinite(timestamp) &&
+        (range.start === undefined || timestamp >= range.start) &&
+        (range.endExclusive === undefined || timestamp < range.endExclusive);
+}
+
 export function filterPriceMap(series: Record<string, number>, range: DateRange): Record<string, number> {
-    return Object.fromEntries(Object.entries(series).filter(([key]) => {
-        const timestamp = Number(key);
-        return Number.isFinite(timestamp) &&
-            (range.start === undefined || timestamp >= range.start) &&
-            (range.endExclusive === undefined || timestamp < range.endExclusive);
-    }));
+    return Object.fromEntries(Object.entries(series).filter(([key]) => isWithinDateRange(Number(key), range)));
 }

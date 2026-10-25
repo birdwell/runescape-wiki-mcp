@@ -55,6 +55,16 @@ describe('Wiki content boundaries', () => {
         expect(result.content[0].text).toContain('RuneScape Wiki contributors');
     });
 
+    it('forwards namespace-prefix queries and keeps category hits reference-only', async () => {
+        const request = nock('https://runescape.wiki').get('/api.php')
+            .query(q => q.srsearch === 'prefix:Category:Weapons' && q.srnamespace === '0')
+            .reply(200, { query: { search: [{ title: 'Category:Weapons', ns: 14, snippet: 'Unreviewed category text' }] } });
+        const result = await handleWikiTool('search_wiki', { query: 'prefix:Category:Weapons' });
+        expect(request.isDone()).toBe(true);
+        expect(result.structuredContent).toMatchObject({ results: [{ title: 'Category:Weapons', snippet: '', contentStatus: 'link_only' }] });
+        expect(JSON.stringify(result)).not.toContain('Unreviewed category text');
+    });
+
     it('returns empty search results', async () => {
         nock('https://runescape.wiki').get('/api.php').query(true).reply(200, { query: { search: [] } });
         expect((await handleWikiTool('search_wiki', { query: 'unknown' })).structuredContent).toEqual({ results: [] });
@@ -70,7 +80,7 @@ describe('Wiki content boundaries', () => {
         expect(nock.pendingMocks()).toEqual([]);
     });
 
-    it.each([6, 828, undefined])('returns links for namespace %s even with a matching review', async ns => {
+    it.each([6, 14, 828, undefined])('returns links for namespace %s even with a matching review', async ns => {
         review(); pageReply('info|revisions', { ns });
         expectLinks(await getPage());
     });

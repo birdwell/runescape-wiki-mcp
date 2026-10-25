@@ -3,6 +3,7 @@
 import type { Tool } from '@modelcontextprotocol/server';
 import { dateProperty, filterPriceMap, parseDateRange } from '../dateRange.js';
 import { RS3_GE_API } from '../constants.js';
+import { fetchWeirdgloopSeries } from '../priceSeries.js';
 import { lookupItems, resolveItemId } from '../itemResolve.js';
 import { ITEM_SELECTOR, itemIdProperty, JSON_SCHEMA_2020_12, lookupOutputSchema, graphOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
@@ -50,10 +51,10 @@ export const itemTools: Tool[] = [
         name: 'get_item_graph',
         title: 'Get Item Price Time Series',
         description:
-            "Retrieve about 180 days of Jagex guide-price observations for plotting or custom calculations: daily/average timestamp maps, not statistics or an image. For a ready-made min/max/mean/change answer, use summarize_price_history instead; it computes statistics from Weirdgloop daily history.\n" +
-            "- Pass exactly one of itemId or name; an ID skips name lookup and ambiguous names return candidate errors. Optional from/to are inclusive UTC dates, YYYY-MM-DD, applied to both maps. Omitted bounds are open; from=to selects one whole UTC day. Reversed bounds fail.\n" +
-            "- Omit dates for the full upstream window. Filtering cannot recover older samples; unavailable ranges return empty maps, without extrapolation. Keys are Unix milliseconds, values coins. Guide values lag live offers.\n" +
-            "- No auth or local cache; upstream failures return tool errors. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
+            "Retrieve dated price observations for charts or custom calculations. For a ready-made min/max/mean/change answer, use summarize_price_history; get_item_price provides catalogue details and predefined Jagex trends.\n" +
+            "- Choose source: jagex (default) returns about 180 days as daily/average maps; weirdgloop returns about 90 days as chronological samples with price and available volume. Both use Unix milliseconds and coins, and lag live offers. This tool computes no summary statistics or images.\n" +
+            "- Pass itemId or name, never both. IDs skip name lookup; ambiguous names fail with candidates. from/to are inclusive UTC YYYY-MM-DD bounds on either source. Omitted bounds are open; from=to includes the whole day. Reversed bounds fail.\n" +
+            "- Filtering does not backfill missing history: unavailable ranges return empty maps/samples. The selected provider never falls back to another. No auth or local cache; upstream failures are errors. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -67,13 +68,25 @@ export const itemTools: Tool[] = [
                     minLength: 1,
                     description: 'Item name (provide itemId or name)',
                 },
+                source: { type: 'string', enum: ['jagex', 'weirdgloop'], default: 'jagex',
+                    description: 'Provider/shape: Jagex daily+average maps (default), or raw Weirdgloop daily samples' },
                 from: { ...dateProperty, description: 'First UTC date to include; omitted means start of available history' },
                 to: { ...dateProperty, description: 'Last UTC date to include; omitted means end of available history' },
             },
             ...ITEM_SELECTOR,
             additionalProperties: false,
         },
-        outputSchema: graphOutputSchema,
+        outputSchema: { ...graphOutputSchema,
+            properties: { ...graphOutputSchema.properties,
+                itemId: itemIdProperty,
+                source: { const: 'weirdgloop', description: 'Present for the Weirdgloop sample-array variant' },
+                samples: { type: 'array', items: { type: 'object', properties: {
+                    timestamp: { type: 'integer', minimum: 0, description: 'UTC Unix timestamp in milliseconds, not seconds' },
+                    price: { type: 'number', minimum: 0, description: 'Observed guide price in coins' },
+                    volume: { type: 'number', minimum: 0, description: 'Provider-reported daily volume, when available' },
+                }, required: ['timestamp', 'price'], additionalProperties: false } },
+            }, required: [], oneOf: [{ required: ['daily', 'average'] }, { required: ['itemId', 'source', 'samples'] }],
+        },
         ...READ_ONLY_TOOL,
     },
 ];
@@ -105,13 +118,19 @@ export async function handleItemTool(name: string, args: ToolArguments): Promise
         }
 
         case 'get_item_graph': {
+            const source = args?.source === undefined ? 'jagex' : args.source;
+            if (source !== 'jagex' && source !== 'weirdgloop') return validationError('source must be jagex or weirdgloop');
             const range = parseDateRange(args?.from, args?.to);
             if (isToolResponse(range)) return range;
-            const itemId = await resolveItemId(args, ['itemId', 'name', 'from', 'to']);
+            const itemId = await resolveItemId(args, ['itemId', 'name', 'from', 'to', 'source']);
             if (isToolResponse(itemId)) {
                 return itemId;
             }
 
+            if (source === 'weirdgloop') {
+                return createSuccessResponse(`Daily Weirdgloop observations for item ${itemId}`,
+                    await fetchWeirdgloopSeries(itemId, range));
+            }
             const data = await makeApiRequest(`${RS3_GE_API}/graph/${itemId}.json`);
             const filtered = args?.from === undefined && args?.to === undefined ? data : {
                 ...data,
