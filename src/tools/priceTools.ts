@@ -45,11 +45,11 @@ export const priceTools: Tool[] = [
         name: 'get_item_price',
         title: 'Get Item Metadata and Guide Prices',
         description:
-            "Fetch full Jagex records for selected RS3 items: catalogue metadata, guide prices, fixed 30/90/180-day trends and Wiki item-ID links.\n" +
-            "- Use browse_items for category listings or get_ge_info for catalogue configuration age. Use compare_items for numeric price/volume comparisons, get_item_graph for observations or summarize_price_history for calculated statistics.\n" +
-            "- Select itemId, name or itemIds, never combine them. Names resolve first; ambiguity returns candidates. IDs come from lookup_item. itemIds accepts 1\u201310 unique IDs. [4151,-1] rejects before any fetch; valid IDs that Jagex cannot find fail only their rows.\n" +
-            "- ID/name returns item; an array returns ordered results[].data.item even for one ID. Batches isolate row failures; all-failed is an error. At most two reads run concurrently; 429 stops queued work.\n" +
-            "- Guide prices can use k/m strings and lag live offers. No auth or server cache. Shared HTTP budget defaults to 60 requests/IP/minute; honor 429 Retry-After.",
+            "Read full Jagex GE records for selected RS3 items, including guide prices, predefined trends and direct Wiki item-ID links. Use browse_items for category listings or get_ge_info for catalogue configuration status.\n\n" +
+            "For numeric price/volume comparisons use compare_items; for dated observations get_item_graph; for calculated statistics summarize_price_history.\n\n" +
+            "Choose exactly one input form, using IDs from lookup_item:\n\n| Input example | Behavior |\n| --- | --- |\n| {\"itemId\":4151} | Fetch directly; return item. |\n| {\"name\":\"Abyssal whip\"} | Resolve first; return item or ambiguous-name candidates. |\n| {\"itemIds\":[4151]} | Return ordered batch rows, even for one ID; each item is in results[].data.item. |\n\n" +
+            "Batch inputs are validated before fetching. An unavailable valid ID fails only its row; all rows failing makes the call an error. At most two reads run concurrently. A 429 stops queued IDs; honor Retry-After.\n\n" +
+            "Guide prices lag live offers and may use k/m abbreviations. No credentials or server cache are used. The shared HTTP budget defaults to 60 requests/IP/minute.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -57,6 +57,7 @@ export const priceTools: Tool[] = [
                 itemIds: { type: 'array', minItems: 1, maxItems: MAX_BATCH_ITEMS, uniqueItems: true,
                     items: itemIdProperty, description: 'Known GE IDs for a catalogue metadata batch; exclusive with itemId/name' },
             },
+            examples: [{ itemId: 4151 }, { name: 'Abyssal whip' }, { itemIds: [4151, 536] }],
             oneOf: [{ required: ['itemId'] }, { required: ['name'] }, { required: ['itemIds'] }],
             additionalProperties: false,
         },
