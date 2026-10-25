@@ -192,6 +192,7 @@ describe('quest recommendation pipeline', () => {
         expect(comparison.some((quest: any) => quest.title === 'Finished Mining Quest')).toBe(false);
         expect(comparison.every((quest: any) => quest.requirements && quest.rewards)).toBe(true);
         expect(calls[1].questions.next.criteria).not.toHaveProperty(comparison.find((quest: any) => quest.title === 'Locked Mining Quest').id);
+        expect(calls.at(-1)?.state.account.skills.Mining).toBe(64);
         expect((result.structuredContent?.recommendation as any).guideSummary.steps[0]).toBe('Talk to Doric.');
         expect((result.structuredContent?.blockedAlternatives as any[])[0]).toMatchObject({
             title: 'Locked Mining Quest', eligibility: 'blocked',

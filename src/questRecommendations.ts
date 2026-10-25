@@ -17,6 +17,7 @@ interface QuestCandidate {
     requirements: QuestMetadata['requirements'] & { quests: string[] };
     rewards: QuestMetadata['rewards'];
     length: string;
+    enemies: string;
     metadataAvailable: boolean;
     prerequisitesAvailable: boolean;
     missingSkillLevels: number;
@@ -72,6 +73,7 @@ export function assessQuest(
             quests: prerequisites ?? [] },
         rewards: metadata?.rewards ?? { xp: [], text: '', postQuest: '' },
         length: metadata?.guide.length ?? '',
+        enemies: metadata?.guide.enemies ?? '',
         missingSkillLevels, missingQuestCount,
     };
 }
@@ -80,7 +82,7 @@ function pickQuestion(candidates: QuestCandidate[], future: boolean): ChoiceQues
     return { type: 'choice',
         instructions: future
             ? 'Which blocked quest in this batch is the best NEAR-TERM target for the goal? Prefer useful rewards with small skill gaps and few missing quests over distant endgame rewards with large gaps. A few missing levels and no missing quests is usually a stronger next target than many levels and a quest chain. Choose none if unrelated.'
-            : 'Which quest in this batch is the best next quest for the player goal? Compare actual rewards, unlocks, length and progress already made. Only consider listed, unfinished, non-blocked quests with available reward/requirement data. Unknown membership/items remain conditions. Avoid unrelated XP, and do not count conditional or post-quest XP as guaranteed completion rewards. Choose none if nothing fits.',
+            : 'Which quest in this batch is the best next quest for the player goal? Compare actual rewards, unlocks, length and progress already made. Consider mandatory fights against the supplied skill levels and gear; never assume combat readiness. Only consider listed, unfinished, non-blocked quests with available reward/requirement data. Unknown membership/items remain conditions. Avoid unrelated XP, and do not count conditional or post-quest XP as guaranteed completion rewards. Choose none if nothing fits.',
         criteria: {
             none: 'No relevant quest in this batch fits this decision',
             insufficient_context: 'Evidence is insufficient to choose any of these quests',
@@ -190,7 +192,7 @@ export async function recommendQuests(
         throw new Error('The complete quest catalogue exceeds the bounded comparison budget. No quest-comparison calls were made; narrow optional account context.');
     }
     const winners = new Set<string>(), future = new Set<string>();
-    // Two independent comparison requests at once, with a fixed total spend/round ceiling.
+    // Two independent comparison requests at once, with a fixed total request-count ceiling.
     for (let i = 0; i < batches.length; i += 2) {
         const results = await Promise.all(batches.slice(i, i + 2).map(async quests => ({
             quests, answers: await session.decide({ ...state, quests }, questionsFor(quests), signal),
@@ -207,7 +209,10 @@ export async function recommendQuests(
     const finalists = candidates.filter(candidate => winners.has(candidate.id) || future.has(candidate.id));
     if (!finalists.length) return output('no_match');
     // Full account context is already represented in each assessment. Keep final comparison compact.
-    const finalState = { game: 'RS3', goal: input.goal, focusSkill, quests: finalists };
+    const finalState = { game: 'RS3', goal: input.goal, focusSkill, quests: finalists,
+        account: { skills: account.skills, members: input.context.members, gameMode: input.context.gameMode,
+            budgetGp: input.context.budgetGp, sessionMinutes: input.context.sessionMinutes,
+            playStyle: input.context.playStyle, gear: input.context.gear, notes: input.context.notes } };
     const finalQuestions = questionsFor(finalists);
     if (session.requestLength(finalState, finalQuestions) > MAX_JEV_REQUEST_CHARS) {
         throw new Error('Quest finalists exceed the comparison budget. No final decision was fabricated.');
@@ -219,7 +224,7 @@ export async function recommendQuests(
     const format = async (candidate: QuestCandidate, includeGuide: boolean) => {
         const raw = unfinished.find(quest => catalogue.metadata.get(questKey(quest.title))?.title === candidate.title);
         const metadata = raw ? catalogue.metadata.get(questKey(raw.title)) : undefined;
-        const conditional = candidate.eligibility !== 'available' || Boolean(metadata?.guide.items);
+        const conditional = candidate.eligibility !== 'available' || Boolean(metadata?.guide.items || metadata?.guide.enemies);
         const targetXp = candidate.rewards.xp.filter(reward => reward.skill.toLowerCase() === focusSkill?.toLowerCase());
         return { title: candidate.title, url: metadata?.url,
             questStatus: candidate.status, conditional, eligibility: candidate.eligibility,
