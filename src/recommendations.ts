@@ -13,11 +13,32 @@ const MIN_CONFIDENCE = 0.5;
 const MAX_CANDIDATES = 6;
 const MAX_PAGES = 3;
 const CACHE_TTL = 5 * 60_000;
+const QUEST_TIMEOUT_MS = 5 * 60_000;
 // Only public wiki responses are cached. Goals, hiscores and decisions are request-local.
 const wikiCache = new Map<string, { expires: number; response: ToolResponse }>();
 
 function choice(instructions: string, criteria: Record<string, string>): ChoiceQuestion {
     return { type: 'choice', instructions, criteria };
+}
+
+/** Infer only level-shaped targets, never a bare amount of GP, XP or session time. */
+export function trainingLevelFromGoal(goal: string, skill: string): number | undefined {
+    const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const patterns = [
+        /\b(?:to|reach|get(?:\s+to)?|target|aim\s+for)\s+(?:level|lvl)\s+(\d{1,3})\b/gi,
+        /\b(?:train|level|raise|increase)(?:\s+(?:it|this skill|my skill))?\s+(?:up\s+)?to\s+(?:level\s+)?(\d{1,3})\b/gi,
+        new RegExp(`\\b${escaped}\\s+(?:from\\s+(?:level\\s+)?\\d{1,3}\\s+)?to\\s+(?:level\\s+)?(\\d{1,3})\\b`, 'gi'),
+        new RegExp(`\\b(?:reach|get(?:\\s+to)?|target)\\s+(\\d{1,3})\\s+${escaped}\\b(?!\\s+(?:xp|experience|ores?|logs?|runes?)\\b)`, 'gi'),
+    ];
+    const matches = patterns.flatMap(pattern => [...goal.matchAll(pattern)])
+        .sort((a, b) => a.index! - b.index!);
+    for (const match of matches) {
+        const level = Number(match[1]);
+        const suffix = goal.slice(match.index! + match[0].length);
+        if (level < 1 || level > 120 || /^(?:[.,]\d|\s*(?:[kmb]\b|gp\b|coins?\b|gold\b|xp\b|experience\b|minutes?\b|hours?\b|ores?\b|logs?\b|runes?\b))/i.test(suffix)) continue;
+        return level;
+    }
+    return undefined;
 }
 
 async function wiki(name: string, args: ToolArguments, signal: AbortSignal): Promise<ToolResponse> {
@@ -146,13 +167,14 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         return recommendUnlocks(input, account, session, signal);
     }
     if (input.goalType === 'quests' || !input.goalType && (category === 'questing' || /\bquests?\b/i.test(goal))) {
-        return recommendQuests(input, account, session.usage, focusSkill, signal);
+        // Full journals can require eleven pairs of 12-second decisions plus
+        // catalogue/guide reads. Do not inherit the short routing deadline.
+        return recommendQuests(input, account, session.usage, focusSkill, AbortSignal.timeout(QUEST_TIMEOUT_MS));
     }
     if (input.goalType === 'skill_training' || !input.goalType && category === 'skilling' && focusSkill) {
         if (!focusSkill) return { ...finish('needs_context'), missingContext: ['Which skill should the training plan target?'] };
-        const numericTarget = /\b(?:to|reach|get|target)\s+(?:level\s+)?(\d{1,3})\b/i.exec(goal);
-        const target = input.targetLevel ?? (numericTarget && Number(numericTarget[1]) >= 1 && Number(numericTarget[1]) <= 120
-            ? Number(numericTarget[1]) : Math.min(120, Math.ceil(((skills[focusSkill] ?? 1) + 1) / 5) * 5));
+        const target = input.targetLevel ?? trainingLevelFromGoal(goal, focusSkill) ??
+            Math.min(120, Math.ceil(((skills[focusSkill] ?? 1) + 1) / 5) * 5);
         return trainingResult(input, account, await planTraining(goal, account, focusSkill, target, session, signal), session);
     }
     const queries = [...new Set([

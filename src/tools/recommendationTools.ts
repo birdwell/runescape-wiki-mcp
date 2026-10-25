@@ -42,6 +42,7 @@ export const recommendationTools: Tool[] = [{
         'Skill training reads level/method tables and source estimates; unlock progression builds prerequisite quest and skill paths from wiki evidence. ' +
         'Optional goalType, targetSkill, targetLevel and unlock make the intended planner explicit. ' +
         'Uses up to 24 paid Jev calls for quests, three for other activities. ' +
+        'Full quest comparison has a five-minute deadline after routing; clients should allow the longer timeout. ' +
         'Requires operator opt-in and a TypeSafe API key. Supplied goal/account context is sent to TypeSafe. ' +
         'Unknown quests, gear, money and requirements remain explicit; suggestions may be conditional. ' +
         'Returns sources, alternatives, missing context and token usage. No account changes or persistence.',

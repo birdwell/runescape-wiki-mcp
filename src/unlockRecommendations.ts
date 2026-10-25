@@ -38,14 +38,19 @@ export function buildUnlockPath(target: UnlockDefinition, account: PlanningAccou
         if (status) journalByName.set(questKey(page.title), status);
     }
     const completed = new Set((account.completedQuests ?? []).map(questKey));
-    for (const quest of journalByName.values()) if (quest.status === 'COMPLETED') completed.add(questKey(quest.title));
+    const isCompleted = (title: string): boolean => {
+        const key = questKey(title), live = journalByName.get(key);
+        // Caller facts are a fallback only. Live status, including STARTED and
+        // canonical aliases, is authoritative in every prerequisite check.
+        return live ? live.status === 'COMPLETED' : completed.has(key);
+    };
     const path: UnlockPath = { target, skillRequirements: [], questPath: [], nextActions: [], unknowns: [], blockers: [],
         alreadyUnlocked: target.name === 'Invention' && (account.skills.Invention ?? 0) > 1 };
     const requiredSkills = { ...target.requiredSkills };
     const visiting = new Set<string>(), visited = new Set<string>();
     const visit = (title: string): void => {
         const key = questKey(title), page = byName.get(key), quest = journalByName.get(key);
-        if (completed.has(key) || quest?.status === 'COMPLETED' || visited.has(key)) return;
+        if (isCompleted(title) || visited.has(key)) return;
         if (visiting.has(key)) { path.unknowns.push(`Cyclic quest dependency: ${title}`); return; }
         if (!quest) { path.unknowns.push(`Completion status unknown: ${title}`); return; }
         if (!page?.available) { path.unknowns.push(`Quest metadata unavailable: ${title}`); return; }
@@ -73,7 +78,7 @@ export function buildUnlockPath(target: UnlockDefinition, account: PlanningAccou
             if (dependency.startsWith('Follows:')) return true;
             if (dependency.startsWith('Misc:')) return false;
             const name = questKey(dependency.replace(/^(Partial:|Full:)/, ''));
-            return completed.has(name) || journalByName.get(name)?.status === 'COMPLETED';
+            return isCompleted(name);
         });
         const skillsMet = !page.requirements.complex && page.requirements.skills.every(requirement =>
             account.skills[requirement.skill] !== undefined && account.skills[requirement.skill] >= requirement.level);

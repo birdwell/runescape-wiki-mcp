@@ -241,7 +241,10 @@ Other activity goals make at most three Jev requests: route the goal, shortlist 
 search results, then assess goal relevance, eligibility, budget and session fit
 in one batch. The server performs up to two wiki searches, evaluates at most six
 candidates, and reads at most three pages. Page excerpts are capped at 6,000
-characters. Requests have a 55-second deadline, individual fetch timeouts, and
+characters. Routing and non-quest requests have a 55-second deadline. Full quest
+comparisons have a separate five-minute deadline after routing, to accommodate
+the bounded batches and catalogue reads. MCP clients should allow that longer
+timeout for quest requests. All paths have individual fetch timeouts and
 an aggregate 20,000-character serialized JSON limit on caller input, checked before
 paid calls. Excerpts are shortened further when needed to keep the complete Jev
 request within 40,000 serialized characters; returned sources reflect those excerpts.

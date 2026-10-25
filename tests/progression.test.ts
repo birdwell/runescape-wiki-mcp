@@ -8,6 +8,7 @@ import { attributedWikiSource } from '../src/wikiAttribution.js';
 import { JevSession, type ChoiceQuestion } from '../src/jev.js';
 import { handleRecommendationTool } from '../src/tools/recommendationTools.js';
 import type { JournalQuest } from '../src/questData.js';
+import { trainingLevelFromGoal } from '../src/recommendations.js';
 
 function guide(title: string, html: string): Guide {
     return { title, html, fetchedAt: '2026-10-25T00:00:00Z', revisionId: 123,
@@ -46,6 +47,25 @@ describe('guide extraction and deterministic progression facts', () => {
         expect(stars.evidence).not.toContain('Mining Guild');
         expect(stars.source.url).toContain('#stars');
     });
+    it('does not attach Rune essence to Runite prose or an incompatible level band', () => {
+        const html = '<h2 id="wrong">Levels 50–99: Runite</h2><p>Wrong runite preparation.</p>' +
+            '<h2 id="wrong-band">Levels 50–60: Rune essence</h2><p>Wrong level band.</p>' +
+            '<h2 id="right">Levels 1–10: Rune essence</h2><p>Right essence preparation.</p>' +
+            '<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th></tr>' +
+            '<tr><td>1–10</td><td>Rune essence</td><td>1,000</td></tr></table>';
+        const method = parseTrainingMethods(guide('Mining training', html), 'Mining', 'members')[0];
+        expect(method.evidence).toContain('Right essence preparation');
+        expect(method.evidence).not.toContain('Wrong');
+        expect(method.source.url).toContain('#right');
+    });
+    it('leaves prose unassigned when only a loose or partial name matches', () => {
+        const html = '<h2 id="wrong">Levels 1–10: Runite</h2><p>Rune pickaxes help here.</p>' +
+            '<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th></tr>' +
+            '<tr><td>1–10</td><td>Rune essence</td><td>1,000</td></tr></table>';
+        const method = parseTrainingMethods(guide('Mining training', html), 'Mining', 'members')[0];
+        expect(method.evidence).not.toContain('pickaxes');
+        expect(method.source.url).not.toContain('#');
+    });
     it('keeps nested table cells out of the parent table grid', () => {
         const tables = guideTables(guide('Nested', '<table><tr><td>A<table><tr><td>B</td></tr></table></td><td>C</td></tr></table>'));
         expect(tables[0]).toHaveLength(1);
@@ -66,6 +86,28 @@ describe('guide extraction and deterministic progression facts', () => {
     });
 });
 
+describe('training goal level targets', () => {
+    it.each([
+        ['Train Mining to 70', 70],
+        ['Train Mining from 64 to 70', 70],
+        ['Get 50 GP first, then train Mining to 70', 70],
+        ['Currently level 64 Mining; help me train to 70', 70],
+        ['Reach level 70', 70],
+        ['Get to 70 Mining', 70],
+        ['Get 50 GP from Mining', undefined],
+        ['Reach 100 XP using Mining', undefined],
+        ['Get 100,000 XP from Mining', undefined],
+        ['Train Mining to 100k XP', undefined],
+        ['Train Mining to 100 k XP', undefined],
+        ['Train Mining to 100 XP', undefined],
+        ['Get 100 Mining XP', undefined],
+        ['Train Mining to 10 hours', undefined],
+        ['Reach level 121 Mining', undefined],
+    ])('interprets %s as %s', (goal, expected) => {
+        expect(trainingLevelFromGoal(goal, 'Mining')).toBe(expected);
+    });
+});
+
 const unlock: UnlockDefinition = { id: 'test', name: 'Test city', requiredQuests: ['Final quest'], requiredSkills: {}, members: true,
     notes: 'Check reward conditions.', source: guide('Unlock guide', '').source };
 function journal(title: string, status: JournalQuest['status'] = 'NOT_STARTED'): JournalQuest {
@@ -75,6 +117,22 @@ function quest(title: string, requirements = '') {
     return parseQuestPage(title, `{{Quest details|requirements=${requirements}|start=Speak to Doc}}{{Quest rewards|rewards=Access to a city}}`);
 }
 describe('unlock prerequisite paths', () => {
+    it.each(['NOT_STARTED', 'STARTED'] as const)('lets live %s override stale caller completion of the target quest', status => {
+        const path = buildUnlockPath(unlock, { members: true, skills: { Mining: 64 }, skillExperience: {}, completedQuests: ['Final quest'] },
+            [journal('Final quest', status)], new Map([['final quest', quest('Final quest', '{{Skillreq|Mining|70}}')]]),
+            new Map([['Final quest', []]]));
+        expect(path.questPath).toMatchObject([{ title: 'Final quest', status }]);
+        expect(path.nextActions).toContainEqual(expect.objectContaining({ type: 'train_skill', skill: 'Mining', targetLevel: 70 }));
+        expect(path.nextActions.some(action => action.type === 'claim_or_verify')).toBe(false);
+    });
+    it('uses live prerequisite status for canonical aliases in both the walk and action eligibility', () => {
+        const path = buildUnlockPath(unlock, { members: true, skills: {}, skillExperience: {}, completedQuests: ['Canonical quest'] },
+            [journal('Final quest'), journal('Journal alias', 'STARTED')],
+            new Map([['final quest', quest('Final quest')], ['journal alias', quest('Canonical quest')]]),
+            new Map([['Final quest', ['Canonical quest']], ['Canonical quest', []]]));
+        expect(path.questPath.map(row => row.title)).toEqual(['Canonical quest', 'Final quest']);
+        expect(path.nextActions.filter(action => action.type === 'quest').map(action => action.title)).toEqual(['Canonical quest']);
+    });
     it('requires a direct unlock relation rather than an incidental mention of the target', () => {
         expect(rewardDirectlyUnlocks('Access to Prifddinas, the elven city.', 'Prifddinas')).toBe(true);
         expect(rewardDirectlyUnlocks('Ability to use Ancient Curses.', 'Ancient Curses')).toBe(true);

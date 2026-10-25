@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeEach, describe, expect, it } from '@jest/globals';
+import { afterAll, afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import nock from 'nock';
 import { handleTool } from '../src/tools/index.js';
 import { fetchPlayerQuests, fetchQuestCatalogue, fetchQuestGuide, questKey } from '../src/questData.js';
@@ -45,11 +45,12 @@ function mockWiki(extra: Record<string, string> = {}) {
             return [200, { query: { pages } }];
         });
 }
-function mockJev(nextOverride?: string) {
+function mockJev(nextOverride?: string, onCall?: (count: number) => void) {
     const calls: { state: any; questions: Record<string, ChoiceQuestion> }[] = [];
     nock('https://api.typesafe.ai').persist().post('/v1/systemone').reply(async (request: Request) => {
         const body = await request.json() as typeof calls[number];
         calls.push(body);
+        onCall?.(calls.length);
         const answers = Object.fromEntries(Object.entries(body.questions).map(([id, question]) => {
             let selected = id === 'category' ? 'questing' : id === 'skill' ? 'Mining' : 'none';
             if (id === 'next' || id === 'future') {
@@ -186,6 +187,26 @@ describe('quest facts and account eligibility', () => {
 });
 
 describe('quest recommendation pipeline', () => {
+    it('continues quest comparisons after the short routing deadline expires, with a bounded quest deadline', async () => {
+        const routing = new AbortController();
+        const originalTimeout = AbortSignal.timeout.bind(AbortSignal);
+        const timeout = jest.spyOn(AbortSignal, 'timeout').mockImplementation(milliseconds =>
+            milliseconds === 55_000 ? routing.signal : originalTimeout(milliseconds));
+        try {
+            mockAccount(); mockWiki();
+            const calls = mockJev(undefined, count => {
+                if (count === 2) routing.abort(new DOMException('Simulated expired routing deadline', 'TimeoutError'));
+            });
+            const result = await handleTool('recommend_next_activity', { goal: 'Best mining quest',
+                context: { username: 'TestPlayer', skills: { Mining: 64, Thieving: 22 }, members: true } });
+            expect(routing.signal.aborted).toBe(true);
+            expect(result.isError).toBeFalsy();
+            expect(result.structuredContent).toMatchObject({ questCoverage: { complete: true } });
+            expect(result.structuredContent?.recommendation).not.toBeNull();
+            expect(calls.length).toBeGreaterThanOrEqual(3);
+            expect(timeout).toHaveBeenCalledWith(300_000);
+        } finally { timeout.mockRestore(); }
+    });
     it('does not bill a redundant final comparison when only one blocked future target remains', async () => {
         mockAccount([journal[3]]); mockWiki(); const calls = mockJev('none');
         const result = await handleTool('recommend_next_activity', { goal: 'Best mining quest',
