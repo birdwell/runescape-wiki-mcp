@@ -28,6 +28,8 @@ describe('MCP Server', () => {
                 'search_wiki',
                 'get_wiki_page_content',
                 'get_wiki_entity_facts',
+                'list_wiki_category_members',
+                'get_wiki_drop_table',
             ];
 
             expected.forEach(toolName => {

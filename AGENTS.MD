@@ -42,9 +42,11 @@ runescape-wiki-mcp/
 | `get_category_info` | `category` | Letter counts |
 | `get_ge_info` | — | Catalogue configuration RuneDay, derived UTC date/age, fetch time, category count; not price freshness |
 | `get_player_stats` | `username`, optional `gameMode` | Normal, ironman and hardcore boards; 404 is player/board-specific |
-| `search_wiki` | `query`, optional `limit` | Wiki title search. Not a price search. |
+| `search_wiki` | `query`, optional `limit` | Wiki source search with full-text/title syntax and namespace prefixes; not a price search. |
 | `get_wiki_page_content` | `page` **or** `pages` (1–10) | Single/batch references; text only for a reviewed revision and extract hash |
 | `get_wiki_entity_facts` | `page`, `kind` (monster/quest), optional `limit` | Structured scalar facts and variant references; no article prose |
+| `list_wiki_category_members` | `category`, optional `limit`/`cursor` | Direct Wiki category metadata; continuation is category-bound |
+| `get_wiki_drop_table` | `page`, optional `variant`/`limit`/`offset` | Indexed drop facts; notes excluded and unknown rates stay null |
 
 Prompts: `check_item_price`, `compare_ge_items`, `estimate_item_flip`, `player_overview`.
 
@@ -120,3 +122,5 @@ Opt-in `get_item_details.includeLiveData` uses `https://prices.runescape.wiki/ap
 `get_wiki_entity_facts` adds structured `monster` combat statistics or `quest` metadata from a canonical Wiki page. Use page titles, not URLs/section fragments. limit is 1–10 variant rows (default 5). Numeric/Boolean facts, controlled labels and dates only; no article prose or images. Entity IDs are not GE item IDs.
 
 Canonical discovery names are get_item_details, get_price_series and compare_item_prices. Legacy get_item_price/get_item_graph/compare_items calls remain accepted by the central dispatcher; keep those aliases when evolving implementation modules. Update tool-name allowlists for canonical discovery where necessary.
+
+Wiki category/drop tools return metadata and factual whitelists, not article extracts. Drop index JSON may contain editorial notes; discard them and flag omitted annotations. Never present per-row listed probabilities as an unconditional combined loot chance. Category cursors are opaque, category-bound and forwarded only as whitelisted MediaWiki continuation fields.

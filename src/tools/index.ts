@@ -4,6 +4,7 @@ import type { Tool } from '@modelcontextprotocol/server';
 import { priceTools, handlePriceTool } from './priceTools.js';
 import { itemTools, handleItemTool } from './itemTools.js';
 import { playerTools, handlePlayerTool } from './playerTools.js';
+import { wikiReferenceTools, handleWikiReferenceTool } from './wikiReferenceTools.js';
 import { entityTools, handleEntityTool } from './entityTools.js';
 import { wikiTools, handleWikiTool } from './wikiTools.js';
 import { historyTools, handleHistoryTool } from './historyTools.js';
@@ -22,6 +23,7 @@ export const allTools: Tool[] = [
     ...playerTools,
     ...wikiTools,
     ...entityTools,
+    ...wikiReferenceTools,
 ].map(discoveryTool).map(tool => ({
     ...tool,
     // Older directory scanners still read the title from annotations.
@@ -48,6 +50,7 @@ export async function handleTool(name: string, args: ToolArguments): Promise<Too
     if (playerTools.some(tool => tool.name === name)) {
         return handlePlayerTool(name, args);
     }
+    if (wikiReferenceTools.some(tool => tool.name === name)) return handleWikiReferenceTool(name, args);
     if (entityTools.some(tool => tool.name === name)) {
         return handleEntityTool(name, args);
     }
@@ -64,6 +67,7 @@ export {
     playerTools,
     wikiTools,
     entityTools,
+    wikiReferenceTools,
     historyTools,
     compareTools,
     flipTools,

@@ -119,9 +119,9 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 ## Tools
 
 - `lookup_item` — Resolve an item name to a Grand Exchange ID and the latest guide or Weirdgloop price. Start here when you only know the name.
-- `get_item_details` — Jagex guide price, trend, and examine text for one item, by `itemId` or `name`. Guide prices lag the live market.
-- `get_price_series` — About 180 days of daily and averaged prices, by `itemId` or `name`; optional inclusive UTC `from`/`to` dates.
-- `summarize_price_history` — Min, max, average, change, and volume over 7–90 days (default 30). History lags the live market.
+- `get_item_details` — Single/batch Jagex catalogue records and guide prices, with optional recorded-trade and numeric-fact enrichment.
+- `get_price_series` — Raw Jagex history (~180 days) or Weirdgloop daily observations (~90 days), with inclusive UTC date bounds.
+- `summarize_price_history` — Statistics over the last 7–90 usable daily samples (default 30); history lags market activity.
 - `compare_item_prices` — Compare up to 10 items by `names` or `itemIds`.
 - `estimate_flip` — Tax-adjusted flip profit, with optional remaining-quota and assumed-duration scenarios. Default prices lag the live market.
 - `browse_items` — Browse one Grand Exchange category by starting letter. This is not a name search.
@@ -131,6 +131,9 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 - `get_player_stats` — RS3 hiscores for a username. `gameMode` selects normal, ironman or hardcore. A 404 means the player was not found on that board; no other board is substituted.
 - `search_wiki` — Search RuneScape Wiki titles and source links when the page title is unknown.
 - `get_wiki_page_content` — Source reference following redirects; text only for a reviewed revision and matching content hash.
+- `get_wiki_entity_facts` — Structured monster combat statistics and quest metadata.
+- `list_wiki_category_members` — Direct Wiki category members with category-bound continuation.
+- `get_wiki_drop_table` — Indexed drop references, quantities, rolls and listed rarities; notes are excluded.
 
 ### Prompts
 
@@ -253,6 +256,14 @@ This tool queries fixed, bounded datasets with title values kept inside data lit
 
 ### Discovery names and legacy calls
 
-Discovery now uses `get_item_details`, `get_price_series` and `compare_item_prices` to distinguish full catalogue records, raw dated observations and side-by-side snapshots. Existing calls to `get_item_price`, `get_item_graph` and `compare_items` remain accepted as aliases with the same arguments and results. Aliases are not duplicated in the 14-tool discovery list.
+Discovery now uses `get_item_details`, `get_price_series` and `compare_item_prices` to distinguish full catalogue records, raw dated observations and side-by-side snapshots. Existing calls to `get_item_price`, `get_item_graph` and `compare_items` remain accepted as aliases with the same arguments and results. Aliases are not duplicated in the 16-tool discovery list.
 
 Clients or gateways with tool-name allowlists may need the new discovery names enabled. The connector ID and hosted endpoint remain the same. No legacy call name is removed.
+
+### Wiki categories and indexed drops
+
+`list_wiki_category_members { "category": "Category:Weapons", "limit": 20 }` returns direct member titles/IDs/namespace links. Pass its opaque `nextCursor` with the same category to continue. This does not recursively expand subcategories or fetch article bodies/images. Empty/missing categories can both return an empty set; concurrent Wiki edits can move page boundaries.
+
+`get_wiki_drop_table { "page": "Abyssal demon", "limit": 20 }` returns indexed item references, quantity bounds, rolls and listed probabilities or controlled rarity labels. Unknown facts remain null. Use `nextOffset` to continue; optional `variant` must be an exact `sourceReference` from that article. Item references are not GE IDs: resolve them with `lookup_item`.
+
+Drop facts come from the RS3 `dropsline` structured index. Editorial notes and alternative-rate annotations are discarded; `hasOmittedAnnotations` flags their presence. Listed probabilities describe individual rows, not an unconditional combined loot model. Follow `sourceUrl` for conditions, nested tables and source context. The exact revision/hash review gate for article text remains unchanged.

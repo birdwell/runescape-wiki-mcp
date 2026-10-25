@@ -28,8 +28,8 @@ async function call(name, args, expectedError = false, modern = false) {
 try {
  const listed = await rpc('tools/list');
  await writeFile('/tmp/rs-production-tools.json', JSON.stringify({serverName:'RuneScape Wiki',tools:listed.tools},null,2));
- if (listed.tools.length !== 14 || !listed.tools.some(t=>t.name==='search_wiki')) throw new Error('Expected 14 tools including search_wiki');
- console.log('Production exposes all 14 tools.');
+ if (listed.tools.length !== 16 || !listed.tools.some(t=>t.name==='search_wiki')) throw new Error('Expected 16 tools including search_wiki');
+ console.log('Production exposes all 16 tools.');
  const search = await call('search_wiki',{query:'Abyssal whip',limit:3});
  const hits = search.structuredContent?.results;
  if(!hits?.length) throw new Error('Wiki search returned no hits');
@@ -111,6 +111,19 @@ try {
   const invalid=await call('compare_item_prices',duplicateArgs,true);
   if(!invalid.content?.some(part=>part.text?.includes('unique entries'))) throw new Error('Comparison uniqueness contract failed');
  }
+ const wikiMembers=await call('list_wiki_category_members',{category:'Category:Weapons',limit:2});
+ if(wikiMembers.structuredContent?.contentStatus!=='link_only'||!wikiMembers.structuredContent.members.length||!wikiMembers.structuredContent.nextCursor) throw new Error('Wiki category metadata failed');
+ const wikiNext=await call('list_wiki_category_members',{category:'Category:Weapons',limit:2,cursor:wikiMembers.structuredContent.nextCursor});
+ if(!wikiNext.structuredContent?.members?.length||wikiNext.structuredContent.members.some(row=>wikiMembers.structuredContent.members.some(first=>first.pageId===row.pageId))) throw new Error('Wiki category continuation failed');
+ const wrongCategory=await call('list_wiki_category_members',{category:'Category:Armour',cursor:wikiMembers.structuredContent.nextCursor},true);
+ if(!wrongCategory.content.some(part=>part.text?.includes('category'))) throw new Error('Category cursor binding failed');
+ const dropTable=await call('get_wiki_drop_table',{page:'Abyssal demon',limit:3});
+ if(!dropTable.structuredContent?.rows?.length||!Number.isInteger(dropTable.structuredContent.nextOffset)||dropTable.structuredContent.rows.some(row=>typeof row.itemTitle!=='string'||(row.listedProbability!==null&&(!Number.isFinite(row.listedProbability)||row.listedProbability<0||row.listedProbability>1)))) throw new Error('Structured drop facts failed');
+ const dropNext=await call('get_wiki_drop_table',{page:'Abyssal demon',limit:3,offset:dropTable.structuredContent.nextOffset});
+ if(!dropNext.structuredContent?.rows?.length) throw new Error('Drop offset continuation failed');
+ const dropVariant=dropTable.structuredContent.rows[0].sourceReference;
+ const variantDrops=await call('get_wiki_drop_table',{page:'Abyssal demon',limit:3,variant:dropVariant});
+ if(!variantDrops.structuredContent?.rows?.length||variantDrops.structuredContent.rows.some(row=>row.sourceReference!==dropVariant)) throw new Error('Drop variant selection failed');
  const invalidTitle=await call('get_wiki_page_content',{page:'https://runescape.wiki/w/Abyssal_whip'},true);
  if(!invalidTitle.content?.some(part=>part.text?.includes('wiki title'))) throw new Error('Invalid URL title did not return actionable validation');
  const card=await fetch(endpoint+'/server-card').then(r=>r.json());
