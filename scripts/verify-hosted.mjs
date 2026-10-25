@@ -36,7 +36,8 @@ try {
   ['get_item_price',{itemId}], ['get_item_graph',{itemId}], ['summarize_price_history',{itemId,days:7}],
   ['compare_items',{itemIds:[itemId]}], ['estimate_flip',{itemId,buyPrice:1000,sellPrice:1200,quantity:2}],
   ['get_all_categories',{}], ['get_category_info',{category:24}], ['browse_items',{category:24,alpha:'a',page:1}],
-  ['get_ge_info',{}], ['get_player_stats',{username:'Zezima',gameMode:'normal'}]
+  ['get_ge_info',{}], ['get_player_stats',{username:'Zezima',gameMode:'normal'}],
+  ['get_player_stats',{username:'Gecu',gameMode:'ironman'}], ['get_player_stats',{username:'J oris',gameMode:'hardcore'}]
  ]) await call(name,args);
  const categories = checks.find(check=>check.tool==='get_all_categories');
  if (!categories?.structuredKeys.includes('categories')) throw new Error('Missing structured categories');

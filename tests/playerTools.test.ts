@@ -30,6 +30,21 @@ describe('Player Tools', () => {
             expect(response.content[0].text).toContain('Attack');
         });
 
+        it.each([
+            ['normal', '/m=hiscore/index_lite.ws'],
+            ['ironman', '/m=hiscore_ironman/index_lite.ws'],
+            ['hardcore', '/m=hiscore_hardcore_ironman/index_lite.ws'],
+        ])('reads the selected %s board without querying another mode', async (gameMode, path) => {
+            nock('https://secure.runescape.com')
+                .get(path).query({ player: 'Ranked Player' })
+                .reply(200, '12,3000,1000000\n34,99,200000000');
+            const result = await handlePlayerTool('get_player_stats', { username: 'Ranked Player', gameMode });
+            expect(result.isError).toBeFalsy();
+            expect(result.structuredContent?.Overall).toEqual({ rank: 12, level: 3000, experience: 1000000 });
+            expect(result.content[0].text).toContain(`(${gameMode})`);
+            expect(nock.isDone()).toBe(true);
+        });
+
         it('should surface ironman lite 404 clearly instead of falling back', async () => {
             nock('https://secure.runescape.com')
                 .get('/m=hiscore_ironman/index_lite.ws')
@@ -45,6 +60,8 @@ describe('Player Tools', () => {
             expect(response.content[0].text).toContain('ironman');
             expect(response.content[0].text).toContain('404');
             expect(response.content[0].text).not.toContain('Overall');
+            expect(response.content[0].text).not.toContain('unavailable');
+            expect(response.content[0].text).toContain('No other board was queried');
         });
 
         it('should surface hardcore lite 404 clearly', async () => {

@@ -8,7 +8,7 @@
 
 **Ask what it's worth, whether the flip clears tax, and what to train next.**
 
-Connect Claude, ChatGPT, Cursor, and other assistants to RuneScape 3 Grand Exchange guide prices, 7–90 day history, flip math after the 2% tax, normal-mode hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.
+Connect Claude, ChatGPT, Cursor, and other assistants to RuneScape 3 Grand Exchange guide prices, 7–90 day history, flip math after the 2% tax, public RS3 hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.
 
 An independent [Birdwell Labs](https://birdwellabs.com) project. No Jagex or Weird Gloop approval is claimed. [Support and rights concerns](mailto:support@birdwellabs.com) · [Permissions and source review](docs/permissions.md).
 
@@ -27,7 +27,7 @@ Prices are Jagex guide prices and Weirdgloop history. They lag the in-game marke
 
 The server answers questions about items you name. It does not rank the whole Grand Exchange.
 
-Price questions use `lookup_item`, `get_item_price`, `compare_items`, `summarize_price_history`, and `estimate_flip`. Stats questions use `get_player_stats` on the normal hiscores; the assistant turns those levels into a training suggestion. Wiki questions use `search_wiki`, then `get_wiki_page_content`.
+Price questions use `lookup_item`, `get_item_price`, `compare_items`, `summarize_price_history`, and `estimate_flip`. Stats questions use `get_player_stats` on the selected normal, ironman or hardcore board; the assistant turns those levels into a training suggestion. Wiki questions use `search_wiki`, then `get_wiki_page_content`.
 
 Wiki pages return source links by default. Article text is available only for reviewed revisions; the server does not supply an article summary when text is withheld.
 
@@ -128,7 +128,7 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 - `get_all_categories` — Category IDs 0–43 and their names.
 - `get_category_info` — How many items sit under each letter in one category.
 - `get_ge_info` — Grand Exchange database metadata (`lastConfigUpdateRuneday`), not prices.
-- `get_player_stats` — RS3 hiscores for a username. `gameMode: normal` works. Ironman and hardcore currently return HTTP 404 from Jagex.
+- `get_player_stats` — RS3 hiscores for a username. `gameMode` selects normal, ironman or hardcore. A 404 means the player was not found on that board; no other board is substituted.
 - `search_wiki` — Search RuneScape Wiki titles and source links when the page title is unknown.
 - `get_wiki_page_content` — Source reference following redirects; text only for a reviewed revision and matching content hash.
 
@@ -216,7 +216,7 @@ src/
 
 - **RS3 only**, not OSRS (different IDs and endpoints).
 - Guide prices and Weirdgloop history lag the live market. Pass your own buy and sell prices to `estimate_flip` when you have them.
-- Ironman/hardcore `index_lite` endpoints are documented by Jagex but currently return HTTP 404; the tool reports that instead of silently returning normal-mode data.
+- Normal, ironman and hardcore `index_lite` endpoints are supported. A player missing from the selected board returns a 404 tool error without falling back to another board.
 - Smithery hosts should rebuild the server card after tool changes so the published schema matches this README.
 
 ## License

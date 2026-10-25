@@ -23,7 +23,7 @@ Replace these inaccurate claims wherever they appear:
 | Old claim | Replacement |
 | --- | --- |
 | Real-time, 5-minute or hourly prices | Jagex guide prices and Weirdgloop daily history; prices lag the live market |
-| All game modes | Normal-mode RS3 hiscores; ironman/hardcore currently unsupported |
+| All game modes | Normal, ironman and hardcore RS3 hiscores |
 | `get_latest_prices` | `lookup_item`, then `get_item_price` |
 | Arbitrary historical intervals | 7–90 day summaries from daily samples; Jagex historical graph |
 | All-item live market scans or automated trading | Read-only lookups, comparisons and hypothetical flip estimates |

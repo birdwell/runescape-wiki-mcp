@@ -41,7 +41,7 @@ runescape-wiki-mcp/
 | `get_all_categories` | — | Category IDs 0–43 |
 | `get_category_info` | `category` | Letter counts |
 | `get_ge_info` | — | `lastConfigUpdateRuneday` |
-| `get_player_stats` | `username`, optional `gameMode` | `normal` works; ironman/hardcore currently HTTP 404 from Jagex |
+| `get_player_stats` | `username`, optional `gameMode` | Normal, ironman and hardcore boards; 404 is player/board-specific |
 | `search_wiki` | `query`, optional `limit` | Wiki title search. Not a price search. |
 | `get_wiki_page_content` | `page` | Source link by default; reviewed revision/hash required for text; follows redirects |
 
