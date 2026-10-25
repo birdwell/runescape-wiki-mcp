@@ -111,7 +111,7 @@ export function getPrompt(name: string, args: Record<string, string> = {}): GetP
                     userMessage(
                         `Check the Grand Exchange guide price for "${itemName}".\n` +
                             `1. Call \`lookup_item\` with query="${itemName}" to resolve the exact item name and Grand Exchange ID (skip this if you already have an exact match).\n` +
-                            `2. Call \`get_item_price\` with the resolved itemId or name to get the guide price, trend, and examine text.\n` +
+                            `2. Call \`get_item_details\` with the resolved itemId or name to get the guide price, trend, and examine text.\n` +
                             `3. Optionally call \`summarize_price_history\` with the same itemId/name to see the min/max/average price and % change over the last 30 days.\n` +
                             `Report the guide price, trend, and any notable recent price movement. Say that these prices lag the live market.`
                     ),
@@ -127,7 +127,7 @@ export function getPrompt(name: string, args: Record<string, string> = {}): GetP
                     userMessage(
                         `Compare the Grand Exchange guide prices for these items: ${items}.\n` +
                             `1. Split the comma-separated list into individual item names, trimming whitespace.\n` +
-                            `2. Call \`compare_items\` once with the \`names\` array containing all of them (up to 10 items per call).\n` +
+                            `2. Call \`compare_item_prices\` once with the \`names\` array containing all of them (up to 10 items per call).\n` +
                             `3. Present a clear comparison of price and volume per item, and call out any names that could not be resolved.`
                     ),
                 ],

@@ -24,7 +24,7 @@ Replace these inaccurate claims wherever they appear:
 | --- | --- |
 | Real-time, 5-minute or hourly prices | Jagex guide prices and Weirdgloop daily history; prices lag the live market |
 | All game modes | Normal, ironman and hardcore RS3 hiscores |
-| `get_latest_prices` | `lookup_item`, then `get_item_price` |
+| `get_latest_prices` | `lookup_item`, then `get_item_details` |
 | Arbitrary historical intervals | 7–90 day summaries from daily samples; Jagex historical graph |
 | All-item live market scans or automated trading | Read-only lookups, comparisons and hypothetical flip estimates |
 | `prices.runescape.wiki/api/v1/rs` | Jagex GE/hiscores, Weirdgloop daily history and RuneScape Wiki |

@@ -15,18 +15,19 @@ describe('MCP Server', () => {
         it('should expose the consolidated tool surface', () => {
             const expected = [
                 'lookup_item',
-                'get_item_graph',
-                'get_item_price',
+                'get_price_series',
+                'get_item_details',
                 'get_ge_info',
                 'get_category_info',
                 'get_all_categories',
                 'browse_items',
                 'summarize_price_history',
-                'compare_items',
+                'compare_item_prices',
                 'estimate_flip',
                 'get_player_stats',
                 'search_wiki',
                 'get_wiki_page_content',
+                'get_wiki_entity_facts',
             ];
 
             expected.forEach(toolName => {
@@ -57,7 +58,7 @@ describe('MCP Server', () => {
             const lookup = allTools.find(t => t.name === 'lookup_item');
             expect(lookup?.inputSchema.required).toContain('query');
 
-            const price = allTools.find(t => t.name === 'get_item_price');
+            const price = allTools.find(t => t.name === 'get_item_details');
             expect(price?.inputSchema.properties).toHaveProperty('itemId');
             expect(price?.inputSchema.properties).toHaveProperty('name');
 

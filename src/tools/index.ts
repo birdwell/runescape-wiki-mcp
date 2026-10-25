@@ -10,6 +10,7 @@ import { historyTools, handleHistoryTool } from './historyTools.js';
 import { compareTools, handleCompareTool } from './compareTools.js';
 import { flipTools, handleFlipTool } from './flipTools.js';
 import { ToolArguments, ToolResponse } from '../types.js';
+import { discoveryTool, implementationToolName } from '../toolNaming.js';
 import { unknownToolError } from '../errors.js';
 
 export const allTools: Tool[] = [
@@ -21,13 +22,14 @@ export const allTools: Tool[] = [
     ...playerTools,
     ...wikiTools,
     ...entityTools,
-].map(tool => ({
+].map(discoveryTool).map(tool => ({
     ...tool,
     // Older directory scanners still read the title from annotations.
     annotations: { ...tool.annotations, title: tool.title ?? tool.name },
 }));
 
 export async function handleTool(name: string, args: ToolArguments): Promise<ToolResponse> {
+    name = implementationToolName(name);
     if (itemTools.some(tool => tool.name === name)) {
         return handleItemTool(name, args);
     }

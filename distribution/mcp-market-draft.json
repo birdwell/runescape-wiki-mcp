@@ -73,7 +73,7 @@
   },
   {
     "field": "edit-faq-12-answer",
-    "value": "Yes. summarize_price_history returns a compact 7–90 day summary from Weirdgloop daily samples. get_item_graph exposes Jagex’s historical graph. Coverage depends on the upstream data available for that item; these are not intraday price feeds."
+    "value": "Yes. summarize_price_history returns a compact 7–90 day summary from Weirdgloop daily samples. get_price_series exposes Jagex’s historical graph. Coverage depends on the upstream data available for that item; these are not intraday price feeds."
   },
   {
     "field": "edit-faq-13-question",

@@ -118,6 +118,29 @@ describe('MCP specification compliance', () => {
         expect(result.content[0].text).toBe('itemId must be an integer');
     });
 
+    it.each([
+        [true, 'get_item_details', 'get_item_price'], [false, 'get_item_details', 'get_item_price'],
+        [true, 'get_price_series', 'get_item_graph'], [false, 'get_price_series', 'get_item_graph'],
+        [true, 'compare_item_prices', 'compare_items'], [false, 'compare_item_prices', 'compare_items'],
+    ] as const)('keeps canonical %s %s and legacy %s calls equivalent over the wire', async (legacy, canonical, alias) => {
+        if (alias === 'get_item_price') {
+            nock(RS3_GE_API).get('/catalogue/detail.json?item=4151').twice()
+                .reply(200, { item: { id: 4151, name: 'Abyssal whip', current: { price: '75k' } } });
+        } else if (alias === 'get_item_graph') {
+            nock(RS3_GE_API).get('/graph/4151.json').twice().reply(200, { daily: { '1792886400000': 75000 }, average: {} });
+        } else {
+            nock('https://api.weirdgloop.org').get('/exchange/history/rs/latest').query({ id: '4151' }).twice()
+                .reply(200, { '4151': { id: '4151', price: 75000, volume: 20, timestamp: '2026-10-25T00:00:00Z' } });
+        }
+        const args = alias === 'compare_items' ? { itemIds: [4151] } : { itemId: 4151 };
+        const first = await mcpFetch(handler, 'tools/call', { legacy, name: canonical, params: { name: canonical, arguments: args } });
+        const second = await mcpFetch(handler, 'tools/call', { legacy, name: alias, params: { name: alias, arguments: args } });
+        expect(first.status).toBe(200); expect(second.status).toBe(200);
+        expect(first.message.error).toBeUndefined(); expect(second.message.error).toBeUndefined();
+        expect((first.message.result as { isError?: boolean }).isError).toBeFalsy();
+        expect(second.message.result).toEqual(first.message.result);
+    });
+
     describe('2026-07-28 protocol (createMcpHandler)', () => {
         it('should answer server/discover with identity and cache hints', async () => {
             const { status, message } = await mcpFetch(handler, 'server/discover');
@@ -149,7 +172,8 @@ describe('MCP specification compliance', () => {
                 ttlMs: number;
                 cacheScope: string;
             };
-            expect(result.tools.some(t => t.name === 'get_item_price')).toBe(true);
+            expect(result.tools.some(t => t.name === 'get_item_details')).toBe(true);
+            expect(result.tools.some(t => t.name === 'get_item_price')).toBe(false);
             expect(result.ttlMs).toBe(3_600_000);
             expect(result.cacheScope).toBe('public');
         });

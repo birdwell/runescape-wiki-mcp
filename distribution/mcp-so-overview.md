@@ -23,10 +23,10 @@ Use Streamable HTTP and no authentication. No API key, game login or local insta
 | Tool | Purpose |
 | --- | --- |
 | lookup_item | Resolve an item name to an ID, price and volume |
-| get_item_price | Read a Grand Exchange guide price and trends |
-| get_item_graph | Read Jagex historical price graph data |
+| get_item_details | Read a Grand Exchange guide price and trends |
+| get_price_series | Read Jagex historical price graph data |
 | summarize_price_history | Summarize 7–90 days of daily price history |
-| compare_items | Compare up to ten items |
+| compare_item_prices | Compare up to ten items |
 | estimate_flip | Estimate hypothetical profit after the 2% seller tax |
 | get_player_stats | Read public normal-mode RS3 hiscores |
 | search_wiki | Find RuneScape Wiki titles and source links |
