@@ -50,11 +50,7 @@ export const itemTools: Tool[] = [
     {
         name: 'get_item_graph',
         title: 'Get Item Price Time Series',
-        description:
-            "Retrieve raw dated prices for charts or custom calculations. Use summarize_price_history for a ready-made trend answer and get_item_price for catalogue details and predefined trends.\n" +
-            "Choose Jagex (default) for its longer, roughly 180-day window and provider averages. Choose Weirdgloop for roughly 90 days of daily prices with reported volume. Neither is a live offer feed.\n" +
-            "An itemId avoids name lookup; ambiguous names return candidates. from/to constrain the selected provider, never extend its retention. Bounds cover inclusive UTC days: from=to includes that whole day. Unavailable dates return empty data. Invalid bounds fail before name lookup.\n" +
-            "Each call reads one history endpoint after optional name resolution. Providers never fall back to each other. Authentication is unnecessary and responses are not cached. Upstream failures are errors. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
+        description: "Retrieve raw dated prices for charts or custom calculations. Use summarize_price_history for trend statistics or get_item_price for catalogue details.\n\nChoose source=jagex (default) for roughly 180 days with provider averages; source=weirdgloop for roughly 90 days with reported daily volume. These are guide-price observations, not live offers. itemId bypasses name resolution; ambiguous names return candidates.\n\nfrom/to select inclusive UTC days without extending provider retention; from=to includes the whole day. Unavailable dates return empty data. Invalid bounds fail before lookup; provider failures error without fallback. Reads are uncached and need no credentials. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
