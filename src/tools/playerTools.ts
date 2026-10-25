@@ -23,14 +23,10 @@ export const playerTools: Tool[] = [
         name: 'get_player_stats',
         title: 'Get Player Stats',
         description:
-            "Read an RS3 player's published hiscores ranks, levels and experience, including Overall, for account " +
-            "progression questions. username is the in-game display name, with spaces allowed; gameMode chooses the " +
-            "leaderboard, not a filter on normal stats, and defaults to normal. Normal uses Jagex index_lite; " +
-            "ironman/hardcore endpoints currently return HTTP 404 and produce an error without falling back to another " +
-            "board. Unranked skills use rank Unranked and unavailable levels/XP become 0.\n\n" +
-            "No login, account changes or local result cache; upstream errors propagate. HTTP shares a default 60 " +
-            "requests/IP/minute budget; honor Retry-After on 429. Use search_wiki for training guides rather than " +
-            "player data.",
+            "Read an RS3 player's published hiscores ranks, levels and experience, including Overall. Use search_wiki for training guides rather than player data.\n" +
+            "- username is the literal in-game display name, including spaces; the server URL-encodes it. gameMode chooses a separate leaderboard, not a filter on normal stats. Omit it for normal mode.\n" +
+            "- Ironman/hardcore endpoints currently return HTTP 404; the tool returns an error and never substitutes normal data. Missing normal players also return an error. Unranked skills use rank Unranked; unavailable level/XP becomes 0.\n" +
+            "- No login, account changes or local cache. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

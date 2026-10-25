@@ -33,12 +33,11 @@ export const flipTools: Tool[] = [
         name: 'estimate_flip',
         title: 'Estimate Flip Profit',
         description:
-            'Estimate hypothetical RS3 resale profit after seller tax. ESTIMATE ONLY; never places an order. ' +
-            'Pass exactly one of itemId or name and your buyPrice/sellPrice per unit; quantity scales totals. ' +
-            'An omitted price uses the latest Weirdgloop sample, falling back to Jagex guide price; omitting both uses the same price on both sides, usually showing a tax loss. ' +
-            'Tax is 2% per item rounded down, with bonds and sales at 50 coins or less exempt; buy limits and fill times are not modelled. ' +
-            'With itemId and both prices, no upstream request is needed; otherwise public APIs require no auth and lag live offers. ' +
-            'Use get_item_price for price detail, compare_items for price comparisons, or lookup_item for uncertain names. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.',
+            "Estimate RS3 resale profit after seller tax. ESTIMATE ONLY; never places an order. Use get_item_price for price detail, compare_items for snapshots or lookup_item for uncertain names.\n" +
+            "- Choose itemId to skip name resolution, or name to resolve first. buyPrice and sellPrice are per-unit offers; quantity scales total investment, tax and profit, not the per-unit margin.\n" +
+            "- An omitted price uses Weirdgloop, falling back to Jagex guide price. Omit both and both sides use the same price, usually producing a tax loss. Supply itemId and both offers for a calculation without network access.\n" +
+            "- Tax is 2% per unit rounded down; bonds and sales at 50 coins or less are exempt. Buy limits and fill times are not modelled; samples lag live offers.\n" +
+            "- No auth or local cache. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

@@ -19,15 +19,10 @@ export const itemTools: Tool[] = [
         name: 'lookup_item',
         title: 'Lookup Item',
         description:
-            "Find tradeable RS3 items by name or partial name and return matching IDs with available Weirdgloop price " +
-            "samples. Use this for name discovery; choose a returned ID before calling get_item_price for Jagex " +
-            "detail, summarize_price_history for statistics, or get_item_graph for daily samples. Exact names are " +
-            "tried first, then wiki opensearch; query \"abyssal\" discovers candidates while \"Abyssal whip\" tries that " +
-            "exact item first; limit 10 still returns just the exact hit when one exists; use a partial query to " +
-            "discover alternatives, not a larger history window. Non-GE pages are filtered out; no matches returns a " +
-            "tool error.\n\n" +
-            "No local result cache or auth; upstream failures may prevent discovery. HTTP shares a default 60 " +
-            "requests/IP/minute budget; retry a 429 after Retry-After. Prices lag live offers.",
+            "Find tradeable RS3 items by name, returning matches with ID, name, wiki URL and available price, volume and sample timestamp.\n" +
+            "- query is a literal item name or prefix: \"Abyssal whip\" tries an exact match; \"abyssal\" discovers alternatives. limit defaults to 5, maximum 10. An exact match stops the search even with a larger limit; otherwise wiki opensearch candidates are filtered to GE items.\n" +
+            "- Choose a returned ID for get_item_price detail, summarize_price_history statistics or get_item_graph daily samples. No matches returns a tool error; optional price fields can be absent and samples lag live offers.\n" +
+            "- No auth or local cache. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
