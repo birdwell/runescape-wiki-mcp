@@ -37,10 +37,10 @@ export const historyTools: Tool[] = [
         name: 'summarize_price_history',
         title: 'Summarize Price History',
         description:
-            "Compute one RS3 item's recent Weirdgloop daily-price statistics. Use get_item_graph for raw or calendar-date-filtered samples, get_item_price for catalogue detail or lookup_item for discovery.\n" +
-            "- Select itemId to skip name lookup, or name to resolve first. days selects the last 7-90 usable daily samples, default 30; it changes the aggregate, not the upstream 90-day fetch size. days 7 returns one weekly summary, not seven rows or a forecast.\n" +
-            "- Min/max and the simple, unweighted mean use that selected sample window. Change is newest minus oldest price within it; percentage change uses that oldest price as baseline. Average volume uses only samples with reported volume.\n" +
-            "- Fewer samples shorten windowDays; no usable history returns a tool error. History lags live offers. Calls need no auth or local cache. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
+            "Summarize an RS3 item's Weirdgloop daily prices. Use get_item_graph for raw/date-filtered samples, get_item_price for catalogue detail, or lookup_item to find an item.\n" +
+            "- Choose itemId to skip name resolution, or name to resolve first. days selects trailing usable samples from a fixed 90-day fetch; it does not change fetch size. Fewer available samples reduce windowDays.\n" +
+            "- Return one aggregate: sample min/max, unweighted mean, newest-minus-oldest change and percentage relative to oldest. Volume averages exclude unreported values. There are no forecasts; no usable history is an error.\n" +
+            "- Daily history lags live offers. No auth or local cache. Shared HTTP budget: 60 requests/IP/minute; retry 429 after Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
