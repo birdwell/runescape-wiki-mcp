@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it } from '@jest/glo
 import nock from 'nock';
 import { guideTables, parseTrainingMethods, inventionRequirements, type Guide } from '../src/wikiGuides.js';
 import { standardExperience, experienceGap, planTraining } from '../src/trainingRecommendations.js';
-import { buildUnlockPath, type UnlockDefinition } from '../src/unlockRecommendations.js';
+import { buildUnlockPath, rewardDirectlyUnlocks, type UnlockDefinition } from '../src/unlockRecommendations.js';
 import { parseQuestPage } from '../src/questParsing.js';
 import { attributedWikiSource } from '../src/wikiAttribution.js';
 import { JevSession, type ChoiceQuestion } from '../src/jev.js';
@@ -75,6 +75,12 @@ function quest(title: string, requirements = '') {
     return parseQuestPage(title, `{{Quest details|requirements=${requirements}|start=Speak to Doc}}{{Quest rewards|rewards=Access to a city}}`);
 }
 describe('unlock prerequisite paths', () => {
+    it('requires a direct unlock relation rather than an incidental mention of the target', () => {
+        expect(rewardDirectlyUnlocks('Access to Prifddinas, the elven city.', 'Prifddinas')).toBe(true);
+        expect(rewardDirectlyUnlocks('Ability to use Ancient Curses.', 'Ancient Curses')).toBe(true);
+        expect(rewardDirectlyUnlocks('Ability to use any singing bowls, including the one in Prifddinas.', 'Prifddinas')).toBe(false);
+        expect(rewardDirectlyUnlocks('A lamp useful for training in Prifddinas.', 'Prifddinas')).toBe(false);
+    });
     it('walks prerequisite quests in order and exposes all missing skill targets', () => {
         const metadata = new Map([['final quest', quest('Final quest', '{{Skillreq|Mining|70}}')],
             ['first quest', quest('First quest', '{{Skillreq|Crafting|30}}')]]);
@@ -112,7 +118,14 @@ describe('unlock prerequisite paths', () => {
         const path = buildUnlockPath(target, { members: false, skills: { Invention: 1, Crafting: 67, Smithing: 71, Divination: 28 }, skillExperience: {} }, [], new Map(), new Map());
         expect(path.alreadyUnlocked).toBe(false);
         expect(path.nextActions).toEqual([]);
-        expect(path.unknowns).toContain('Membership is required for this unlock.');
+        expect(path.blockers).toContain('Membership is required for this unlock.');
+    });
+    it('never offers reward claiming while an ineligible prerequisite quest is unfinished', () => {
+        const path = buildUnlockPath(unlock, { skills: {}, skillExperience: {} },
+            [{ ...journal('Final quest'), userEligible: false }], new Map([['final quest', quest('Final quest')]]),
+            new Map([['Final quest', []]]));
+        expect(path.nextActions).toEqual([]);
+        expect(path.unknowns.join(' ')).toContain('ineligible');
     });
 });
 

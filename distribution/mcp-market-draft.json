@@ -13,7 +13,7 @@
   },
   {
     "field": "edit-long_description",
-    "value": "A read-only RuneScape 3 helper for Claude, ChatGPT and other MCP clients. Look up items by name, compare Grand Exchange guide prices, summarize 7–90 days of daily price history, estimate flip profit after the 2% seller tax, check normal-mode player hiscores, and read RuneScape Wiki pages. Connect https://runescape-wiki-mcp.fly.dev/mcp using Streamable HTTP with no authentication, API key or local installation. Prices come from Jagex guide data and Weirdgloop daily history; they lag the live market. RS3 only: Old School RuneScape, live bid/ask quotes, automated trading, and ironman/hardcore hiscores are not supported. An unofficial community project, unaffiliated with Jagex or the RuneScape Wiki."
+    "value": "An independent Birdwell Labs project: a read-only RuneScape 3 helper for chat. Look up items by name, compare Grand Exchange guide prices, summarize 7–90 days of price history, estimate flip profit after the 2% seller tax, check normal-mode player hiscores, and find RuneScape Wiki source links. Wiki text is available only for reviewed revisions; unreviewed pages return links without copied text. Connect the hosted MCP endpoint without an account, API key or local installation. Prices come from Jagex guide data and Weirdgloop daily history; they lag the live market. RS3 only: Old School RuneScape, live bid/ask quotes, automated trading, and ironman/hardcore hiscores are not supported. Unofficial and unaffiliated with Jagex or the RuneScape Wiki; no Jagex or Weird Gloop approval is claimed. It does not connect to the game client, request Jagex credentials or place trades. Tool results are provided to your AI client under that provider's own data-handling terms. Privacy: https://birdwellabs.com/privacy. Support and rights concerns: support@birdwellabs.com."
   },
   {
     "field": "Feature 1",
@@ -33,7 +33,7 @@
   },
   {
     "field": "Feature 5",
-    "value": "Read RuneScape Wiki page content"
+    "value": "Find wiki source links; article text requires a reviewed revision and matching hash"
   },
   {
     "field": "Feature 6",
@@ -49,7 +49,7 @@
   },
   {
     "field": "Use case 3",
-    "value": "Look up normal-mode hiscores or read a RuneScape Wiki page in chat"
+    "value": "Look up normal-mode hiscores or find a RuneScape Wiki source link in chat"
   },
   {
     "field": "edit-faq-10-question",
@@ -57,7 +57,7 @@
   },
   {
     "field": "edit-faq-10-answer",
-    "value": "RS3 item lookup, Grand Exchange guide prices, daily price history, flip estimates, normal-mode hiscores and wiki page content. Sources include Jagex, Weirdgloop and the RuneScape Wiki. Prices lag the live market; live bid/ask quotes and 5-minute or 1-hour feeds are not provided."
+    "value": "RS3 item lookup, Grand Exchange guide prices, daily price history, flip estimates, normal-mode hiscores and wiki source references. Unreviewed pages return links without article text. Sources include Jagex, Weirdgloop and the RuneScape Wiki. Prices lag the live market; live bid/ask quotes and 5-minute or 1-hour feeds are not provided."
   },
   {
     "field": "edit-faq-11-question",

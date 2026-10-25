@@ -33,8 +33,10 @@ async function wiki(name: string, args: ToolArguments, signal: AbortSignal): Pro
     if (!response.isError) {
         const snapshot = {
             ...response,
-            content: response.content.map(content => ({ ...content, text: content.text.slice(0, 6000) })),
-            structuredContent: { fetchedAt: new Date().toISOString() },
+            content: response.content.map(content => ({ ...content, text: typeof response.structuredContent?.text === 'string'
+                ? response.structuredContent.text.slice(0, 6000) : content.text.slice(0, 6000) })),
+            structuredContent: { fetchedAt: new Date().toISOString(), contentStatus: response.structuredContent?.contentStatus,
+                attribution: response.structuredContent?.attribution },
         };
         if (wikiCache.size >= 64) wikiCache.delete(wikiCache.keys().next().value!);
         wikiCache.set(key, { expires: Date.now() + CACHE_TTL, response: snapshot });
@@ -44,7 +46,7 @@ async function wiki(name: string, args: ToolArguments, signal: AbortSignal): Pro
 }
 
 interface Candidate { id: string; title: string; snippet: string; url: string }
-interface Page extends Candidate { evidence: string; fetchedAt: string }
+interface Page extends Candidate { evidence: string; fetchedAt: string; attribution?: Record<string, unknown> }
 
 const routeQueries: Record<string, string> = {
     skilling: 'skill training guide',
@@ -116,8 +118,9 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         recommendation: ranked[0] ?? null,
         alternatives: ranked.slice(1, 3),
         missingContext, warnings, account,
-        sources: pages.map(({ title, url, evidence, fetchedAt }) => ({
-            ...attributedWikiSource(title, url, 'Plain-text extract shortened for recommendation evidence.'),
+        sources: pages.map(({ title, url, evidence, fetchedAt, attribution }) => ({
+            ...(attribution ? { title, url, ...attribution, changes: `${attribution.changes ?? ''} Shortened for recommendation evidence.` }
+                : attributedWikiSource(title, url, 'Plain-text extract shortened for recommendation evidence.')),
             excerpt: evidence, fetchedAt,
         })),
         usage: { ...session.usage, maxRounds: 3 },
@@ -189,9 +192,13 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
     const fetches = await Promise.allSettled(selected.map(async candidate => {
         const response = await wiki('get_wiki_page_content', { page: candidate.title }, signal);
         if (response.isError) throw new Error('Wiki extract unavailable');
+        if (response.structuredContent?.contentStatus === 'link_only') {
+            throw new Error('Wiki article text withheld by source content policy.');
+        }
         // Bound both model context and client output. Never treat a truncated page as complete evidence.
         const text = response.content[0].text;
         return { ...candidate, evidence: text.slice(0, 6000),
+            attribution: response.structuredContent?.attribution as Record<string, unknown> | undefined,
             fetchedAt: response.structuredContent!.fetchedAt as string };
     }));
     const pages: Page[] = [];

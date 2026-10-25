@@ -10,6 +10,8 @@
 
 Connect Claude, ChatGPT, Cursor, and other assistants to RuneScape 3 Grand Exchange guide prices, 7–90 day history, flip math after the 2% tax, normal-mode hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.
 
+An independent [Birdwell Labs](https://birdwellabs.com) project. No Jagex or Weird Gloop approval is claimed. [Support and rights concerns](mailto:support@birdwellabs.com) · [Permissions and source review](docs/permissions.md).
+
 Prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Live high and low prices are a separate feed at [prices.runescape.wiki](https://prices.runescape.wiki/rs).
 
 [![Claude setup](https://img.shields.io/badge/Claude-Setup-D97757?style=for-the-badge)](#claude-setup)
@@ -21,15 +23,27 @@ Prices are Jagex guide prices and Weirdgloop history. They lag the in-game marke
 - Compare a Noxious scythe, a Dragon rider lance, and an Abyssal whip.
 - Estimate the profit from flipping 100 Dragon rider lances after tax.
 - Look up my stats and tell me the weakest skill to train. Normal mode.
-- What does the special attack on an Abyssal whip actually do?
+- Find the RuneScape Wiki source link for the Abyssal whip special attack.
 
 The server answers questions about items you name. It does not rank the whole Grand Exchange.
 
 Price questions use `lookup_item`, `get_item_price`, `compare_items`, `summarize_price_history`, and `estimate_flip`. Stats questions use `get_player_stats` on the normal hiscores; the assistant turns those levels into a training suggestion. Wiki questions use `search_wiki`, then `get_wiki_page_content`.
 
+Wiki pages return source links by default. Article text is available only for reviewed revisions; the server does not supply an article summary when text is withheld.
+
+## Access and data handling
+
+This server reads public APIs and performs calculations. It does not connect to the game client, control characters, place trades or ask for your Jagex password, session cookies or bank PIN. A player-name lookup sends the supplied name to Jagex's public hiscores endpoint.
+
+Your assistant receives tool results and may use them to generate an answer. Its own privacy, retention and model-training settings apply separately; this project cannot promise how an AI provider handles those results. Check linked sources before acting on generated advice.
+
+See the [privacy policy](https://birdwellabs.com/privacy) before using the hosted service. Optional diagnostics may receive request context, and enabling `DEBUG` can print tool arguments and returned data. Do not submit secrets or information you do not want processed by the service and your AI provider.
+
 ## Connect
 
 Hosted endpoint: `https://runescape-wiki-mcp.fly.dev/mcp`
+
+[Privacy policy](https://birdwellabs.com/privacy) describes the tool-request data, diagnostics and service providers involved.
 
 No server account, API key, game login or local installation is needed. Use Streamable HTTP with no authentication.
 
@@ -116,8 +130,8 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 - `get_ge_info` — Grand Exchange database metadata (`lastConfigUpdateRuneday`), not prices.
 - `get_player_quests` — Complete public RuneMetrics quest journal, including completed/started/not-started status and Jagex eligibility. No Jev key required.
 - `get_player_stats` — RS3 hiscores for a username. `gameMode: normal` works. Ironman and hardcore currently return HTTP 404 from Jagex.
-- `search_wiki` — Search RuneScape Wiki titles and snippets when the page title is unknown.
-- `get_wiki_page_content` — Plain-text wiki extract. Follows redirects.
+- `search_wiki` — Search RuneScape Wiki titles and source links when the page title is unknown.
+- `get_wiki_page_content` — Source reference following redirects; text only for a reviewed revision and matching content hash.
 - `recommend_next_activity` — Opt-in Jev prototype for goal-based suggestions with wiki evidence, account context, alternatives and unknowns. Requires server-side configuration below; adding the source does not enable it on the hosted endpoint.
 
 ### Try the Jev recommendation tool locally
@@ -203,7 +217,8 @@ Public wiki quest metadata is cached for six hours; player journals are never ca
 
 For a skill training plan, use a goal such as "Train Mining to 70", or supply
 `goalType: "skill_training"`, `targetSkill: "Mining"` and `targetLevel: 70`.
-The server reads wiki training tables, preserves separate rate assumptions such as
+The server reads wiki training tables and the fresh public quest completion set when
+a username is available, preserves separate rate assumptions such as
 buying energy versus gathering it, and compares methods available at each milestone.
 `trainingPlan` includes the next method, guide excerpts, source estimates, alternatives,
 and the remaining XP when it can be calculated. Missing XP uses an explicitly labeled
@@ -291,13 +306,21 @@ All requests send User-Agent:
 
 ### Attribution and third-party content
 
-RuneScape and its game content belong to Jagex Limited. This content is not endorsed by or affiliated with Jagex. See [Jagex's Fan Content Policy](https://legal.jagex.com/docs/policies/fan-content-policy). These credits do not establish additional permissions or a partnership.
+Created using intellectual property belonging to Jagex Limited under the terms of Jagex's Fan Content Policy. This content is not endorsed by or affiliated with Jagex.
+
+See [Jagex's Fan Content Policy](https://legal.jagex.com/docs/policies/fan-content-policy). These credits do not establish additional permissions or a partnership.
 
 Price history and item lookup use the [Weirdgloop API](https://api.weirdgloop.org/). Wiki text is by [RuneScape Wiki contributors](https://runescape.wiki/), generally licensed under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/), subject to [content and revision-specific exceptions](https://meta.weirdgloop.org/w/Licensing).
 
-Wiki extracts and search snippets include source article links, contributor-history links, the license and a description of formatting changes. Noncommercial use and share-alike conditions apply to that content and adaptations. Images and other media have their own terms. Preserve the attribution and applicable license when redistributing wiki content; downstream summaries and adaptations must also respect those terms.
+Wiki search returns titles and links without copying snippets. Unreviewed pages return links only, with `contentStatus: "link_only"`, `text: null` and `attribution.license: null`. Both text and structured results carry source and contributor-history links. The server does not infer content permissions from a site's footer or namespace.
+
+Extracts require a content-specific review in `src/wikiContentPolicy.ts`: exact title and revision, SHA-256 of the API's untrimmed plain-text extract, the actual license, copyright notices, reviewer, date and supporting review notes. No live pages are approved by default. Even approved pages fall back to links if the revision, namespace or content hash changes. Review the entire extract for imported or separately licensed material and preserve its notices. A digest verifies the reviewed bytes; it does not establish legal permission.
+
+Noncommercial use and share-alike conditions apply where required by the reviewed license. Images and other media have their own terms. Preserve the attribution and applicable license when redistributing wiki content; downstream summaries and adaptations must also respect those terms.
 
 The MIT license covers this project's original software, not third-party article text, game data, artwork or trademarks. Attribution alone does not settle the outstanding API, commercial-use or branding permission questions.
+
+Game names identify the subject of the tool; they do not indicate sponsorship. Public API access, an npm package or a directory listing does not establish provider approval. Do not advertise this project as officially approved, ban-safe or authorized for every commercial or AI use. See the [source review and outstanding permissions](docs/permissions.md) for the evidence and remaining questions.
 
 ## Develop
 

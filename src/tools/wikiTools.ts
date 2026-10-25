@@ -1,7 +1,9 @@
 // Wiki tools for RuneScape Wiki MCP Server
 
 import type { Tool } from '@modelcontextprotocol/server';
-import { RUNESCAPE_WIKI_API, WIKI_LICENSE_URL, WIKI_LICENSING_URL } from '../constants.js';
+import { createHash } from 'node:crypto';
+import { RUNESCAPE_WIKI_API, WIKI_LICENSING_URL } from '../constants.js';
+import { findWikiContentReview, type WikiContentReview } from '../wikiContentPolicy.js';
 import { JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
 import { makeApiRequest, createSuccessResponse } from '../utils.js';
@@ -12,6 +14,26 @@ import {
     requireString,
     validationError,
 } from '../validation.js';
+
+const attributionSchema = {
+    type: 'object' as const,
+    properties: {
+        author: { type: 'string' as const },
+        sourceUrl: { type: 'string' as const },
+        historyUrl: { type: 'string' as const },
+        termsUrl: { type: 'string' as const },
+        changes: { type: 'string' as const },
+        copyrightNotices: { type: 'array' as const, items: { type: 'string' as const } },
+        license: { anyOf: [
+            { type: 'null' as const },
+            { type: 'object' as const, properties: {
+                name: { type: 'string' as const }, url: { type: 'string' as const },
+            }, required: ['name', 'url'], additionalProperties: false },
+        ] },
+    },
+    required: ['author', 'sourceUrl', 'historyUrl', 'termsUrl', 'changes', 'copyrightNotices', 'license'],
+    additionalProperties: false,
+};
 
 const wikiSearchOutputSchema = {
     $schema: JSON_SCHEMA_2020_12,
@@ -24,10 +46,12 @@ const wikiSearchOutputSchema = {
                 type: 'object' as const,
                 properties: {
                     title: { type: 'string' as const, description: 'Wiki page title' },
-                    snippet: { type: 'string' as const, description: 'Plain-text search snippet' },
+                    snippet: { type: 'string' as const, description: 'Empty: search returns references without copying unreviewed text' },
                     url: { type: 'string' as const, description: 'RuneScape Wiki page URL' },
+                    contentStatus: { const: 'link_only' },
+                    attribution: attributionSchema,
                 },
-                required: ['title', 'snippet', 'url'],
+                required: ['title', 'snippet', 'url', 'contentStatus', 'attribution'],
                 additionalProperties: false,
             },
         },
@@ -36,12 +60,27 @@ const wikiSearchOutputSchema = {
     additionalProperties: false,
 };
 
+const wikiPageOutputSchema = {
+    $schema: JSON_SCHEMA_2020_12,
+    type: 'object' as const,
+    properties: {
+        title: { type: 'string' as const }, url: { type: 'string' as const },
+        revisionId: { anyOf: [{ type: 'integer' as const }, { type: 'null' as const }] },
+        contentStatus: { enum: ['link_only', 'reviewed_extract'] },
+        text: { anyOf: [{ type: 'string' as const }, { type: 'null' as const }] },
+        reason: { type: 'string' as const },
+        attribution: attributionSchema,
+    },
+    required: ['title', 'url', 'revisionId', 'contentStatus', 'text', 'reason', 'attribution'],
+    additionalProperties: false,
+};
+
 export const wikiTools: Tool[] = [
     {
         name: 'search_wiki',
         title: 'Search Wiki',
         description:
-            'Search RuneScape Wiki titles and snippets. Read-only. Use when the page title is unknown, then pass a result title to get_wiki_page_content. For Grand Exchange prices, use lookup_item instead.',
+            'Search RuneScape Wiki titles and source links without copying article snippets. Read-only. Use when the page title is unknown. For Grand Exchange prices, use lookup_item instead.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -69,7 +108,7 @@ export const wikiTools: Tool[] = [
         name: 'get_wiki_page_content',
         title: 'Get Wiki Page Content',
         description:
-            'Fetch plain-text content of a RuneScape Wiki page. Follows redirects. Pass an exact title; call search_wiki first when the title is unknown.',
+            'Get a RuneScape Wiki reference, following redirects. Returns text only for a reviewed revision with matching content; otherwise returns a source link with unverified reuse terms. Use search_wiki for unknown titles.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -83,6 +122,7 @@ export const wikiTools: Tool[] = [
             required: ['page'],
             additionalProperties: false,
         },
+        outputSchema: wikiPageOutputSchema,
         ...READ_ONLY_TOOL,
     },
 ];
@@ -92,6 +132,8 @@ interface WikiPage {
     title?: string;
     missing?: boolean | string;
     extract?: string;
+    ns?: number;
+    revisions?: Array<{ revid?: number }>;
 }
 
 interface WikiSearchHit {
@@ -103,27 +145,23 @@ function wikiPageUrl(title: string): string {
     return `https://runescape.wiki/w/${encodeURIComponent(title.replace(/ /g, '_'))}`;
 }
 
-function wikiAttribution(sources: Array<{ title: string; url: string }>, changes: string): string {
-    return [
-        'Source: RuneScape Wiki contributors.',
-        ...sources.map(source => `"${source.title}": ${source.url} (authors/history: ${source.url}?action=history)`),
-        `Wiki content license: CC BY-NC-SA 3.0 (${WIKI_LICENSE_URL}), except where the source states otherwise.`,
-        `Changes: ${changes}`,
-        `Noncommercial use and share-alike conditions apply to wiki content and adaptations. Exceptions and licensing details: ${WIKI_LICENSING_URL}`,
-        'The MCP software is separately licensed under MIT. No endorsement by Jagex or RuneScape Wiki is implied.',
-    ].join('\n');
+function wikiAttribution(title: string, review?: WikiContentReview) {
+    const url = wikiPageUrl(title);
+    return {
+        author: 'RuneScape Wiki contributors', sourceUrl: review ? `${url}?oldid=${review.revisionId}` : url,
+        historyUrl: `${url}?action=history`, termsUrl: WIKI_LICENSING_URL,
+        license: review ? { name: review.licenseName, url: review.licenseUrl } : null,
+        copyrightNotices: review ? [...review.copyrightNotices] : [],
+        changes: review ? 'Reviewed plain-text extract; formatting omitted and surrounding whitespace trimmed.'
+            : 'Reference only; no article text reproduced. Content reuse terms have not been verified.',
+    };
 }
 
-function plainSnippet(snippet: string): string {
-    return snippet
-        .replace(/<[^>]+>/g, '')
-        .replace(/&quot;/g, '"')
-        .replace(/&#0?39;|&apos;/g, "'")
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&amp;/g, '&')
-        .replace(/\s+/g, ' ')
-        .trim();
+function linkOnlyPage(title: string, revisionId: number | undefined, reason: string) {
+    return createSuccessResponse(`Wiki Page: ${title}`, {
+        title, url: wikiPageUrl(title), revisionId: revisionId ?? null,
+        contentStatus: 'link_only', text: null, reason, attribution: wikiAttribution(title),
+    });
 }
 
 export async function handleWikiTool(name: string, args: ToolArguments, signal?: AbortSignal): Promise<ToolResponse> {
@@ -147,26 +185,18 @@ export async function handleWikiTool(name: string, args: ToolArguments, signal?:
 
             const url =
                 `${RUNESCAPE_WIKI_API}?action=query&list=search&format=json` +
-                `&srlimit=${limit}&srsearch=${encodeURIComponent(query)}`;
+                `&srnamespace=0&srprop=&srlimit=${limit}&srsearch=${encodeURIComponent(query)}`;
             const data = await makeApiRequest(url, signal);
             const hits = (data?.query?.search ?? []) as WikiSearchHit[];
             const results = hits.flatMap(hit => {
                 if (typeof hit.title !== 'string' || hit.title.length === 0) {
                     return [];
                 }
-                const snippet = typeof hit.snippet === 'string' ? plainSnippet(hit.snippet) : '';
-                return [{ title: hit.title, snippet, url: wikiPageUrl(hit.title) }];
+                return [{ title: hit.title, snippet: '', url: wikiPageUrl(hit.title),
+                    contentStatus: 'link_only', attribution: wikiAttribution(hit.title) }];
             });
 
-            const response = createSuccessResponse(`Wiki search for "${query}"`, { results });
-            if (results.length > 0) {
-                response.content.push({
-                    type: 'text',
-                    text: wikiAttribution(results,
-                        'Search excerpts; HTML highlighting removed, entities decoded and whitespace normalized.'),
-                });
-            }
-            return response;
+            return createSuccessResponse(`Wiki search for "${query}"`, { results });
         }
 
         case 'get_wiki_page_content': {
@@ -181,8 +211,8 @@ export async function handleWikiTool(name: string, args: ToolArguments, signal?:
             }
 
             const url =
-                `${RUNESCAPE_WIKI_API}?action=query&prop=extracts&format=json` +
-                `&explaintext=1&redirects=1&titles=${encodeURIComponent(page)}`;
+                `${RUNESCAPE_WIKI_API}?action=query&prop=info%7Crevisions&rvprop=ids&format=json` +
+                `&redirects=1&titles=${encodeURIComponent(page)}`;
             const data = await makeApiRequest(url, signal);
             const pages = (data?.query?.pages ?? {}) as Record<string, WikiPage>;
             const firstPage = Object.values(pages)[0];
@@ -193,18 +223,30 @@ export async function handleWikiTool(name: string, args: ToolArguments, signal?:
                 );
             }
 
-            const extract =
-                typeof firstPage.extract === 'string' ? firstPage.extract.trim() : '';
-            if (!extract) {
-                return validationError(
-                    `Wiki page "${firstPage.title ?? page}" has no extractable text.`
-                );
+            const resolvedTitle = firstPage.title ?? page;
+            const candidateRevision = firstPage.revisions?.[0]?.revid;
+            const revisionId = typeof candidateRevision === 'number' && Number.isSafeInteger(candidateRevision) &&
+                candidateRevision > 0 ? candidateRevision : undefined;
+            const review = firstPage.ns === 0 ? findWikiContentReview(resolvedTitle, revisionId) : undefined;
+            if (!review) {
+                return linkOnlyPage(resolvedTitle, revisionId, 'No content-specific review for this namespace and revision.');
             }
 
-            const resolvedTitle = firstPage.title ?? page;
-            const attribution = wikiAttribution([{ title: resolvedTitle, url: wikiPageUrl(resolvedTitle) }],
-                'Plain-text extract supplied by the wiki API; formatting omitted and surrounding whitespace trimmed.');
-            return createSuccessResponse(`Wiki Page: ${resolvedTitle}`, `${extract}\n\n${attribution}`);
+            const reviewedData = await makeApiRequest(
+                `${RUNESCAPE_WIKI_API}?action=query&prop=extracts%7Crevisions&rvprop=ids&format=json` +
+                `&explaintext=1&redirects=1&titles=${encodeURIComponent(resolvedTitle)}`, signal);
+            const current = Object.values(reviewedData?.query?.pages ?? {})[0] as WikiPage | undefined;
+            const extract = typeof current?.extract === 'string' ? current.extract : '';
+            if (!current || current.missing !== undefined || current.title !== resolvedTitle || current.ns !== 0 ||
+                current.revisions?.[0]?.revid !== review.revisionId || !extract.trim() ||
+                createHash('sha256').update(extract).digest('hex') !== review.extractSha256) {
+                return linkOnlyPage(resolvedTitle, revisionId, 'Content changed or no longer matches the reviewed extract.');
+            }
+            return createSuccessResponse(`Wiki Page: ${resolvedTitle}`, {
+                title: resolvedTitle, url: wikiPageUrl(resolvedTitle), revisionId: review.revisionId,
+                contentStatus: 'reviewed_extract', text: extract.trim(), reason: '',
+                attribution: wikiAttribution(resolvedTitle, review),
+            });
         }
 
         default:

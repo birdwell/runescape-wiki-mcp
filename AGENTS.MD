@@ -44,7 +44,7 @@ runescape-wiki-mcp/
 | `get_player_stats` | `username`, optional `gameMode` | `normal` works; ironman/hardcore currently HTTP 404 from Jagex |
 | `get_player_quests` | `username` | Complete public RuneMetrics quest journal, statuses and Jagex eligibility flags; no Jev key needed |
 | `search_wiki` | `query`, optional `limit` | Wiki title search. Not a price search. |
-| `get_wiki_page_content` | `page` | Plain text; follows redirects |
+| `get_wiki_page_content` | `page` | Source link by default; reviewed revision/hash required for text; follows redirects |
 | `recommend_next_activity` | `goal`, optional `context` | Opt-in Jev planner; max 24 rounds for complete unfinished-quest comparisons, 3 for other goals. Fetches rewards/requirements and finalist guides. `TYPESAFE_API_KEY` and `RUNESCAPE_RECOMMENDATIONS_ENABLED=true` required. |
 
 Prompts: `check_item_price`, `compare_ge_items`, `estimate_item_flip`, `player_overview`.

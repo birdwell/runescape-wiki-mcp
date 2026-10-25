@@ -2,14 +2,21 @@
   "name": "RuneScape Wiki MCP",
   "subtitle": "RS3 prices, trends and wiki",
   "summary": "Ask your assistant about RuneScape 3 guide prices, item trends, flip estimates, normal-mode hiscores and wiki pages.",
-  "description": "A read-only RuneScape 3 helper for chat. Look up items by name, compare Grand Exchange guide prices, summarize 7–90 days of price history, estimate flip profit after the 2% seller tax, check normal-mode player hiscores, and read RuneScape Wiki pages. Connect the hosted MCP endpoint without an account, API key or local installation. Prices come from Jagex guide data and Weirdgloop daily history; they lag the live market. RS3 only: Old School RuneScape, live bid/ask quotes, automated trading, and ironman/hardcore hiscores are not supported. An unofficial community project, unaffiliated with Jagex or the RuneScape Wiki.",
+  "description": "An independent Birdwell Labs project: a read-only RuneScape 3 helper for chat. Look up items by name, compare Grand Exchange guide prices, summarize 7–90 days of price history, estimate flip profit after the 2% seller tax, check normal-mode player hiscores, and find RuneScape Wiki source links. Wiki text is available only for reviewed revisions; unreviewed pages return links without copied text. Connect the hosted MCP endpoint without an account, API key or local installation. Prices come from Jagex guide data and Weirdgloop daily history; they lag the live market. RS3 only: Old School RuneScape, live bid/ask quotes, automated trading, and ironman/hardcore hiscores are not supported. Unofficial and unaffiliated with Jagex or the RuneScape Wiki; no Jagex or Weird Gloop approval is claimed. It does not connect to the game client, request Jagex credentials or place trades. Tool results are provided to your AI client under that provider's own data-handling terms. Privacy: https://birdwellabs.com/privacy. Support and rights concerns: support@birdwellabs.com.",
   "website": "https://runescape-wiki-mcp.fly.dev",
   "repository": "https://github.com/birdwell/runescape-wiki-mcp",
   "support": "https://github.com/birdwell/runescape-wiki-mcp/issues",
   "mcpUrl": "https://runescape-wiki-mcp.fly.dev/mcp",
   "transport": "streamable-http",
   "authentication": "none",
-  "keywords": ["RuneScape 3", "RS3", "Grand Exchange", "prices", "wiki", "hiscores"],
+  "keywords": [
+    "RuneScape 3",
+    "RS3",
+    "Grand Exchange",
+    "prices",
+    "wiki",
+    "hiscores"
+  ],
   "starterPrompts": [
     "What is the RS3 guide price of an Abyssal whip?",
     "Compare Dragon bones and Frost dragon bones over the past 30 days.",

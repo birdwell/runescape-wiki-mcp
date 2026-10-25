@@ -1,6 +1,8 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import nock from 'nock';
+import { createHash } from 'node:crypto';
+import { wikiContentReviews } from '../src/wikiContentPolicy.js';
 import { JevSession, type ChoiceQuestion } from '../src/jev.js';
 import { createServer } from '../src/server.js';
 import { handleTool } from '../src/tools/index.js';
@@ -29,9 +31,13 @@ function fixture(options: {
         query: { search: titles.map(title => ({ title, snippet: 'A Prayer training method.' })) },
     });
     for (const title of titles.slice(0, 3)) {
+        wikiContentReviews.push({ title, revisionId: 123, extractSha256: createHash('sha256').update(extracts).digest('hex'),
+            licenseName: 'Fixture license', licenseUrl: 'https://example.org/license', copyrightNotices: ['Fixture contributors'],
+            reviewedBy: 'Test reviewer', reviewedAt: '2026-10-25', reviewNote: 'Fictional test data only; no live page approved.' });
         nock('https://runescape.wiki').get('/api.php').query(q => q.titles === title)
+            .twice()
             .reply(options.extractFailure ? 503 : 200, {
-                query: { pages: { '1': { title, extract: extracts } } },
+                query: { pages: { '1': { title, ns: 0, revisions: [{ revid: 123 }], extract: extracts } } },
             });
     }
     nock('https://api.typesafe.ai').post('/v1/systemone').times(3).reply(async (requestMessage: Request) => {
@@ -53,6 +59,7 @@ function fixture(options: {
 
 beforeEach(() => {
     nock.cleanAll();
+    wikiContentReviews.splice(0);
     nock.disableNetConnect();
     process.env.RUNESCAPE_RECOMMENDATIONS_ENABLED = 'true';
     process.env.TYPESAFE_API_KEY = 'test-key-never-live';
@@ -68,6 +75,14 @@ afterAll(() => {
 });
 
 describe('recommend_next_activity', () => {
+    it('does not send link-only wiki references to Jev as article evidence', async () => {
+        const { calls } = fixture();
+        wikiContentReviews.splice(0);
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
+        expect(response.structuredContent).toMatchObject({ status: 'no_match', recommendation: null });
+        expect(calls).toHaveLength(2);
+        expect(calls.every(call => call.state.pages === undefined)).toBe(true);
+    });
     it('executes the three-stage loop and preserves unknown account facts', async () => {
         const { calls, titles } = fixture();
         const response = await handleTool('recommend_next_activity', {
@@ -87,6 +102,8 @@ describe('recommend_next_activity', () => {
         expect(response.structuredContent?.missingContext).toContain('Relevant completed quests and unlocks');
         expect(response.structuredContent?.missingContext).not.toContain('Available spending budget in GP');
         expect(response.structuredContent?.sources).toHaveLength(2);
+        expect((response.structuredContent?.sources as any[])[0]).toMatchObject({
+            license: { name: 'Fixture license' }, copyrightNotices: ['Fixture contributors'] });
     });
 
     it('excludes candidates judged blocked instead of recommending around known restrictions', async () => {
