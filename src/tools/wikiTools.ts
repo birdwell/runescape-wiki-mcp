@@ -93,7 +93,6 @@ export const wikiTools: Tool[] = [
             properties: {
                 query: {
                     type: 'string',
-                    examples: ['incategory:"Novice quests"'],
                     minLength: 1,
                     maxLength: 200,
                     description: 'Words to search for on the RuneScape Wiki',
