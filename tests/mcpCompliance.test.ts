@@ -162,6 +162,35 @@ describe('MCP specification compliance', () => {
         }
     });
 
+    it.each([true, false])('keeps statistics view identical to the legacy summary with legacy protocol=%s', async legacy => {
+        nock('https://api.weirdgloop.org').get('/exchange/history/rs/last90d').query({ id: '4151' }).twice()
+            .reply(200, { '4151': [
+                { id: '4151', price: 100, volume: 10, timestamp: 1790812800000 },
+                { id: '4151', price: 120, volume: 12, timestamp: 1790899200000 },
+            ] });
+        const current = await mcpFetch(handler, 'tools/call', { legacy, name: 'get_price_series', params: { name: 'get_price_series', arguments: { itemId: 4151, view: 'statistics', days: 7 } } });
+        const original = await mcpFetch(handler, 'tools/call', { legacy, name: 'summarize_price_history', params: { name: 'summarize_price_history', arguments: { itemId: 4151, days: 7 } } });
+        expect(current.message.error).toBeUndefined(); expect(original.message.error).toBeUndefined();
+        expect((current.message.result as { isError?: boolean }).isError).toBeFalsy();
+        expect(original.message.result).toEqual(current.message.result);
+    });
+    it.each([true, false])('retains deprecated name-based record calls with legacy protocol=%s', async legacy => {
+        nock('https://api.weirdgloop.org').get('/exchange/history/rs/latest').query({ name: 'Abyssal whip' }).twice()
+            .reply(200, { 'Abyssal whip': { id: '4151', price: 75000 } });
+        nock(RS3_GE_API).get('/catalogue/detail.json?item=4151').twice()
+            .reply(200, { item: { id: 4151, name: 'Abyssal whip', current: { price: '75k' } } });
+        const current = await mcpFetch(handler, 'tools/call', { legacy, name: 'get_item_details', params: { name: 'get_item_details', arguments: { name: 'Abyssal whip' } } });
+        const original = await mcpFetch(handler, 'tools/call', { legacy, name: 'get_item_price', params: { name: 'get_item_price', arguments: { name: 'Abyssal whip' } } });
+        expect((current.message.result as { isError?: boolean }).isError).toBeFalsy();
+        expect(original.message.result).toEqual(current.message.result);
+    });
+    it('rejects incompatible history view selectors before upstream reads', async () => {
+        for (const args of [{ itemId: 4151, view: 'wrong' }, { itemId: 4151, days: 7 },
+            { itemId: 4151, view: 'statistics', source: 'jagex' }, { itemId: 4151, view: 'statistics', from: '2026-10-01' }]) {
+            expect((await handleTool('get_price_series', args)).isError).toBe(true);
+        }
+    });
+
     describe('2026-07-28 protocol (createMcpHandler)', () => {
         it('should answer server/discover with identity and cache hints', async () => {
             const { status, message } = await mcpFetch(handler, 'server/discover');

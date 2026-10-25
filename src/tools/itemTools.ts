@@ -4,6 +4,7 @@ import type { Tool } from '@modelcontextprotocol/server';
 import { dateProperty, filterPriceMap, parseDateRange } from '../dateRange.js';
 import { RS3_GE_API } from '../constants.js';
 import { fetchWeirdgloopSeries } from '../priceSeries.js';
+import { handleHistoryTool } from './historyTools.js';
 import { lookupItems, resolveItemId } from '../itemResolve.js';
 import { ITEM_SELECTOR, itemIdProperty, JSON_SCHEMA_2020_12, lookupOutputSchema, graphOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
@@ -23,7 +24,7 @@ export const itemTools: Tool[] = [
         description:
             "Find tradeable RS3 items by name, returning matches with ID, name, wiki URL and available price, volume and sample timestamp.\n" +
             "- query is a literal item name or prefix: \"Abyssal whip\" tries an exact match; \"abyssal\" discovers alternatives. limit defaults to 5, maximum 10. An exact match stops the search even with a larger limit; otherwise wiki opensearch candidates are filtered to GE items.\n" +
-            "- Choose a returned ID for get_item_price detail, summarize_price_history statistics or get_item_graph daily samples. No matches returns a tool error; optional price fields can be absent and samples lag live offers.\n" +
+            "- Choose a returned ID for get_item_price records, get_item_graph history views, or compare_items cross-item snapshots. No matches returns a tool error; optional price fields can be absent and samples lag live offers.\n" +
             "- No auth or local cache. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
@@ -50,7 +51,7 @@ export const itemTools: Tool[] = [
     {
         name: 'get_item_graph',
         title: 'Get Item Price Time Series',
-        description: "Read raw RS3 guide-price observations. Use summarize_price_history for calculated trends or get_item_price for item records.\n\nsource=jagex (default) offers roughly 180 days with provider averages; weirdgloop offers roughly 90 days with daily volume. Neither supplies live offers.\n\nitemId skips name resolution; ambiguity returns candidates. from/to select inclusive UTC days: equal bounds cover the whole day but cannot extend provider retention.\n\nInvalid bounds fail before lookup. Unavailable dates yield empty data; provider errors never fall back. Each call reads one history endpoint.\n\nNo credentials or cache. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
+        description: "Read RS3 daily price history for a known GE ID. Resolve names with lookup_item first. Use get_item_price for catalogue records or compare_items for current cross-item snapshots.\n\nview=observations (default) returns dated points: source=jagex gives roughly 180 days with provider averages; weirdgloop gives roughly 90 days with reported daily volume. from/to select inclusive UTC days; equal bounds cover the whole day without extending retention.\n\nview=statistics calculates min/max, unweighted mean and start-to-end change from Weirdgloop. days selects trailing usable samples from a fixed 90-day fetch, not calendar dates. source defaults to weirdgloop in this view; Jagex and from/to are rejected.\n\nUnavailable observation dates yield empty data; unusable statistics history errors. Invalid bounds fail before lookup. Providers never fall back. Public reads are uncached and need no credentials. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -114,11 +115,20 @@ export async function handleItemTool(name: string, args: ToolArguments): Promise
         }
 
         case 'get_item_graph': {
+            const view = args.view === undefined ? 'observations' : args.view;
+            if (view === 'statistics') {
+                const extra = rejectUnknownKeys(args, ['itemId', 'name', 'view', 'source', 'days']);
+                if (extra) return extra;
+                if (args.source !== undefined && args.source !== 'weirdgloop') return validationError('statistics uses Weirdgloop only');
+                return handleHistoryTool('summarize_price_history', { itemId: args.itemId, name: args.name, days: args.days });
+            }
+            if (view !== 'observations') return validationError('view must be observations or statistics');
+            if (args.days !== undefined) return validationError('days is valid only with view=statistics; use from/to for observations');
             const source = args?.source === undefined ? 'jagex' : args.source;
             if (source !== 'jagex' && source !== 'weirdgloop') return validationError('source must be jagex or weirdgloop');
             const range = parseDateRange(args?.from, args?.to);
             if (isToolResponse(range)) return range;
-            const itemId = await resolveItemId(args, ['itemId', 'name', 'from', 'to', 'source']);
+            const itemId = await resolveItemId(args, ['itemId', 'name', 'from', 'to', 'source', 'view']);
             if (isToolResponse(itemId)) {
                 return itemId;
             }

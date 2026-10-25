@@ -32,11 +32,10 @@ runescape-wiki-mcp/
 | Tool | Args | Notes |
 |------|------|-------|
 | `lookup_item` | `query`, optional `limit` | **Start here for names.** Returns id, price, volume. |
-| `get_item_details` | `itemId`, `name`, **or** `itemIds` (1–10) | GE catalogue metadata + guide prices/trends; optional batch |
-| `get_price_series` | `itemId` **or** `name`, optional `from`/`to` | About 180 days of Jagex observations; inclusive UTC date bounds |
-| `summarize_price_history` | `itemId` or `name`, optional `days` | Compact 7–90d trend summary |
-| `compare_item_prices` | `names` **or** `itemIds` (1–10) | Bulk compare |
-| `estimate_flip` | `itemId` or `name`, optional prices/qty/quota/duration | Profit after 2% tax; caller-supplied `buyLimitRemaining`/`fillTimeMinutes` scenarios |
+| `get_item_details` | `itemId` **or** `itemIds` (1–10) | GE catalogue metadata + guide prices/trends; optional batch |
+| `get_price_series` | `itemId`, optional `view`/`source`; observation `from`/`to` or statistics `days` | Raw historical observations or computed statistics, selected explicitly |
+| `compare_item_prices` | `itemIds` (1–10) | Bulk compare |
+| `estimate_flip` | `itemId`, optional prices/qty/quota/duration | Profit after 2% tax; caller-supplied `buyLimitRemaining`/`fillTimeMinutes` scenarios |
 | `browse_items` | `category`, optional `alpha`/`page` | Catalogue browse — **not** name search |
 | `get_ge_info` | optional `view` (status/categories/category_counts), conditional `category` | Default configuration status; category IDs or letter counts by explicit view; never price freshness |
 | `get_player_stats` | `username`, optional `gameMode` | Normal, ironman and hardcore boards; 404 is player/board-specific |
@@ -124,3 +123,5 @@ Canonical discovery names are get_item_details, get_price_series and compare_ite
 Wiki category/drop tools return metadata and factual whitelists, not article extracts. Drop index JSON may contain editorial notes; discard them and flag omitted annotations. Never present per-row listed probabilities as an unconditional combined loot chance. Category cursors are opaque, category-bound and forwarded only as whitelisted MediaWiki continuation fields.
 
 Discovery consolidates catalogue metadata under get_ge_info views. Legacy get_all_categories and get_category_info calls retain their original results in the central dispatcher. Preserve both aliases; do not expose them as duplicate tools.
+
+Preferred discovery resolves names once via lookup_item, then uses known GE IDs for pricing tools. Deprecated name selectors remain accepted for compatibility. Raw history/statistics share get_price_series with an explicit view; summarize_price_history remains callable as a legacy alias. Statistics uses Weirdgloop, rejects from/to and Jagex, and days counts usable samples. Observation defaults and all old call results remain unchanged.

@@ -50,7 +50,7 @@ describe('Prompts', () => {
             const text = (result.messages[0].content as { text: string }).text;
             expect(text).toContain('lookup_item');
             expect(text).toContain('get_item_details');
-            expect(text).toContain('summarize_price_history');
+            expect(text).toContain('view=statistics');
             expect(text).toContain('Abyssal whip');
             expect(text).toContain('guide price');
             expect(text).toContain('lag the live market');

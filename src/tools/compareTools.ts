@@ -37,7 +37,7 @@ export const compareTools: Tool[] = [
     {
         name: 'compare_items',
         title: 'Compare Daily Price Snapshots',
-        description: "Compare Weirdgloop daily guide-price snapshots for an RS3 item set. Use get_item_price for item records, estimate_flip for profit, or get_item_graph for history.\n\n- names selects the first match for each name. Use lookup_item if uncertain; aliases resolving to one ID remain separate rows.\n- itemIds bypasses name lookup. Supply a JSON array such as [4151,536], not comma-separated text.\n\nUnresolved items produce ordered error rows, even if all are unresolved. Volume/timestamps may be absent; items can have different snapshot dates.\n\nReads are uncached, need no credentials and do not provide live offers. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
+        description: "Compare Weirdgloop daily guide-price snapshots for a chosen set of GE IDs. Use lookup_item to resolve names first, get_item_price for catalogue records, estimate_flip for profit, or get_item_graph for historical observations/statistics.\n\nitemIds preserves the chosen candidate set; this does not rank the whole GE. Rows retain input order. Unresolved items produce error rows, even if all are unresolved. Volume/timestamps may be absent; items can have different snapshot dates.\n\nReads are uncached, need no credentials and do not provide live offers. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
