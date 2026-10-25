@@ -252,7 +252,7 @@ This tool queries fixed, bounded datasets with title values kept inside data lit
 
 ### Discovery names and legacy calls
 
-Discovery now uses `get_item_details`, `get_price_series` and `compare_item_prices` to distinguish full catalogue records, raw dated observations and side-by-side snapshots. Existing calls to `get_item_price`, `get_item_graph` and `compare_items` remain accepted as aliases with the same arguments and results. Aliases are not duplicated in the 12-tool discovery list.
+Discovery groups current records and candidate comparisons under `get_item_details`, and dated observations and statistics under `get_price_series`. Existing calls to `get_item_price`, `get_item_graph`, `compare_item_prices`, `compare_items` and `summarize_price_history` remain accepted with the same arguments and results. Aliases are not duplicated in the 12-tool discovery list.
 
 Clients or gateways with tool-name allowlists may need the new discovery names enabled. The connector ID and hosted endpoint remain the same. No legacy call name is removed.
 
@@ -268,7 +268,7 @@ Drop facts come from the RS3 `dropsline` structured index. Editorial notes and a
 
 `get_ge_info {}` preserves the original configuration-status response. Use `{ "view": "categories" }` to list GE IDs/names, or `{ "view": "category_counts", "category": 24 }` to choose nonempty starting letters before `browse_items`. Category IDs identify groups, not items; their entry counts are not available stock. These views each return their corresponding existing result shape.
 
-Legacy `get_all_categories {}` and `get_category_info { "category": 24 }` calls remain accepted with unchanged results, alongside the three price-tool aliases. The two catalogue helpers are no longer duplicated in discovery. All existing call names remain supported; the published surface has 12 tools.
+Legacy `get_all_categories {}` and `get_category_info { "category": 24 }` calls remain accepted with unchanged results, alongside the pricing compatibility calls. The two catalogue helpers are no longer duplicated in discovery. All existing call names remain supported; the published surface has 12 tools.
 
 Wiki attribute discovery uses existing classification queries, e.g. `search_wiki { "query": "incategory:\"Novice quests\"" }`. To traverse a category subtree, call `list_wiki_category_members` again on returned namespace-14 member titles; keep each category's cursor separate.
 

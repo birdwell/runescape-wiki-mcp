@@ -108,7 +108,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.
 - Rebuild Smithery server card after tool schema changes
 - Respect API rate limits
 
-Raw history: `get_price_series` defaults to Jagex daily/average maps. Set `source: "weirdgloop"` for chronological daily `samples` with Unix-millisecond timestamps, prices and available volume. Inclusive UTC `from`/`to` bounds apply to either provider. Use `summarize_price_history` for computed statistics.
+Raw history: `get_price_series` defaults to Jagex daily/average maps. Set `source: "weirdgloop"` for chronological daily `samples` with Unix-millisecond timestamps, prices and available volume. Inclusive UTC `from`/`to` bounds apply to either provider. Use `get_price_series` with `view: "statistics"` for computed statistics.
 
 Wiki search defaults to articles. Query prefixes such as `prefix:Category:Weapons` select other Wiki namespaces. Search returns references only; page text remains subject to the existing exact revision/content review policy.
 
@@ -117,7 +117,7 @@ Opt-in `get_item_details.includeLiveData` uses `https://prices.runescape.wiki/ap
 
 `get_wiki_entity_facts` adds structured `monster` combat statistics or `quest` metadata from a canonical Wiki page. Use page titles, not URLs/section fragments. limit is 1–10 variant rows (default 5). Numeric/Boolean facts, controlled labels and dates only; no article prose or images. Entity IDs are not GE item IDs.
 
-Canonical discovery names are get_item_details, get_price_series and compare_item_prices. Legacy get_item_price/get_item_graph/compare_items calls remain accepted by the central dispatcher; keep those aliases when evolving implementation modules. Update tool-name allowlists for canonical discovery where necessary.
+Canonical pricing readers are get_item_details and get_price_series. Legacy get_item_price/get_item_graph/compare_items/compare_item_prices/summarize_price_history calls remain accepted by the central dispatcher; keep those aliases when evolving implementation modules. Update tool-name allowlists for canonical discovery where necessary.
 
 Wiki category/drop tools return metadata and factual whitelists, not article extracts. Drop index JSON may contain editorial notes; discard them and flag omitted annotations. Never present per-row listed probabilities as an unconditional combined loot chance. Category cursors are opaque, category-bound and forwarded only as whitelisted MediaWiki continuation fields.
 

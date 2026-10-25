@@ -55,9 +55,10 @@ The repository already defines that tool. Claude connected to the direct Fly URL
 with no sign-in and detected 12 read-only tools, 4 prompts and 2 resources. Its
 directory scanner suggested adding `annotations.title` for each tool; this change
 adds that compatibility metadata alongside the existing top-level titles.
-Deploy the reviewed current server
-through the normal release process, then rerun preflight before review. This kit
-does not deploy the server or authorize a release.
+On October 25, the hosted server was deployed and verified with the current
+12-tool contract, including `search_wiki`, metadata views and legacy aliases.
+Run the current preflight again before a submission; the older 12-tool observation
+above describes a different contract. This kit does not deploy or submit anything.
 
 After transport checks pass, install the hosted endpoint in a fresh Claude and
 ChatGPT conversation. Run all eight review prompts in each client, record the
