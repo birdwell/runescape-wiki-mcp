@@ -37,7 +37,7 @@ export const compareTools: Tool[] = [
     {
         name: 'compare_items',
         title: 'Compare Daily Price Snapshots',
-        description: "Compare Weirdgloop daily guide-price snapshots for a chosen set of GE IDs. Use lookup_item to resolve names first, get_item_price for catalogue records, estimate_flip for profit, or get_item_graph for historical observations/statistics.\n\nitemIds preserves the chosen candidate set; this does not rank the whole GE. Rows retain input order. Unresolved items produce error rows, even if all are unresolved. Volume/timestamps may be absent; items can have different snapshot dates.\n\nReads are uncached, need no credentials and do not provide live offers. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
+        description: "Compare Weirdgloop daily guide-price snapshots for known GE IDs. Resolve names with lookup_item; use get_item_price for records, estimate_flip for profit, or get_item_graph for history.\n\nFor example, itemIds=[4151,536] compares Abyssal whip with Dragon bones. These are GE IDs, not monster IDs or quantities. The array defines the candidate set, not a whole-GE ranking. Rows retain that order, including unresolved-item error rows even if all fail. Missing volume/timestamps stay absent; snapshot dates can differ by item.\n\nEach ID triggers a public provider read; results are uncached. These are guide prices, not live offers. No credentials required. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -89,6 +89,8 @@ export const compareTools: Tool[] = [
         ...READ_ONLY_TOOL,
     },
 ];
+
+export const comparisonOutputSchema = compareTools[0].outputSchema!;
 
 function requireCompareArray<T>(
     value: unknown,

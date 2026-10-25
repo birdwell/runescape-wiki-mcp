@@ -74,7 +74,7 @@ describe('Prompts', () => {
                 items: 'Abyssal whip, Dragon bones',
             });
             const text = (result.messages[0].content as { text: string }).text;
-            expect(text).toContain('compare_item_prices');
+            expect(text).toContain('view=comparison');
             expect(text).toContain('Abyssal whip, Dragon bones');
         });
 

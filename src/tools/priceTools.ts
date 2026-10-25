@@ -1,6 +1,7 @@
 // Price / catalogue tools for RuneScape Wiki MCP Server
 
 import type { Tool } from '@modelcontextprotocol/server';
+import { handleCompareTool } from './compareTools.js';
 import { ITEM_CATEGORIES } from '../categories.js';
 import { RS3_GE_API } from '../constants.js';
 import { batchOutputSchema, MAX_BATCH_ITEMS, parseBatch, runBatch } from '../batch.js';
@@ -100,7 +101,7 @@ export const priceTools: Tool[] = [
     {
         name: 'get_item_price',
         title: 'Get Item Details and Reported Trades',
-        description: "Read Jagex catalogue records and guide prices for known GE IDs. Use lookup_item to resolve names, compare_items for cross-item snapshots, or get_item_graph for historical observations/statistics.\n\nitemId returns one item. itemIds preserves caller order and always returns results[], even for one ID. Wiki monster IDs are a different identifier system.\n\nincludeLiveData adds recorded instant-buy/instant-sell prices and buy-limit/alchemy facts without replacing guide fields. Trades are not executable offers; buy limits are not remaining quota.\n\nInvalid batches fail before fetching; unavailable IDs fail per row. All-failed batches error. At most two reads run concurrently; 429 halts queued IDs.\n\nGuide records are uncached and lag activity. Trade/fact caches last 30 seconds/10 minutes; hits retain fetchedAt. No credentials required. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
+        description: "Read current RS3 item data for known GE IDs. Resolve names with lookup_item; use get_item_graph for historical observations/statistics or estimate_flip for profit math.\n\nview=records (default) reads Jagex catalogue records and guide prices. itemId=4151 selects Abyssal whip; itemIds=[4151,536] returns ordered batch records for whip and Dragon bones. Even one array entry keeps results[] rather than item. includeLiveData adds recorded buy/sell sides and numeric Wiki facts without replacing guide fields.\n\nview=comparison requires itemIds and returns compact Weirdgloop daily price/volume snapshots for that candidate set, in input order. Missing metrics stay absent; unresolved items are error rows. Comparison does not use includeLiveData or rank the whole GE.\n\nTrades are not executable offers; buy limits are not remaining quota. Records validate before fetching; partial batches retain good rows and all-failed records error. Record batches cap concurrency at two and halt queued IDs on 429. Guide/comparison reads are uncached and lag activity; trade/fact caches last 30 seconds/10 minutes and retain fetchedAt. No credentials required. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -207,7 +208,15 @@ export const priceTools: Tool[] = [
 export async function handlePriceTool(name: string, args: ToolArguments): Promise<ToolResponse> {
     switch (name) {
         case 'get_item_price': {
-            const unexpected = rejectUnknownKeys(args, ['itemId', 'name', 'itemIds', 'includeLiveData']);
+            const view = args.view === undefined ? 'records' : args.view;
+            if (view === 'comparison') {
+                const extra = rejectUnknownKeys(args, ['view', 'itemIds', 'names', 'includeLiveData']);
+                if (extra) return extra;
+                if (args.includeLiveData !== undefined && args.includeLiveData !== false) return validationError('includeLiveData is available only for records');
+                return handleCompareTool('compare_items', { ...(args.itemIds === undefined ? {} : { itemIds: args.itemIds }), ...(args.names === undefined ? {} : { names: args.names }) });
+            }
+            if (view !== 'records') return validationError('view must be records or comparison');
+            const unexpected = rejectUnknownKeys(args, ['itemId', 'name', 'itemIds', 'includeLiveData', 'view']);
             if (unexpected) return unexpected;
             if (args?.includeLiveData !== undefined && typeof args.includeLiveData !== 'boolean') {
                 return validationError('includeLiveData must be a boolean');
@@ -222,7 +231,7 @@ export async function handlePriceTool(name: string, args: ToolArguments): Promis
                 if (isToolResponse(ids)) return ids;
                 return runBatch('Item catalogue details', ids, itemId => handlePriceTool(name, { itemId, includeLiveData }));
             }
-            const itemId = await resolveItemId(args, ['itemId', 'name', 'includeLiveData']);
+            const itemId = await resolveItemId(args, ['itemId', 'name', 'includeLiveData', 'view']);
             if (isToolResponse(itemId)) {
                 return itemId;
             }

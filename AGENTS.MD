@@ -32,9 +32,8 @@ runescape-wiki-mcp/
 | Tool | Args | Notes |
 |------|------|-------|
 | `lookup_item` | `query`, optional `limit` | **Start here for names.** Returns id, price, volume. |
-| `get_item_details` | `itemId` **or** `itemIds` (1–10) | GE catalogue metadata + guide prices/trends; optional batch |
+| `get_item_details` | optional view records/comparison; `itemId` **or** `itemIds` (1–10) | GE catalogue metadata + guide prices/trends; optional batch |
 | `get_price_series` | `itemId`, optional `view`/`source`; observation `from`/`to` or statistics `days` | Raw historical observations or computed statistics, selected explicitly |
-| `compare_item_prices` | `itemIds` (1–10) | Bulk compare |
 | `estimate_flip` | `itemId`, optional prices/qty/quota/duration | Profit after 2% tax; caller-supplied `buyLimitRemaining`/`fillTimeMinutes` scenarios |
 | `browse_items` | `category`, optional `alpha`/`page` | Catalogue browse — **not** name search |
 | `get_ge_info` | optional `view` (status/categories/category_counts), conditional `category` | Default configuration status; category IDs or letter counts by explicit view; never price freshness |
@@ -125,3 +124,5 @@ Wiki category/drop tools return metadata and factual whitelists, not article ext
 Discovery consolidates catalogue metadata under get_ge_info views. Legacy get_all_categories and get_category_info calls retain their original results in the central dispatcher. Preserve both aliases; do not expose them as duplicate tools.
 
 Preferred discovery resolves names once via lookup_item, then uses known GE IDs for pricing tools. Deprecated name selectors remain accepted for compatibility. Raw history/statistics share get_price_series with an explicit view; summarize_price_history remains callable as a legacy alias. Statistics uses Weirdgloop, rejects from/to and Jagex, and days counts usable samples. Observation defaults and all old call results remain unchanged.
+
+Current records and snapshot comparisons share get_item_details with an explicit view. Default records and all old compare_item_prices/compare_items responses remain unchanged. Comparison requires an itemIds array and rejects live enrichment; legacy name arrays remain callable outside preferred discovery.

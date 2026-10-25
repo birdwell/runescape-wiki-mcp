@@ -27,7 +27,7 @@ Default prices are Jagex guide prices and Weirdgloop history. They lag the in-ga
 
 The server answers questions about items you name. It does not rank the whole Grand Exchange.
 
-Price questions use `lookup_item`, `get_item_details`, `compare_item_prices`, `get_price_series` history views, and `estimate_flip`. Stats questions use `get_player_stats` on the selected normal, ironman or hardcore board; the assistant turns those levels into a training suggestion. Wiki questions use `search_wiki`, then `get_wiki_page_content`.
+Price questions use `lookup_item`, `get_item_details` current-data views, `get_price_series` history views, and `estimate_flip`. Stats questions use `get_player_stats` on the selected normal, ironman or hardcore board; the assistant turns those levels into a training suggestion. Wiki questions use `search_wiki`, then `get_wiki_page_content`.
 
 Wiki pages return source links by default. Article text is available only for reviewed revisions; the server does not supply an article summary when text is withheld.
 
@@ -121,7 +121,6 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 - `lookup_item` — Resolve an item name to a Grand Exchange ID and the latest guide or Weirdgloop price. Start here when you only know the name.
 - `get_item_details` — Single/batch Jagex catalogue records and guide prices, with optional recorded-trade and numeric-fact enrichment.
 - `get_price_series` — Explicit observations/statistics views over historical prices; ID-based preferred discovery.
-- `compare_item_prices` — Compare a selected set of up to 10 known GE IDs.
 - `estimate_flip` — Tax-adjusted flip profit, with optional remaining-quota and assumed-duration scenarios. Default prices lag the live market.
 - `browse_items` — Browse one Grand Exchange category by starting letter. This is not a name search.
 - `get_ge_info` — Catalogue metadata: default status, `view: "categories"` for IDs/names, or `view: "category_counts"` with `category` for letter counts.
@@ -253,7 +252,7 @@ This tool queries fixed, bounded datasets with title values kept inside data lit
 
 ### Discovery names and legacy calls
 
-Discovery now uses `get_item_details`, `get_price_series` and `compare_item_prices` to distinguish full catalogue records, raw dated observations and side-by-side snapshots. Existing calls to `get_item_price`, `get_item_graph` and `compare_items` remain accepted as aliases with the same arguments and results. Aliases are not duplicated in the 13-tool discovery list.
+Discovery now uses `get_item_details`, `get_price_series` and `compare_item_prices` to distinguish full catalogue records, raw dated observations and side-by-side snapshots. Existing calls to `get_item_price`, `get_item_graph` and `compare_items` remain accepted as aliases with the same arguments and results. Aliases are not duplicated in the 12-tool discovery list.
 
 Clients or gateways with tool-name allowlists may need the new discovery names enabled. The connector ID and hosted endpoint remain the same. No legacy call name is removed.
 
@@ -269,7 +268,7 @@ Drop facts come from the RS3 `dropsline` structured index. Editorial notes and a
 
 `get_ge_info {}` preserves the original configuration-status response. Use `{ "view": "categories" }` to list GE IDs/names, or `{ "view": "category_counts", "category": 24 }` to choose nonempty starting letters before `browse_items`. Category IDs identify groups, not items; their entry counts are not available stock. These views each return their corresponding existing result shape.
 
-Legacy `get_all_categories {}` and `get_category_info { "category": 24 }` calls remain accepted with unchanged results, alongside the three price-tool aliases. The two catalogue helpers are no longer duplicated in discovery. All existing call names remain supported; the published surface has 13 tools.
+Legacy `get_all_categories {}` and `get_category_info { "category": 24 }` calls remain accepted with unchanged results, alongside the three price-tool aliases. The two catalogue helpers are no longer duplicated in discovery. All existing call names remain supported; the published surface has 12 tools.
 
 Wiki attribute discovery uses existing classification queries, e.g. `search_wiki { "query": "incategory:\"Novice quests\"" }`. To traverse a category subtree, call `list_wiki_category_members` again on returned namespace-14 member titles; keep each category's cursor separate.
 
@@ -280,3 +279,7 @@ Fresh discovery uses `lookup_item` as the name-resolution step. Pass its chosen 
 `get_price_series { "itemId": 4151 }` preserves the original observation response. `view: "observations"` supports Jagex (default) or Weirdgloop plus UTC `from`/`to` bounds. `view: "statistics"` uses Weirdgloop and optional `days` (default 30 trailing usable samples); it rejects Jagex and calendar-date bounds. Use one mode per call. The legacy `summarize_price_history` call remains accepted and returns exactly the same result as the statistics view.
 
 Strict gateways or clients validating against fresh discovery must use the preferred ID-based schemas and history views. Compatibility names/selectors remain callable on the server for older clients; this does not bypass a gateway's own schema or allowlist policy.
+
+### Current-data views
+
+`get_item_details { "itemId": 4151 }` preserves the original catalogue-record response. Use `view: "records"` for single/batch Jagex records and optional recorded-trade enrichment. Use `{ "view": "comparison", "itemIds": [4151,536] }` for compact Weirdgloop daily snapshots; this view rejects `itemId` and live enrichment. Legacy `compare_item_prices` and `compare_items` calls remain accepted with unchanged results, including their older name-array selectors. They are no longer duplicated in the 12-tool discovery list.

@@ -28,8 +28,8 @@ async function call(name, args, expectedError = false, modern = false) {
 try {
  const listed = await rpc('tools/list');
  await writeFile('/tmp/rs-production-tools.json', JSON.stringify({serverName:'RuneScape Wiki',tools:listed.tools},null,2));
- if (listed.tools.length !== 13 || !listed.tools.some(t=>t.name==='search_wiki')) throw new Error('Expected 13 tools including search_wiki');
- console.log('Production exposes all 13 tools.');
+ if (listed.tools.length !== 12 || !listed.tools.some(t=>t.name==='search_wiki')) throw new Error('Expected 12 tools including search_wiki');
+ console.log('Production exposes all 12 tools.');
  const search = await call('search_wiki',{query:'Abyssal whip',limit:3});
  const hits = search.structuredContent?.results;
  if(!hits?.length) throw new Error('Wiki search returned no hits');
@@ -39,12 +39,12 @@ try {
  const lookup = await call('lookup_item',{query:'Abyssal whip',limit:3});
  const itemId = lookup.structuredContent?.matches?.[0]?.id;
  if(!Number.isInteger(itemId) || itemId < 0) throw new Error('Item lookup did not resolve an ID');
- let graphResult, geInfoResult, statisticsResult;
+ let graphResult, geInfoResult, statisticsResult, comparisonResult;
  const canonicalResults = new Map();
  const catalogueViews = new Map();
  for (const [name,args] of [
   ['get_item_details',{itemId}], ['get_price_series',{itemId}], ['get_price_series',{itemId,view:'statistics',days:7}],
-  ['compare_item_prices',{itemIds:[itemId]}], ['estimate_flip',{itemId,buyPrice:1000,sellPrice:1200,quantity:2}],
+  ['get_item_details',{itemIds:[itemId],view:'comparison'}], ['estimate_flip',{itemId,buyPrice:1000,sellPrice:1200,quantity:2}],
   ['get_ge_info',{view:'categories'}], ['get_ge_info',{view:'category_counts',category:24}], ['browse_items',{category:24,alpha:'a',page:1}],
   ['get_ge_info',{}], ['get_player_stats',{username:'Zezima',gameMode:'normal'}],
   ['get_player_stats',{username:'Gecu',gameMode:'ironman'}], ['get_player_stats',{username:'J oris',gameMode:'hardcore'}]
@@ -54,6 +54,7 @@ try {
   if(name === 'get_ge_info' && args.view) catalogueViews.set(args.view,result);
   if(name === 'get_price_series' && !args.view) graphResult=result;
   if(name === 'get_price_series' && args.view==='statistics') statisticsResult=result;
+  if(name === 'get_item_details' && args.view==='comparison') comparisonResult=result;
   if(name === 'get_ge_info') geInfoResult=result;
  }
  for (const [alias,canonical,args] of [
@@ -62,7 +63,7 @@ try {
   ['compare_items','compare_item_prices',{itemIds:[itemId]}]
  ]) {
   const result=await call(alias,args);
-  if(JSON.stringify(Object.keys(result.structuredContent??{}).sort())!==JSON.stringify(Object.keys(canonicalResults.get(canonical).structuredContent??{}).sort())) throw new Error(`Legacy alias ${alias} changed result shape`);
+  if(JSON.stringify(Object.keys(result.structuredContent??{}).sort())!==JSON.stringify(Object.keys((canonical==='compare_item_prices'?comparisonResult:canonicalResults.get(canonical)).structuredContent??{}).sort())) throw new Error(`Legacy alias ${alias} changed result shape`);
  }
  const modernAlias=await call('get_item_price',{itemId},false,true);
  if(modernAlias.structuredContent?.item?.id!==itemId) throw new Error('Modern protocol legacy alias failed');
@@ -74,6 +75,8 @@ try {
  if(JSON.stringify(legacyStatistics.structuredContent)!==JSON.stringify(statisticsResult.structuredContent)) throw new Error('Legacy summary differs from statistics view');
  const legacyNamed=await call('get_item_price',{name:'Abyssal whip'});
  if(legacyNamed.structuredContent?.item?.id!==itemId) throw new Error('Legacy name selector failed');
+ const legacyComparison=await call('compare_item_prices',{itemIds:[itemId]});
+ if(JSON.stringify(legacyComparison.structuredContent)!==JSON.stringify(comparisonResult.structuredContent)) throw new Error('Legacy comparison differs from current-data view');
  const secondLookup=await call('lookup_item',{query:'Dragon bones',limit:1});
  const secondId=secondLookup.structuredContent?.matches?.[0]?.id;
  if(!Number.isInteger(secondId)||secondId<0) throw new Error('Second metadata ID not resolved');

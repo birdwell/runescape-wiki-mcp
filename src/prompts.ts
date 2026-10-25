@@ -127,7 +127,7 @@ export function getPrompt(name: string, args: Record<string, string> = {}): GetP
                     userMessage(
                         `Compare the Grand Exchange guide prices for these items: ${items}.\n` +
                             `1. Split the comma-separated list into individual item names, trimming whitespace.\n` +
-                            `2. Resolve each name with \`lookup_item\`, then call \`compare_item_prices\` with the \`itemIds\` array (up to 10 items per call).\n` +
+                            `2. Resolve each name with \`lookup_item\`, then call \`get_item_details\` with view=comparison and the \`itemIds\` array (up to 10 items per call).\n` +
                             `3. Present a clear comparison of price and volume per item, and call out any names that could not be resolved.`
                     ),
                 ],

@@ -19,7 +19,6 @@ describe('MCP Server', () => {
                 'get_item_details',
                 'get_ge_info',
                 'browse_items',
-                'compare_item_prices',
                 'estimate_flip',
                 'get_player_stats',
                 'search_wiki',
@@ -33,7 +32,7 @@ describe('MCP Server', () => {
                 expect(allTools.some(t => t.name === toolName)).toBe(true);
             });
 
-            expect(allTools).toHaveLength(13);
+            expect(allTools).toHaveLength(12);
             expect(allTools.some(t => t.name === 'get_all_categories' || t.name === 'get_category_info')).toBe(false);
 
             // Removed duplicates / obsolete tools
@@ -64,7 +63,7 @@ describe('MCP Server', () => {
             expect(price?.inputSchema.properties).toHaveProperty('itemId');
             expect(price?.inputSchema.properties).not.toHaveProperty('name');
             for (const name of ['get_price_series','estimate_flip']) expect(allTools.find(t => t.name === name)?.inputSchema.properties).not.toHaveProperty('name');
-            expect(allTools.find(t => t.name === 'compare_item_prices')?.inputSchema.properties).not.toHaveProperty('names');
+            expect(allTools.some(t => t.name === 'compare_item_prices')).toBe(false);
             const history = allTools.find(t => t.name === 'get_price_series')?.inputSchema as any;
             expect(history.properties.days.default).toBeUndefined();
             expect(history.properties.source.default).toBeUndefined();

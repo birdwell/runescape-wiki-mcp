@@ -191,6 +191,22 @@ describe('MCP specification compliance', () => {
         }
     });
 
+    it.each([true, false])('keeps current comparison view identical to legacy comparison with legacy protocol=%s', async legacy => {
+        nock('https://api.weirdgloop.org').get('/exchange/history/rs/latest').query({ id: '4151' }).twice()
+            .reply(200, { '4151': { id: '4151', price: 75000, volume: 20, timestamp: '2026-10-25T00:00:00Z' } });
+        const current = await mcpFetch(handler, 'tools/call', { legacy, name: 'get_item_details', params: { name: 'get_item_details', arguments: { itemIds: [4151], view: 'comparison' } } });
+        const original = await mcpFetch(handler, 'tools/call', { legacy, name: 'compare_item_prices', params: { name: 'compare_item_prices', arguments: { itemIds: [4151] } } });
+        expect(current.message.error).toBeUndefined(); expect(original.message.error).toBeUndefined();
+        expect((current.message.result as { isError?: boolean }).isError).toBeFalsy();
+        expect(original.message.result).toEqual(current.message.result);
+    });
+    it('rejects incompatible current-data views before upstream reads', async () => {
+        for (const args of [{ itemId: 4151, view: 'wrong' }, { itemId: 4151, view: 'comparison' },
+            { itemIds: [4151], view: 'comparison', includeLiveData: true }]) {
+            expect((await handleTool('get_item_details', args)).isError).toBe(true);
+        }
+    });
+
     describe('2026-07-28 protocol (createMcpHandler)', () => {
         it('should answer server/discover with identity and cache hints', async () => {
             const { status, message } = await mcpFetch(handler, 'server/discover');
