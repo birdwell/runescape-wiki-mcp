@@ -103,6 +103,7 @@ describe('Wiki content boundaries', () => {
         { extract, ns: 6 },
         { extract: '' },
         { extract, missing: '' },
+        { extract, invalid: '' },
     ])('fails closed when the extract response changes: %j', async current => {
         review(); pageReply('info|revisions', {}); pageReply('extracts|revisions', current);
         expectLinks(await getPage());
@@ -129,4 +130,50 @@ describe('Wiki content boundaries', () => {
             ['search_wiki', { query: 'test', limit: 0 }],
         ] as const) expect((await handleWikiTool(tool, args)).isError).toBe(true);
     });
+    it.each(['https://runescape.wiki/w/Fixture', 'Fixture#Section', 'Fixture|Other'])
+    ('rejects title syntax that is not one literal page before upstream work: %s', async page => {
+        const result = await handleWikiTool('get_wiki_page_content', { page });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('without a URL, #fragment or |separator');
+    });
+
+    it('validates every batch title before fetching any page', async () => {
+        const unused = pageReply('info|revisions', {});
+        const result = await handleWikiTool('get_wiki_page_content', { pages: ['Fixture', 'Other#Section'] });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('pages[1]');
+        expect(unused.isDone()).toBe(false);
+    });
+
+    it('treats an upstream invalid-title flag as an error', async () => {
+        pageReply('info|revisions', { invalid: '' });
+        const result = await getPage();
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('invalid');
+    });
+
+    it('distinguishes API search errors from an empty result set', async () => {
+        nock('https://runescape.wiki').get('/api.php').query(q => q.list === 'search')
+            .reply(200, { error: { code: 'badsearch', info: 'Invalid search syntax' } });
+        const result = await handleWikiTool('search_wiki', { query: 'fixture' });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('Invalid search syntax');
+        expect(result.structuredContent?.results).toBeUndefined();
+    });
+
+    it('does not invent a reference when the metadata API reports an error', async () => {
+        nock('https://runescape.wiki').get('/api.php').query(q => q.prop === 'info|revisions')
+            .reply(200, { error: { code: 'unavailable', info: 'Metadata unavailable' } });
+        const result = await getPage();
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('Metadata unavailable');
+        expect(result.structuredContent).toBeUndefined();
+    });
+
+    it('classifies a Wiki API rate-limit response for batch backoff', async () => {
+        nock('https://runescape.wiki').get('/api.php').query(q => q.list === 'search')
+            .reply(200, { error: { code: 'ratelimited', info: 'Too many requests' } });
+        await expect(handleWikiTool('search_wiki', { query: 'fixture' })).rejects.toMatchObject({ status: 429 });
+    });
+
 });

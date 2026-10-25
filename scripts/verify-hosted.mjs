@@ -10,12 +10,12 @@ async function rpc(method, params = {}) {
   if (data.error) throw new Error(JSON.stringify(data.error));
   return data.result;
 }
-async function call(name, args) {
+async function call(name, args, expectedError = false) {
   const result = await rpc('tools/call', {name,arguments:args});
   const text = result.content?.filter(p=>p.type==='text').map(p=>p.text).join('\n') ?? '';
-  const summary = {tool:name,args,ok:!result.isError,textPreview:text.slice(0,250),structuredKeys:Object.keys(result.structuredContent??{})};
+  const summary = {tool:name,args,expectedError,ok:expectedError ? result.isError === true : !result.isError,textPreview:text.slice(0,250),structuredKeys:Object.keys(result.structuredContent??{})};
   checks.push(summary); console.log(JSON.stringify(summary));
-  if(result.isError) throw new Error(`${name}: ${text.slice(0,300)}`);
+  if(!summary.ok) throw new Error(`${name}: ${text.slice(0,300)}`);
   return result;
 }
 try {
@@ -69,6 +69,8 @@ try {
  if(execution.quantityWithinBuyLimit!==1||execution.quantityOverBuyLimit!==1||execution.netProfitWithinBuyLimit!==176||execution.assumedNetProfitPerHour!==704) throw new Error('Execution scenario math failed');
  const categories = checks.find(check=>check.tool==='get_all_categories');
  if (!categories?.structuredKeys.includes('categories')) throw new Error('Missing structured categories');
+ const invalidTitle=await call('get_wiki_page_content',{page:'https://runescape.wiki/w/Abyssal_whip'},true);
+ if(!invalidTitle.content?.some(part=>part.text?.includes('wiki title'))) throw new Error('Invalid URL title did not return actionable validation');
  const card=await fetch(endpoint+'/server-card').then(r=>r.json());
  console.log('Server card:',card.name,card.version);
 } catch(e) { console.error(e); process.exitCode=1; }

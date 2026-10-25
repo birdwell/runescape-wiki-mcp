@@ -7,7 +7,7 @@ import { RUNESCAPE_WIKI_API, WIKI_LICENSING_URL } from '../constants.js';
 import { findWikiContentReview, type WikiContentReview } from '../wikiContentPolicy.js';
 import { JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
-import { makeApiRequest, createSuccessResponse } from '../utils.js';
+import { ApiRequestError, makeApiRequest, createSuccessResponse } from '../utils.js';
 import {
     isToolResponse,
     optionalInteger,
@@ -83,10 +83,11 @@ export const wikiTools: Tool[] = [
         name: 'search_wiki',
         title: 'Search Wiki Articles',
         description:
-            "Search RS3 Wiki articles and return titles/source links. Use get_wiki_page_content for selected references, lookup_item for GE IDs or get_item_price for guide prices.\n" +
-            "query searches article text by default. Quotes group phrases: \"Abyssal whip\" \"special attack\" finds pages discussing both. intitle:\"Abyssal whip\" focuses on title matches. Pass raw search syntax, not a URL or pre-encoded string; the server encodes it.\n" +
-            "limit caps the first relevance-ranked set, not an offset. Refine query to change matches; there is no continuation cursor. Only article namespace 0 is searched. Results are link_only without copied snippets; no matches returns an empty array. Upstream failures error.\n" +
-            "No auth or local cache. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
+            "Search RS3 Wiki articles and return matching titles and links. Use get_wiki_page_content for page content/references, lookup_item for GE IDs, or get_item_price for guide prices.\n" +
+            "- query searches article text by default. Quotes group phrases: \"Abyssal whip\" \"special attack\" finds pages discussing both. intitle:\"Abyssal whip\" focuses title matches. Pass raw syntax; the server handles URL encoding.\n" +
+            "- limit caps the first relevance-ranked set. It is not an offset, and no continuation cursor exists. Refine query to change the matches.\n" +
+            "- Searches article namespace 0 and returns references without copied snippets. An empty results array means no matches; invalid queries and upstream failures return tool errors.\n" +
+            "- No authentication is required, and results are not cached here. The shared HTTP budget defaults to 60 requests/IP/minute. On 429, wait for Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -112,12 +113,13 @@ export const wikiTools: Tool[] = [
     },
     {
         name: 'get_wiki_page_content',
-        title: 'Get Wiki Page Content',
+        title: 'Get Wiki Content or References',
         description:
-            "Fetch known Wiki page references. Use search_wiki for discovery; get_item_price for GE prices.\n" +
-            "page accepts one unencoded title; pages accepts a title array, e.g. [\"Abyssal whip\", \"Grand Exchange\"]. Copy search titles verbatim, without URLs or fragments; redirects resolve. page returns a flat reference; pages always returns ordered rows, even for one title. Repeated or redirected titles keep separate rows.\n" +
-            "Output contentStatus is set by the server, never by an input option. reviewed_extract includes text and attribution only for an approved, unchanged page version. link_only means text is null; use its source link and reason. Clients cannot approve content.\n" +
-            "Missing pages error. Batches run at most two concurrent requests, stop queued work on upstream 429, and error when all rows fail. No auth, edits or cache. Shared HTTP limit: 60 requests/IP/minute; honor Retry-After.",
+            "Get reviewed Wiki article content or a source reference when text is unavailable. Use search_wiki to find titles; use get_item_price for GE prices.\n" +
+            "- Pass page as one unencoded title or pages as 1-10 titles, e.g. [\"Abyssal whip\", \"Grand Exchange\"]. Titles must name existing pages after redirects. URLs, #fragments and |separators are rejected.\n" +
+            "- page returns a flat object; pages returns ordered rows even for one title. Repeated or redirected titles keep separate rows.\n" +
+            "- The server sets output contentStatus. Approved, unchanged article text returns reviewed_extract with attribution; otherwise a successful link_only reference has null text, a source link and reason. Clients cannot approve text.\n" +
+            "- Bad argument formats reject the call before fetching. Valid batches isolate missing-page/API errors per row and fail only when all rows fail. They use at most two concurrent requests and stop queued work on 429. No auth or cache; shared HTTP limit 60 requests/IP/minute. Honor Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -145,6 +147,7 @@ interface WikiPage {
     pageid?: number;
     title?: string;
     missing?: boolean | string;
+    invalid?: boolean | string;
     extract?: string;
     ns?: number;
     revisions?: Array<{ revid?: number }>;
@@ -153,6 +156,21 @@ interface WikiPage {
 interface WikiSearchHit {
     title?: string;
     snippet?: string;
+}
+
+function requireWikiTitle(value: unknown, label: string): string | ToolResponse {
+    const title = requireString(value, label, { minLength: 1 });
+    if (isToolResponse(title)) return title;
+    if (/^https?:\/\//i.test(title) || /[#|]/.test(title)) {
+        return validationError(`${label} must be a wiki title, without a URL, #fragment or |separator`);
+    }
+    return title;
+}
+
+function wikiApiFailure(data: { error?: { code?: string; info?: string } } | undefined): ToolResponse | undefined {
+    if (!data?.error) return undefined;
+    if (data.error.code === 'ratelimited') throw new ApiRequestError(429, 'Wiki rate limit');
+    return validationError(`Wiki API error: ${data.error.info ?? data.error.code ?? 'Unknown error'}`);
 }
 
 function wikiPageUrl(title: string): string {
@@ -201,6 +219,8 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
                 `${RUNESCAPE_WIKI_API}?action=query&list=search&format=json` +
                 `&srnamespace=0&srprop=&srlimit=${limit}&srsearch=${encodeURIComponent(query)}`;
             const data = await makeApiRequest(url);
+            const apiFailure = wikiApiFailure(data);
+            if (apiFailure) return apiFailure;
             const hits = (data?.query?.search ?? []) as WikiSearchHit[];
             const results = hits.flatMap(hit => {
                 if (typeof hit.title !== 'string' || hit.title.length === 0) {
@@ -222,12 +242,12 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
             if (args?.pages !== undefined) {
                 if (args?.page !== undefined) return validationError('Provide page or pages, not both');
                 const pages = parseBatch(args.pages, 'pages', (value, label) =>
-                    requireString(value, label, { minLength: 1 }));
+                    requireWikiTitle(value, label));
                 if (isToolResponse(pages)) return pages;
                 return runBatch('Wiki page references', pages, page => handleWikiTool(name, { page }));
             }
 
-            const page = requireString(args?.page, 'page', { minLength: 1 });
+            const page = requireWikiTitle(args?.page, 'page');
             if (isToolResponse(page)) {
                 return page;
             }
@@ -236,12 +256,14 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
                 `${RUNESCAPE_WIKI_API}?action=query&prop=info%7Crevisions&rvprop=ids&format=json` +
                 `&redirects=1&titles=${encodeURIComponent(page)}`;
             const data = await makeApiRequest(url);
+            const apiFailure = wikiApiFailure(data);
+            if (apiFailure) return apiFailure;
             const pages = (data?.query?.pages ?? {}) as Record<string, WikiPage>;
             const firstPage = Object.values(pages)[0];
 
-            if (!firstPage || firstPage.missing !== undefined) {
+            if (!firstPage || firstPage.missing !== undefined || firstPage.invalid !== undefined) {
                 return validationError(
-                    `Wiki page "${page}" was not found. Try search_wiki or a different title.`
+                    `Wiki page "${page}" was not found or is invalid. Try search_wiki or a different title.`
                 );
             }
 
@@ -257,9 +279,11 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
             const reviewedData = await makeApiRequest(
                 `${RUNESCAPE_WIKI_API}?action=query&prop=extracts%7Crevisions&rvprop=ids&format=json` +
                 `&explaintext=1&redirects=1&titles=${encodeURIComponent(resolvedTitle)}`);
+            const extractFailure = wikiApiFailure(reviewedData);
+            if (extractFailure) return extractFailure;
             const current = Object.values(reviewedData?.query?.pages ?? {})[0] as WikiPage | undefined;
             const extract = typeof current?.extract === 'string' ? current.extract : '';
-            if (!current || current.missing !== undefined || current.title !== resolvedTitle || current.ns !== 0 ||
+            if (!current || current.missing !== undefined || current.invalid !== undefined || current.title !== resolvedTitle || current.ns !== 0 ||
                 current.revisions?.[0]?.revid !== review.revisionId || !extract.trim() ||
                 createHash('sha256').update(extract).digest('hex') !== review.extractSha256) {
                 return linkOnlyPage(resolvedTitle, revisionId, 'Content changed or no longer matches the reviewed extract.');
