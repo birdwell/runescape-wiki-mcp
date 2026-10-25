@@ -23,7 +23,10 @@ export const playerTools: Tool[] = [
         name: 'get_player_stats',
         title: 'Get Player Stats',
         description:
-            'Get RS3 hiscores for a player. Normal mode works via Jagex index_lite. Ironman/hardcore use documented Jagex endpoints that currently return HTTP 404; the tool reports that clearly instead of falling back to normal data.',
+            "Read an RS3 player's published hiscores ranks, levels and experience, including Overall. Use search_wiki for training guides rather than player data.\n" +
+            "- username is the literal in-game display name, including spaces; the server URL-encodes it. gameMode chooses a separate leaderboard, not a filter on normal stats. Omit it for normal mode.\n" +
+            "- Normal, ironman and hardcore boards are supported. A player absent from the selected board returns a 404 tool error; the tool never substitutes another board. Unranked skills use rank Unranked; unavailable level/XP becomes 0.\n" +
+            "- No login, account changes or local cache. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -78,15 +81,9 @@ export async function handlePlayerTool(name: string, args: ToolArguments): Promi
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 if (message.includes('404')) {
-                    if (gameMode !== 'normal') {
-                        return validationError(
-                            `RS3 ${gameMode} hiscores lite API returned HTTP 404 from Jagex ` +
-                                `(${path}). This endpoint is documented but currently unavailable. ` +
-                                `Try gameMode "normal", or check the HTML hiscores on runescape.com.`
-                        );
-                    }
                     return validationError(
-                        `Player "${username}" was not found on the normal hiscores (HTTP 404).`
+                        `Player "${username}" was not found on the ${gameMode} hiscores (HTTP 404). ` +
+                            'Check the display name and selected leaderboard. No other board was queried.'
                     );
                 }
                 throw error;

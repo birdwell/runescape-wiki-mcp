@@ -73,7 +73,7 @@ describe('discovery documents', () => {
         expect(handleDiscoveryRequest(new Request('https://runescape-wiki-mcp.fly.dev/mcp'))).toBeUndefined();
     });
 
-    it('marks every tool as a read-only open-world call', () => {
+    it('marks public data tools read-only and distinguishes the built-in category reference', () => {
         expect(allTools.length).toBeGreaterThan(0);
         for (const tool of allTools) {
             expect(tool.annotations).toMatchObject({
@@ -81,7 +81,7 @@ describe('discovery documents', () => {
                 readOnlyHint: true,
                 destructiveHint: false,
                 idempotentHint: true,
-                openWorldHint: true,
+                openWorldHint: tool.name !== 'get_all_categories',
             });
         }
     });

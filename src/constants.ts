@@ -17,8 +17,8 @@ export const JAGEX_CONTENT_NOTICE =
     "Created using intellectual property belonging to Jagex Limited under the terms of Jagex's Fan Content Policy. This content is not endorsed by or affiliated with Jagex.";
 export const WEIRDGLOOP_EXCHANGE_API = 'https://api.weirdgloop.org/exchange/history/rs';
 
-// Full hiscores lite paths. Ironman/hardcore are documented by Jagex but currently
-// return HTTP 404 from secure.runescape.com; handlers surface that clearly.
+// Public RS3 hiscores boards. A 404 applies to the requested player/board,
+// not proof that an entire leaderboard is unavailable.
 export const GAME_MODE_PATHS = {
     normal: '/m=hiscore/index_lite.ws',
     ironman: '/m=hiscore_ironman/index_lite.ws',
@@ -48,7 +48,7 @@ export const SERVER_CONFIG = {
 
 /** Shown to MCP clients before they pick a tool. */
 export const SERVER_INSTRUCTIONS =
-    'RS3 only. Prices are Jagex guide prices and Weirdgloop daily history, and they lag the live high/low market at prices.runescape.wiki. Do not call them real-time. Do not rank the whole Grand Exchange. Resolve names with lookup_item. get_player_stats works for normal mode; ironman and hardcore currently return HTTP 404 from Jagex. estimate_flip is an estimate after the 2% seller tax. For wiki link_only results, explain that article text was not returned; do not invent a summary from the title. Preserve source, contributor, copyright and license notices when reproducing reviewed extracts or making adaptations. Unofficial, not affiliated with Jagex or the RuneScape Wiki.';
+    'RS3 only. Default prices are Jagex guide prices and Weirdgloop daily history; they lag market activity and are not real-time. get_item_details with includeLiveData adds separate reported instant-buy/sell transactions and numeric Wiki facts. Read their timestamps for age; they are not active orders or guaranteed fill prices. Published buy limits are caps, not remaining account quota. Do not rank the whole Grand Exchange. Resolve names with lookup_item. get_player_stats supports normal, ironman and hardcore boards; a 404 means the player was not found on the selected board, and no other board is substituted. estimate_flip is an estimate after the 2% seller tax. For wiki link_only results, explain that article text was not returned; do not invent a summary from the title. Preserve source, contributor, copyright and license notices when reproducing reviewed extracts or making adaptations. Unofficial, not affiliated with Jagex or the RuneScape Wiki.';
 
 // RuneScape 3 skills in order (30 skills total)
 export const RS3_SKILLS = [
@@ -89,3 +89,6 @@ export const RESOURCE_URIS = {
     GE_INFO: 'runescape://ge/info',
     GE_CATEGORIES: 'runescape://ge/categories',
 } as const;
+
+/** RS3 transaction stream; OSRS uses a different API namespace. */
+export const RS3_LIVE_PRICE_API = 'https://prices.runescape.wiki/api/v2/rs';

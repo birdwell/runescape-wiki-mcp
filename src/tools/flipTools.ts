@@ -3,7 +3,7 @@
 import type { Tool } from '@modelcontextprotocol/server';
 import { RS3_GE_API } from '../constants.js';
 import { lookupByItemId, resolveItemId } from '../itemResolve.js';
-import { itemIdProperty, JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
+import { ITEM_SELECTOR, itemIdProperty, JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
 import { createSuccessResponse, makeApiRequest } from '../utils.js';
 import { isToolResponse, optionalInteger, validationError } from '../validation.js';
@@ -26,16 +26,13 @@ const SALES_TAX_RATE = 0.02;
 const TAX_EXEMPT_MAX_PRICE = 50;
 const BOND_ITEM_ID = 29492;
 
-const FLIP_ARG_KEYS = ['itemId', 'name', 'buyPrice', 'sellPrice', 'quantity'] as const;
+const FLIP_ARG_KEYS = ['itemId', 'name', 'buyPrice', 'sellPrice', 'quantity', 'buyLimitRemaining', 'fillTimeMinutes'] as const;
 
 export const flipTools: Tool[] = [
     {
         name: 'estimate_flip',
         title: 'Estimate Flip Profit',
-        description:
-            'Estimate Grand Exchange flip profit after the 2% RS3 sales tax for an item, by itemId or name. ' +
-            'This is an ESTIMATE ONLY: guide prices lag the live market, buy limits and fill times are not modelled, ' +
-            'and actual profit will differ. Pass buyPrice/sellPrice to model your own offers.',
+        description: "Calculate RS3 resale-profit scenarios after seller tax. ESTIMATE ONLY; never places an order. Use get_item_price for current records/comparisons or lookup_item to resolve names.\n\n- itemId=4151 means Abyssal whip, not a quantity. quantity scales total investment, tax and profit without changing per-unit margin.\n- Omitting both prices gives identical buy/sell prices, usually a tax loss. Supply itemId and both prices to calculate without network access.\n- Seller tax is 2% of each unit's sell price, rounded down. Bonds and sales at 50 coins or less are exempt.\n- With quantity=20 and buyLimitRemaining=5, quota profit covers five units while requested totals still cover twenty. fillTimeMinutes converts full-request profit into an hourly rate, including assumed quota waits. Both inputs are caller assumptions, not observed limits or fill predictions.\n- Sampled prices lag live offers. Reads are uncached and require no credentials. HTTP defaults to 60 requests/IP/minute; wait for Retry-After after 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -52,12 +49,20 @@ export const flipTools: Tool[] = [
                 buyPrice: {
                     type: 'integer',
                     minimum: 0,
-                    description: 'Buy price per item in coins. Defaults to the current market price.',
+                    description: 'Buy price per item in coins. Defaults to the latest Weirdgloop sample, then Jagex guide price.',
                 },
                 sellPrice: {
                     type: 'integer',
                     minimum: 0,
-                    description: 'Sell price per item in coins. Defaults to the current market price.',
+                    description: 'Sell price per item in coins. Defaults to the latest Weirdgloop sample, then Jagex guide price.',
+                },
+                buyLimitRemaining: {
+                    type: 'integer', minimum: 0,
+                    description: 'Caller-supplied remaining purchase quota in the current buy-limit window; 0 means none available',
+                },
+                fillTimeMinutes: {
+                    type: 'number', exclusiveMinimum: 0,
+                    description: 'Caller-assumed minutes to buy and resell the full requested quantity, including any quota waits',
                 },
                 quantity: {
                     type: 'integer',
@@ -65,6 +70,7 @@ export const flipTools: Tool[] = [
                     description: 'Number of items to flip (default 1)',
                 },
             },
+            ...ITEM_SELECTOR,
             additionalProperties: false,
         },
         outputSchema: {
@@ -86,6 +92,19 @@ export const flipTools: Tool[] = [
                 marginPct: { type: ['number', 'null'] },
                 breakEvenSellPrice: { type: 'number' },
                 assumptions: { type: 'array', items: { type: 'string' } },
+                executionScenario: {
+                    type: 'object',
+                    description: 'Present only for caller-supplied capacity or duration scenarios; not a market prediction',
+                    properties: {
+                        buyLimitRemaining: { type: 'integer' },
+                        quantityWithinBuyLimit: { type: 'integer' },
+                        quantityOverBuyLimit: { type: 'integer' },
+                        netProfitWithinBuyLimit: { type: 'number', description: 'Tax-adjusted profit on the quantity executable within the supplied quota' },
+                        assumedFillTimeMinutes: { type: 'number' },
+                        assumedNetProfitPerHour: { type: 'number', description: 'Full requested profit divided by caller-assumed round-trip hours' },
+                    },
+                    additionalProperties: false,
+                },
             },
             required: ['itemId', 'quantity', 'buyPrice', 'sellPrice', 'netProfit'],
             additionalProperties: true,
@@ -173,6 +192,13 @@ export async function handleFlipTool(name: string, args: ToolArguments): Promise
                 return quantityResult;
             }
             const quantity = quantityResult ?? 1;
+            const remaining = optionalInteger(args?.buyLimitRemaining, 'buyLimitRemaining', { minimum: 0 });
+            if (isToolResponse(remaining)) return remaining;
+            const duration = args?.fillTimeMinutes;
+            if (duration !== undefined && (typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0)) {
+                return validationError('fillTimeMinutes must be a finite number greater than 0');
+            }
+
 
             const itemId = await resolveItemId(args, FLIP_ARG_KEYS);
             if (isToolResponse(itemId)) {
@@ -201,6 +227,9 @@ export async function handleFlipTool(name: string, args: ToolArguments): Promise
             const totalTax = taxPerUnit * quantity;
             const netProfit = grossProfit - totalTax;
             const investment = buyPrice * quantity;
+            const executionScenario = modelExecution(quantity, netProfit / quantity, remaining, duration as number | undefined);
+            if (isToolResponse(executionScenario)) return executionScenario;
+
 
             const priceSource = {
                 buyPrice: buyOverride !== undefined ? 'override' : sourceLabel(market),
@@ -228,8 +257,12 @@ export async function handleFlipTool(name: string, args: ToolArguments): Promise
                 marginPct: investment > 0 ? round2((netProfit / investment) * 100) : null,
                 breakEvenSellPrice: breakEvenSellPrice(buyPrice, itemId),
                 assumptions: buildAssumptions(itemId, sellPrice, buyOverride, sellOverride),
+                ...(executionScenario ? { executionScenario } : {}),
             };
 
+            if (executionScenario) {
+                payload.assumptions.push('Execution scenario uses caller-supplied remaining quota and/or full-request duration; no actual quota or fill time was inferred. Duration must include any waits needed for quantities above the current quota.');
+            }
             const label = market.itemName ? `${market.itemName} (${itemId})` : `item ${itemId}`;
             return createSuccessResponse(`Flip estimate for ${label} x${quantity}`, payload);
         }
@@ -270,7 +303,7 @@ function buildAssumptions(
         'RS3 charges the seller a 2% Grand Exchange sales tax per item, rounded down (live since 9 January 2023).',
         'The buyer pays the full price, so no buy-side tax is applied.',
         'RS3 has no documented per-item tax cap; the 5,000,000 coin cap is an Old School RuneScape rule.',
-        'Estimate only: guide prices lag the live market, and buy limits, fill times, and price movement are not modelled.',
+        'Estimate only: guide prices lag the live market. Buy-limit and fill-time scenarios require caller inputs; price movement and actual liquidity are not predicted.',
     ];
 
     if (itemId === BOND_ITEM_ID) {
@@ -288,4 +321,31 @@ function buildAssumptions(
     }
 
     return assumptions;
+}
+
+/** Scenario arithmetic only. Quota and duration come from the caller, not market data. */
+function modelExecution(
+    quantity: number,
+    unitProfit: number,
+    remaining: number | undefined,
+    minutes: number | undefined
+): Record<string, number> | ToolResponse | undefined {
+    if (remaining === undefined && minutes === undefined) return undefined;
+    const within = remaining === undefined ? undefined : Math.min(quantity, remaining);
+    const scenario = {
+        ...(remaining !== undefined && within !== undefined ? {
+            buyLimitRemaining: remaining,
+            quantityWithinBuyLimit: within,
+            quantityOverBuyLimit: quantity - within,
+            netProfitWithinBuyLimit: within === 0 ? 0 : unitProfit * within,
+        } : {}),
+        ...(minutes !== undefined ? {
+            assumedFillTimeMinutes: minutes,
+            assumedNetProfitPerHour: round2(unitProfit * quantity * 60 / minutes),
+        } : {}),
+    };
+    if (!Object.values(scenario).every(Number.isFinite)) {
+        return validationError('Execution scenario exceeds numeric range; use smaller amounts or a longer duration');
+    }
+    return scenario;
 }

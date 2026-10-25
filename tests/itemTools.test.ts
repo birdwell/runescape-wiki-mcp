@@ -87,6 +87,34 @@ describe('Item Tools', () => {
             expect(result.content[0].text).toContain('Price Graph for Item 4151');
         });
 
+        it.each([
+            [{ from: '2026-10-02', to: '2026-10-02' }, [1, 2]],
+            [{ from: '2026-10-02' }, [1, 2, 3]],
+            [{ to: '2026-10-02' }, [0, 1, 2]],
+            [{ from: '2020-01-01', to: '2020-01-02' }, []],
+        ])('filters daily and average maps by inclusive UTC days: %j', async (bounds, selected) => {
+            const timestamps = ['2026-10-01T00:00:00Z', '2026-10-02T00:00:00Z',
+                '2026-10-02T23:59:59.999Z', '2026-10-03T00:00:00Z'].map(value => String(Date.parse(value)));
+            const daily = Object.fromEntries(timestamps.map((key, index) => [key, 100 + index]));
+            const average = Object.fromEntries(timestamps.map((key, index) => [key, 200 + index]));
+            nock(RS3_GE_API).get('/graph/4151.json').reply(200, { daily, average, source: 'fixture' });
+            const result = await handleItemTool('get_item_graph', { itemId: 4151, ...bounds });
+            expect(result.isError).toBeFalsy();
+            expect(result.structuredContent).toEqual({
+                daily: Object.fromEntries(selected.map(i => [timestamps[i], daily[timestamps[i]]])),
+                average: Object.fromEntries(selected.map(i => [timestamps[i], average[timestamps[i]]])),
+                source: 'fixture',
+            });
+        });
+
+        it.each([
+            { from: '2026-02-30' }, { from: 'not-a-date' }, { to: '2026-10-01T00:00:00Z' },
+            { from: null }, { from: '2026-10-03', to: '2026-10-02' },
+        ])('rejects invalid date bounds before requesting upstream data: %j', async bounds => {
+            const result = await handleItemTool('get_item_graph', { itemId: 4151, ...bounds });
+            expect(result.isError).toBe(true);
+        });
+
         it('should resolve name then fetch graph', async () => {
             nock('https://api.weirdgloop.org')
                 .get('/exchange/history/rs/latest')

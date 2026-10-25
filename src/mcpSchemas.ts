@@ -8,8 +8,7 @@ export const EMPTY_OBJECT_SCHEMA = {
     additionalProperties: false,
 };
 
-// Every tool reads public game data. openWorldHint is true because each call
-// reaches Jagex, Weirdgloop, or the RuneScape Wiki.
+// Default for public API calls. Built-in reference tools override openWorldHint.
 export const READ_ONLY_TOOL = {
     annotations: {
         readOnlyHint: true,
@@ -61,6 +60,85 @@ export const lookupOutputSchema = {
     additionalProperties: false,
 };
 
+/** Exactly one selector, matching resolveItemId's runtime validation. */
+export const ITEM_SELECTOR = {
+    oneOf: [{ required: ['itemId'] }, { required: ['name'] }],
+};
+
+export const itemDetailOutputSchema = {
+    $schema: JSON_SCHEMA_2020_12,
+    type: 'object' as const,
+    properties: {
+        item: {
+            type: 'object' as const,
+            description: 'Jagex catalogue item detail; prices are guide values, not executable offers',
+            properties: {
+                id: itemIdProperty,
+                name: { type: 'string' as const },
+                wikiUrl: { type: 'string' as const, format: 'uri', description: 'Wiki item-ID lookup link; redirects to the corresponding article without a title search' },
+                liveTrades: { type: 'object' as const, description: 'Opt-in RS3 recorded transactions; no order book or guaranteed fill price',
+                    properties: {
+                        high: { type: ['number', 'null'], minimum: 0, description: 'Last reported instant-buy price in coins; may exceed 32-bit integers; null means none reported' },
+                        highTime: { type: ['integer', 'null'], minimum: 0, description: 'Instant-buy transaction Unix timestamp in seconds' },
+                        low: { type: ['number', 'null'], minimum: 0, description: 'Last reported instant-sell price in coins; null means none reported' },
+                        lowTime: { type: ['integer', 'null'], minimum: 0, description: 'Instant-sell transaction Unix timestamp in seconds' },
+                        sourceUrl: { type: 'string' as const, format: 'uri' },
+                        fetchedAt: { type: 'string' as const, format: 'date-time', description: 'Snapshot retrieval time; retained on cache hits' },
+                    }, required: ['high', 'highTime', 'low', 'lowTime', 'sourceUrl', 'fetchedAt'], additionalProperties: false },
+                wikiFacts: { type: ['object', 'null'], description: 'Opt-in numeric mapping fields; null when no usable mapping exists',
+                    properties: {
+                        buyLimit: { type: 'integer' as const, minimum: 0, description: 'Published GE buy-limit cap, not remaining account quota' },
+                        highAlchemy: { type: 'integer' as const, minimum: 0, description: 'High alchemy value in coins' },
+                        lowAlchemy: { type: 'integer' as const, minimum: 0, description: 'Low alchemy value in coins' },
+                        value: { type: 'integer' as const, minimum: 0, description: 'Base item value in coins' },
+                        sourceUrl: { type: 'string' as const, format: 'uri' },
+                        fetchedAt: { type: 'string' as const, format: 'date-time', description: 'Mapping retrieval time; retained on cache hits' },
+                    }, required: ['sourceUrl', 'fetchedAt'], additionalProperties: false },
+                type: { type: 'string' as const, description: 'Jagex catalogue category name' },
+                members: { type: 'string' as const, enum: ['true', 'false'], description: 'Whether the item requires membership; Jagex returns a string' },
+                icon: { type: 'string' as const, description: 'Small item icon URL' },
+                icon_large: { type: 'string' as const, description: 'Large item icon URL' },
+                typeIcon: { type: 'string' as const, description: 'Catalogue category icon URL' },
+                description: { type: 'string' as const, description: 'In-game examine text' },
+                current: {
+                    type: 'object' as const,
+                    properties: {
+                        price: { type: ['number', 'string'], description: 'Coins, possibly abbreviated with k or m' },
+                        trend: { type: 'string' as const },
+                    },
+                    additionalProperties: true,
+                },
+                today: { type: 'object' as const, additionalProperties: true },
+                day30: { type: 'object' as const, additionalProperties: true },
+                day90: { type: 'object' as const, additionalProperties: true },
+                day180: { type: 'object' as const, additionalProperties: true },
+            },
+            additionalProperties: true,
+        },
+    },
+    required: ['item'],
+    additionalProperties: true,
+};
+
+export const graphOutputSchema = {
+    $schema: JSON_SCHEMA_2020_12,
+    type: 'object' as const,
+    properties: {
+        daily: {
+            type: 'object' as const,
+            description: 'Daily guide prices in coins, keyed by Unix timestamp in milliseconds',
+            additionalProperties: { type: 'number' as const },
+        },
+        average: {
+            type: 'object' as const,
+            description: 'Jagex averaged guide prices in coins, keyed by Unix timestamp in milliseconds',
+            additionalProperties: { type: 'number' as const },
+        },
+    },
+    required: ['daily', 'average'],
+    additionalProperties: true,
+};
+
 /** Jagex catalogue and graph payloads mix numbers with compact strings such as "80k". */
 export const jagexObjectOutputSchema = {
     $schema: JSON_SCHEMA_2020_12,
@@ -82,10 +160,10 @@ export const priceSummaryOutputSchema = {
         oldestPriceInWindow: { type: 'number' as const, description: 'Oldest price in the window, in coins' },
         minPrice: { type: 'number' as const, description: 'Lowest price in the window, in coins' },
         maxPrice: { type: 'number' as const, description: 'Highest price in the window, in coins' },
-        avgPrice: { type: 'number' as const, description: 'Average price in the window, in coins' },
+        avgPrice: { type: 'number' as const, description: 'Average price in the window, rounded to whole coins' },
         changeAbs: { type: 'number' as const, description: 'latestPrice minus oldestPriceInWindow' },
-        changePct: { type: 'number' as const, description: 'Percent change across the window' },
-        avgDailyVolume: { type: 'number' as const, description: 'Average daily volume, when the source provided it' },
+        changePct: { type: 'number' as const, description: 'Percent change across the window, rounded to two decimals; 0 when the oldest price is 0' },
+        avgDailyVolume: { type: 'number' as const, description: 'Unweighted mean of reported daily volumes, rounded to a whole number; unreported values are excluded' },
     },
     required: [
         'itemId',

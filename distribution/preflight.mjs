@@ -54,7 +54,7 @@ await check('Discovery and read-only annotations', async () => {
         assert.equal(tool.annotations?.openWorldHint, true, tool.name);
         assert.equal(typeof tool.annotations?.title, 'string', `${tool.name}: missing display title`);
     }
-    assert.equal(result.tools.length, 13);
+    assert.deepEqual([...report.toolNames].sort(), ['lookup_item','get_item_details','get_price_series','get_ge_info','browse_items','estimate_flip','get_player_stats','search_wiki','get_wiki_page_content','get_wiki_entity_facts','list_wiki_category_members','get_wiki_drop_table'].sort());
     return { tools: result.tools.map(tool => tool.name) };
 });
 await check('Item resolution and guide price', async () => {
@@ -63,19 +63,19 @@ await check('Item resolution and guide price', async () => {
     assert(match?.name.toLowerCase() === 'abyssal whip');
     assert(Number.isInteger(match.id));
     whipId = match.id;
-    const price = await call('get_item_price', { itemId: whipId });
+    const price = await call('get_item_details', { itemId: whipId });
     assert(price.structuredContent?.item?.current?.price !== undefined);
     return { itemId: whipId };
 });
 await check('Jagex graph', async () => {
     assert(Number.isInteger(whipId), 'Item lookup did not resolve');
-    const result = await call('get_item_graph', { itemId: whipId });
+    const result = await call('get_price_series', { itemId: whipId });
     assert(Object.keys(result.structuredContent?.daily ?? {}).length > 0);
 });
 await check('GE metadata, categories and catalogue', async () => {
     for (const [name, args] of [
-        ['get_ge_info', {}], ['get_all_categories', {}],
-        ['get_category_info', { category: 0 }],
+        ['get_ge_info', {}], ['get_ge_info', { view: 'categories' }],
+        ['get_ge_info', { view: 'category_counts', category: 0 }],
         ['browse_items', { category: 0, alpha: 'a', page: 1 }],
     ]) {
         const result = await call(name, args);
@@ -84,16 +84,24 @@ await check('GE metadata, categories and catalogue', async () => {
 });
 await check('Seven-day history summary', async () => {
     assert(Number.isInteger(whipId), 'Item lookup did not resolve');
-    const result = await call('summarize_price_history', { itemId: whipId, days: 7 });
+    const result = await call('get_price_series', { itemId: whipId, view: 'statistics', days: 7 });
     assert(result.structuredContent && result.content?.length);
 });
 await check('Comparison and hypothetical flip arithmetic', async () => {
-    const comparison = await call('compare_items', { names: ['Dragon bones', 'Frost dragon bones'] });
+    const ids = [];
+    for (const query of ['Dragon bones', 'Frost dragon bones']) {
+        const lookup = await call('lookup_item', { query, limit: 1 });
+        const id = lookup.structuredContent?.matches?.[0]?.id;
+        assert(Number.isInteger(id), `${query}: item not resolved`);
+        ids.push(id);
+    }
+    const comparison = await call('get_item_details', { view: 'comparison', itemIds: ids });
     const rows = comparison.structuredContent?.rows;
     assert.equal(rows?.length, 2);
     assert(rows.every(row => !row.error && Number.isInteger(row.id)));
-    const bones = rows.find(row => row.name.toLowerCase() === 'dragon bones');
-    assert(bones, 'Dragon bones not resolved');
+    assert.deepEqual(rows.map(row => row.id), ids, 'Comparison changed candidate order or IDs');
+    const bones = rows.find(row => row.id === ids[0]);
+    assert(bones, 'Resolved Dragon bones ID absent from comparison');
     const flip = await call('estimate_flip', {
         itemId: bones.id, buyPrice: 100, sellPrice: 120, quantity: 10,
     });
@@ -122,8 +130,8 @@ await check('Wiki content by exact title', async () => {
     assert(result.structuredContent?.attribution?.sourceUrl.startsWith('https://runescape.wiki/'));
 });
 await check('Invalid input fails safely', async () => {
-    await call('get_item_price', {}, true);
-    await call('estimate_flip', { name: 'Dragon bones', quantity: -1 }, true);
+    await call('get_item_details', {}, true);
+    await call('estimate_flip', { itemId: whipId, quantity: -1 }, true);
 });
 
 report.passed = report.checks.every(check => check.passed);
