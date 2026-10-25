@@ -51,7 +51,7 @@ export const itemTools: Tool[] = [
         title: 'Get Item Price Time Series',
         description:
             "Retrieve about 180 days of Jagex guide-price observations for plotting or custom calculations: daily/average timestamp maps, not statistics or an image. For a ready-made min/max/mean/change answer, use summarize_price_history instead; it computes statistics from Weirdgloop daily history.\n" +
-            "- Pass exactly one of itemId or name; an ID skips name lookup and ambiguous names return candidate errors. Optional from/to are inclusive UTC dates, YYYY-MM-DD, applied to both maps. Supply either bound or both; from must not exceed to.\n" +
+            "- Pass exactly one of itemId or name; an ID skips name lookup and ambiguous names return candidate errors. Optional from/to are inclusive UTC dates, YYYY-MM-DD, applied to both maps. Omitted bounds are open; from=to selects one whole UTC day. Reversed bounds fail.\n" +
             "- Omit dates for the full upstream window. Filtering cannot recover older samples; unavailable ranges return empty maps, without extrapolation. Keys are Unix milliseconds, values coins. Guide values lag live offers.\n" +
             "- No auth or local cache; upstream failures return tool errors. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {

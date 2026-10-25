@@ -81,13 +81,12 @@ const wikiBatchOutput = batchOutputSchema({ type: 'string' }, wikiPageOutputSche
 export const wikiTools: Tool[] = [
     {
         name: 'search_wiki',
-        title: 'Search Wiki',
+        title: 'Search Wiki Articles',
         description:
-            "Discover RS3 Wiki article titles and source links. Pass a chosen title to get_wiki_page_content for revision/reuse status; use lookup_item for GE IDs or get_item_price for guide prices.\n" +
-            "- query is literal search text such as \"abyssal whip special attack\", not a URL or pre-encoded string. It is forwarded to wiki search after URL encoding; specific item-plus-topic words narrow the matches.\n" +
-            "- limit caps the first relevance-ranked result set, not an offset or page number. Raising it returns more top matches; refining query changes the matches. There is no continuation cursor.\n" +
-            "- Only article namespace 0 is searched. snippets are empty and contentStatus is link_only. No matches returns an empty array; upstream failures return tool errors.\n" +
-            "- Calls need no auth or local cache. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
+            "Search RS3 Wiki articles and return titles/source links. Use get_wiki_page_content for selected references, lookup_item for GE IDs or get_item_price for guide prices.\n" +
+            "query searches article text by default. Quotes group phrases: \"Abyssal whip\" \"special attack\" finds pages discussing both. intitle:\"Abyssal whip\" focuses on title matches. Pass raw search syntax, not a URL or pre-encoded string; the server encodes it.\n" +
+            "limit caps the first relevance-ranked set, not an offset. Refine query to change matches; there is no continuation cursor. Only article namespace 0 is searched. Results are link_only without copied snippets; no matches returns an empty array. Upstream failures error.\n" +
+            "No auth or local cache. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -116,8 +115,8 @@ export const wikiTools: Tool[] = [
         title: 'Get Wiki Page Content',
         description:
             "Fetch known Wiki page references. Use search_wiki for discovery; get_item_price for GE prices.\n" +
-            "page accepts one unencoded title; pages accepts a title array, e.g. [\"Abyssal whip\", \"Grand Exchange\"]. Copy search titles verbatim, without URLs or fragments; redirects resolve. page returns a flat reference; pages always returns ordered rows, even for one title.\n" +
-            "Inspect OUTPUT contentStatus; it is not an input option. Server review matching canonical article title, revision and untrimmed-extract SHA-256 selects reviewed_extract (text and attribution) or link_only (null text, reason and source link). Clients cannot override it.\n" +
+            "page accepts one unencoded title; pages accepts a title array, e.g. [\"Abyssal whip\", \"Grand Exchange\"]. Copy search titles verbatim, without URLs or fragments; redirects resolve. page returns a flat reference; pages always returns ordered rows, even for one title. Repeated or redirected titles keep separate rows.\n" +
+            "Output contentStatus is set by the server, never by an input option. reviewed_extract includes text and attribution only for an approved, unchanged page version. link_only means text is null; use its source link and reason. Clients cannot approve content.\n" +
             "Missing pages error. Batches run at most two concurrent requests, stop queued work on upstream 429, and error when all rows fail. No auth, edits or cache. Shared HTTP limit: 60 requests/IP/minute; honor Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
