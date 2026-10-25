@@ -1,7 +1,7 @@
 // Wiki tools for RuneScape Wiki MCP Server
 
 import type { Tool } from '@modelcontextprotocol/server';
-import { RUNESCAPE_WIKI_API } from '../constants.js';
+import { RUNESCAPE_WIKI_API, WIKI_LICENSE_URL, WIKI_LICENSING_URL } from '../constants.js';
 import { JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
 import { makeApiRequest, createSuccessResponse } from '../utils.js';
@@ -103,6 +103,17 @@ function wikiPageUrl(title: string): string {
     return `https://runescape.wiki/w/${encodeURIComponent(title.replace(/ /g, '_'))}`;
 }
 
+function wikiAttribution(sources: Array<{ title: string; url: string }>, changes: string): string {
+    return [
+        'Source: RuneScape Wiki contributors.',
+        ...sources.map(source => `"${source.title}": ${source.url} (authors/history: ${source.url}?action=history)`),
+        `Wiki content license: CC BY-NC-SA 3.0 (${WIKI_LICENSE_URL}), except where the source states otherwise.`,
+        `Changes: ${changes}`,
+        `Noncommercial use and share-alike conditions apply to wiki content and adaptations. Exceptions and licensing details: ${WIKI_LICENSING_URL}`,
+        'The MCP software is separately licensed under MIT. No endorsement by Jagex or RuneScape Wiki is implied.',
+    ].join('\n');
+}
+
 function plainSnippet(snippet: string): string {
     return snippet
         .replace(/<[^>]+>/g, '')
@@ -147,7 +158,15 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
                 return [{ title: hit.title, snippet, url: wikiPageUrl(hit.title) }];
             });
 
-            return createSuccessResponse(`Wiki search for "${query}"`, { results });
+            const response = createSuccessResponse(`Wiki search for "${query}"`, { results });
+            if (results.length > 0) {
+                response.content.push({
+                    type: 'text',
+                    text: wikiAttribution(results,
+                        'Search excerpts; HTML highlighting removed, entities decoded and whitespace normalized.'),
+                });
+            }
+            return response;
         }
 
         case 'get_wiki_page_content': {
@@ -183,7 +202,9 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
             }
 
             const resolvedTitle = firstPage.title ?? page;
-            return createSuccessResponse(`Wiki Page: ${resolvedTitle}`, extract);
+            const attribution = wikiAttribution([{ title: resolvedTitle, url: wikiPageUrl(resolvedTitle) }],
+                'Plain-text extract supplied by the wiki API; formatting omitted and surrounding whitespace trimmed.');
+            return createSuccessResponse(`Wiki Page: ${resolvedTitle}`, `${extract}\n\n${attribution}`);
         }
 
         default:
