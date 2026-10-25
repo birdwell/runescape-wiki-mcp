@@ -45,7 +45,7 @@ Replace these inaccurate claims wherever they appear:
 ## Verify before submitting
 
 Run `node distribution/preflight.mjs > /tmp/rs3-preflight.json`. This makes a small
-set of read-only requests to production. It checks the current 16-tool contract,
+set of read-only requests to production. It checks the current 14-tool contract,
 annotations, name resolution, price/history, comparison, tax arithmetic, public
 hiscores, wiki search/content and invalid input. It exits nonzero on any failure;
 keep failures visible rather than substituting local behavior for production.

@@ -38,9 +38,7 @@ runescape-wiki-mcp/
 | `compare_item_prices` | `names` **or** `itemIds` (1–10) | Bulk compare |
 | `estimate_flip` | `itemId` or `name`, optional prices/qty/quota/duration | Profit after 2% tax; caller-supplied `buyLimitRemaining`/`fillTimeMinutes` scenarios |
 | `browse_items` | `category`, optional `alpha`/`page` | Catalogue browse — **not** name search |
-| `get_all_categories` | — | Category IDs 0–43 |
-| `get_category_info` | `category` | Letter counts |
-| `get_ge_info` | — | Catalogue configuration RuneDay, derived UTC date/age, fetch time, category count; not price freshness |
+| `get_ge_info` | optional `view` (status/categories/category_counts), conditional `category` | Default configuration status; category IDs or letter counts by explicit view; never price freshness |
 | `get_player_stats` | `username`, optional `gameMode` | Normal, ironman and hardcore boards; 404 is player/board-specific |
 | `search_wiki` | `query`, optional `limit` | Wiki source search with full-text/title syntax and namespace prefixes; not a price search. |
 | `get_wiki_page_content` | `page` **or** `pages` (1–10) | Single/batch references; text only for a reviewed revision and extract hash |
@@ -124,3 +122,5 @@ Opt-in `get_item_details.includeLiveData` uses `https://prices.runescape.wiki/ap
 Canonical discovery names are get_item_details, get_price_series and compare_item_prices. Legacy get_item_price/get_item_graph/compare_items calls remain accepted by the central dispatcher; keep those aliases when evolving implementation modules. Update tool-name allowlists for canonical discovery where necessary.
 
 Wiki category/drop tools return metadata and factual whitelists, not article extracts. Drop index JSON may contain editorial notes; discard them and flag omitted annotations. Never present per-row listed probabilities as an unconditional combined loot chance. Category cursors are opaque, category-bound and forwarded only as whitelisted MediaWiki continuation fields.
+
+Discovery consolidates catalogue metadata under get_ge_info views. Legacy get_all_categories and get_category_info calls retain their original results in the central dispatcher. Preserve both aliases; do not expose them as duplicate tools.

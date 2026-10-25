@@ -41,11 +41,66 @@ const nameOrIdProperties = {
 
 const itemBatchOutput = batchOutputSchema(itemIdProperty, itemDetailOutputSchema);
 
+const geStatusSchema = {
+            $schema: JSON_SCHEMA_2020_12,
+            type: 'object',
+            properties: {
+                lastConfigUpdateRuneday: { type: 'integer', description: 'Upstream RuneDay counter for catalogue configuration update' },
+                lastConfigUpdateDate: { type: 'string', format: 'date', description: 'Configuration UTC date derived from RuneDay' },
+                configurationAgeDays: { type: 'integer', description: 'UTC calendar days since configuration update; negative for a future upstream date' },
+                fetchedAt: { type: 'string', format: 'date-time', description: 'Server retrieval time, not a price update timestamp' },
+                categoryCount: { type: 'integer', description: 'Number of canonical GE categories' },
+                priceFreshness: { const: 'not_reported', description: 'Configuration metadata does not report item-price freshness' },
+            },
+            required: ['lastConfigUpdateRuneday', 'lastConfigUpdateDate', 'configurationAgeDays', 'fetchedAt', 'categoryCount', 'priceFreshness'],
+            additionalProperties: true,
+        };
+
+const geCategoryCountsSchema = {
+            $schema: JSON_SCHEMA_2020_12,
+            type: 'object',
+            properties: {
+                types: { type: 'array', items: {} },
+                alpha: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            letter: { type: 'string', description: 'Starting letter, or # for numbers' },
+                            items: { type: 'integer', description: 'Number of catalogue items in this letter group' },
+                        },
+                        required: ['letter', 'items'],
+                    },
+                },
+            },
+            required: ['types', 'alpha'],
+            additionalProperties: true,
+        };
+
+const geCategoriesSchema = {
+            $schema: JSON_SCHEMA_2020_12,
+            type: 'object',
+            properties: {
+                categories: {
+                    type: 'array',
+                    description: 'All 44 category references, sorted by ID',
+                    items: {
+                        type: 'object',
+                        properties: { id: categoryProperty, name: { type: 'string' } },
+                        required: ['id', 'name'],
+                        additionalProperties: false,
+                    },
+                },
+            },
+            required: ['categories'],
+            additionalProperties: false,
+        };
+
 export const priceTools: Tool[] = [
     {
         name: 'get_item_price',
         title: 'Get Item Details and Reported Trades',
-        description: "Read Jagex item records and guide prices. Use lookup_item for ID discovery, compare_items for daily comparisons, or get_item_graph for raw history.\n\nitemId bypasses name resolution; name resolves first and errors with candidates on ambiguity. Both return item. itemIds uses known GE IDs, preserves input order and always returns results[], even for one ID. Wiki monster IDs are a different identifier system.\n\nUse includeLiveData for recorded instant-buy/instant-sell prices and buy-limit/alchemy facts. It preserves guide fields; trades are not executable offers, and buy limits are not remaining quota.\n\nInvalid batches fail before fetching. Unavailable IDs fail per row; all-failed batches error. At most two reads run concurrently; 429 halts queued IDs.\n\nCache/freshness:\n- Guide records are uncached and lag market activity.\n- Trades cache 30 seconds; numeric facts cache 10 minutes.\n- Cache hits keep their fetchedAt timestamp.\n\nNo credentials required. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
+        description: "Read Jagex catalogue records and guide prices by GE item ID or resolved name. Use lookup_item for ID discovery, compare_items for daily comparisons, or get_item_graph for raw history.\n\nitemId bypasses name resolution; name resolves first and errors with candidates on ambiguity. Both return item. itemIds uses known GE IDs, preserves input order and always returns results[], even for one ID. Wiki monster IDs are a different identifier system.\n\nUse includeLiveData for recorded instant-buy/instant-sell prices and buy-limit/alchemy facts. It preserves guide fields; trades are not executable offers, and buy limits are not remaining quota.\n\nInvalid batches fail before fetching. Unavailable IDs fail per row; all-failed batches error. At most two reads run concurrently; 429 halts queued IDs.\n\nCache/freshness:\n- Guide records are uncached and lag market activity.\n- Trades cache 30 seconds; numeric facts cache 10 minutes.\n- Cache hits keep their fetchedAt timestamp.\n\nNo credentials required. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -66,26 +121,16 @@ export const priceTools: Tool[] = [
     },
     {
         name: 'get_ge_info',
-        title: 'GE Catalogue Refresh Status',
-        description:
-            "Check the date and age of the latest GE catalogue configuration update. This does not report how fresh item prices are.\n" +
-            "Call with {} for catalogue diagnostics; use get_item_price for item prices/metadata or get_all_categories for category IDs.\n" +
-            "Makes one Jagex read. No auth or cache; API failures are errors. Shared HTTP limit: 60 requests/IP/minute; honor Retry-After on 429.",
-        inputSchema: EMPTY_OBJECT_SCHEMA,
-        outputSchema: {
-            $schema: JSON_SCHEMA_2020_12,
-            type: 'object',
-            properties: {
-                lastConfigUpdateRuneday: { type: 'integer', description: 'Upstream RuneDay counter for catalogue configuration update' },
-                lastConfigUpdateDate: { type: 'string', format: 'date', description: 'Configuration UTC date derived from RuneDay' },
-                configurationAgeDays: { type: 'integer', description: 'UTC calendar days since configuration update; negative for a future upstream date' },
-                fetchedAt: { type: 'string', format: 'date-time', description: 'Server retrieval time, not a price update timestamp' },
-                categoryCount: { type: 'integer', description: 'Number of canonical GE categories' },
-                priceFreshness: { const: 'not_reported', description: 'Configuration metadata does not report item-price freshness' },
-            },
-            required: ['lastConfigUpdateRuneday', 'lastConfigUpdateDate', 'configurationAgeDays', 'fetchedAt', 'categoryCount', 'priceFreshness'],
-            additionalProperties: true,
-        },
+        title: 'Read GE Catalogue Metadata',
+        description: "Read RS3 GE catalogue configuration and category metadata. Use get_item_price for catalogue records/prices by item ID or name, browse_items for catalogue entries, or list_wiki_category_members for Wiki categories.\n\nview=status (default) returns configuration date/age, never item-price freshness. view=categories returns the built-in 44-ID list; duplicate names have distinct IDs. view=category_counts requires category and returns every starting-letter count; # means numeric names. Counts describe catalogue entries, not stock or offers.\n\ncategory is valid only for category_counts; it does not filter the full category list. The categories view needs no network; other views make one uncached Jagex read. No credentials required. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
+        inputSchema: { $schema: JSON_SCHEMA_2020_12, type: 'object', properties: {
+            view: { type: 'string', enum: ['status', 'categories', 'category_counts'], default: 'status', description: 'Metadata view; omit for the original configuration status result' },
+            category: categoryProperty,
+        }, oneOf: [
+            { properties: { view: { enum: ['status', 'categories'] } }, not: { required: ['category'] } },
+            { properties: { view: { const: 'category_counts' } }, required: ['view', 'category'] },
+        ], additionalProperties: false },
+        outputSchema: { $schema: JSON_SCHEMA_2020_12, anyOf: [geStatusSchema, geCategoriesSchema, geCategoryCountsSchema] },
         ...READ_ONLY_TOOL,
     },
     {
@@ -105,26 +150,7 @@ export const priceTools: Tool[] = [
             required: ['category'],
             additionalProperties: false,
         },
-        outputSchema: {
-            $schema: JSON_SCHEMA_2020_12,
-            type: 'object',
-            properties: {
-                types: { type: 'array', items: {} },
-                alpha: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            letter: { type: 'string', description: 'Starting letter, or # for numbers' },
-                            items: { type: 'integer', description: 'Number of catalogue items in this letter group' },
-                        },
-                        required: ['letter', 'items'],
-                    },
-                },
-            },
-            required: ['types', 'alpha'],
-            additionalProperties: true,
-        },
+        outputSchema: geCategoryCountsSchema,
         ...READ_ONLY_TOOL,
     },
     {
@@ -136,24 +162,7 @@ export const priceTools: Tool[] = [
             'Use a returned ID with get_category_info for letter counts, then browse_items for entries. ' +
             'For item-name search use lookup_item. Category IDs identify groups, not items; duplicate category names have distinct IDs.',
         inputSchema: EMPTY_OBJECT_SCHEMA,
-        outputSchema: {
-            $schema: JSON_SCHEMA_2020_12,
-            type: 'object',
-            properties: {
-                categories: {
-                    type: 'array',
-                    description: 'All 44 category references, sorted by ID',
-                    items: {
-                        type: 'object',
-                        properties: { id: categoryProperty, name: { type: 'string' } },
-                        required: ['id', 'name'],
-                        additionalProperties: false,
-                    },
-                },
-            },
-            required: ['categories'],
-            additionalProperties: false,
-        },
+        outputSchema: geCategoriesSchema,
         ...READ_ONLY_TOOL,
         annotations: { ...READ_ONLY_TOOL.annotations, openWorldHint: false },
     },
@@ -236,10 +245,15 @@ export async function handlePriceTool(name: string, args: ToolArguments): Promis
         }
 
         case 'get_ge_info': {
-            const unexpected = rejectUnknownKeys(args, []);
+            const unexpected = rejectUnknownKeys(args, ['view', 'category']);
             if (unexpected) {
                 return unexpected;
             }
+            const view = args.view === undefined ? 'status' : args.view;
+            if (!['status', 'categories', 'category_counts'].includes(view as string)) return validationError('view must be status, categories or category_counts');
+            if (view === 'category_counts') return handlePriceTool('get_category_info', { category: args.category });
+            if (args.category !== undefined) return validationError('category is valid only with view=category_counts');
+            if (view === 'categories') return handlePriceTool('get_all_categories', {});
             const data = await fetchGeInfo();
             return createSuccessResponse('Grand Exchange Database Information', data);
         }

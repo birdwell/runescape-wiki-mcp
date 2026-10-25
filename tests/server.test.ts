@@ -18,8 +18,6 @@ describe('MCP Server', () => {
                 'get_price_series',
                 'get_item_details',
                 'get_ge_info',
-                'get_category_info',
-                'get_all_categories',
                 'browse_items',
                 'summarize_price_history',
                 'compare_item_prices',
@@ -35,6 +33,9 @@ describe('MCP Server', () => {
             expected.forEach(toolName => {
                 expect(allTools.some(t => t.name === toolName)).toBe(true);
             });
+
+            expect(allTools).toHaveLength(14);
+            expect(allTools.some(t => t.name === 'get_all_categories' || t.name === 'get_category_info')).toBe(false);
 
             // Removed duplicates / obsolete tools
             expect(allTools.some(t => t.name === 'get_item_detail')).toBe(false);

@@ -36,7 +36,7 @@ export const historyTools: Tool[] = [
     {
         name: 'summarize_price_history',
         title: 'Summarize Daily Price Statistics',
-        description: "Calculate sample min/max, unweighted mean and start-to-end change from Weirdgloop daily prices. Use get_item_graph for raw observations or UTC date bounds, and get_item_price for catalogue detail.\n\nitemId skips name resolution; name resolves first. days selects trailing usable samples from a fixed 90-day fetch, not a fetch-size or calendar-date control. Fewer available samples reduce windowDays.\n\nVolume averages exclude unreported values. No usable history returns an error; results are historical statistics, not forecasts.\n\nDaily history lags live offers. Reads are uncached and require no credentials. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
+        description: "Calculate sample min/max, unweighted mean and start-to-end change from Weirdgloop daily prices. Use get_item_graph for raw observations or UTC date bounds, and get_item_price for catalogue detail.\n\nitemId skips name resolution; name resolves first. days selects trailing usable samples from a fixed 90-day fetch, not a fetch-size or calendar-date control. Fewer available samples reduce windowDays.\n\nNo usable history returns an error; results are historical statistics, not forecasts.\n\nDaily history lags live offers. Reads are uncached and require no credentials. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

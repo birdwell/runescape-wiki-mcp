@@ -28,8 +28,8 @@ async function call(name, args, expectedError = false, modern = false) {
 try {
  const listed = await rpc('tools/list');
  await writeFile('/tmp/rs-production-tools.json', JSON.stringify({serverName:'RuneScape Wiki',tools:listed.tools},null,2));
- if (listed.tools.length !== 16 || !listed.tools.some(t=>t.name==='search_wiki')) throw new Error('Expected 16 tools including search_wiki');
- console.log('Production exposes all 16 tools.');
+ if (listed.tools.length !== 14 || !listed.tools.some(t=>t.name==='search_wiki')) throw new Error('Expected 14 tools including search_wiki');
+ console.log('Production exposes all 14 tools.');
  const search = await call('search_wiki',{query:'Abyssal whip',limit:3});
  const hits = search.structuredContent?.results;
  if(!hits?.length) throw new Error('Wiki search returned no hits');
@@ -41,15 +41,17 @@ try {
  if(!Number.isInteger(itemId) || itemId < 0) throw new Error('Item lookup did not resolve an ID');
  let graphResult, geInfoResult;
  const canonicalResults = new Map();
+ const catalogueViews = new Map();
  for (const [name,args] of [
   ['get_item_details',{itemId}], ['get_price_series',{itemId}], ['summarize_price_history',{itemId,days:7}],
   ['compare_item_prices',{itemIds:[itemId]}], ['estimate_flip',{itemId,buyPrice:1000,sellPrice:1200,quantity:2}],
-  ['get_all_categories',{}], ['get_category_info',{category:24}], ['browse_items',{category:24,alpha:'a',page:1}],
+  ['get_ge_info',{view:'categories'}], ['get_ge_info',{view:'category_counts',category:24}], ['browse_items',{category:24,alpha:'a',page:1}],
   ['get_ge_info',{}], ['get_player_stats',{username:'Zezima',gameMode:'normal'}],
   ['get_player_stats',{username:'Gecu',gameMode:'ironman'}], ['get_player_stats',{username:'J oris',gameMode:'hardcore'}]
  ]) {
   const result = await call(name,args);
   canonicalResults.set(name,result);
+  if(name === 'get_ge_info' && args.view) catalogueViews.set(args.view,result);
   if(name === 'get_price_series') graphResult=result;
   if(name === 'get_ge_info') geInfoResult=result;
  }
@@ -63,6 +65,10 @@ try {
  }
  const modernAlias=await call('get_item_price',{itemId},false,true);
  if(modernAlias.structuredContent?.item?.id!==itemId) throw new Error('Modern protocol legacy alias failed');
+ for(const [alias,args,view] of [['get_all_categories',{},'categories'],['get_category_info',{category:24},'category_counts']]) {
+  const legacy=await call(alias,args);
+  if(JSON.stringify(legacy.structuredContent)!==JSON.stringify(catalogueViews.get(view).structuredContent)) throw new Error(`Catalogue compatibility failed: ${alias}`);
+ }
  const secondLookup=await call('lookup_item',{query:'Dragon bones',limit:1});
  const secondId=secondLookup.structuredContent?.matches?.[0]?.id;
  if(!Number.isInteger(secondId)||secondId<0) throw new Error('Second metadata ID not resolved');

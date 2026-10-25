@@ -125,9 +125,7 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 - `compare_item_prices` — Compare up to 10 items by `names` or `itemIds`.
 - `estimate_flip` — Tax-adjusted flip profit, with optional remaining-quota and assumed-duration scenarios. Default prices lag the live market.
 - `browse_items` — Browse one Grand Exchange category by starting letter. This is not a name search.
-- `get_all_categories` — Category IDs 0–43 and their names.
-- `get_category_info` — How many items sit under each letter in one category.
-- `get_ge_info` — Grand Exchange database metadata (`lastConfigUpdateRuneday`), not prices.
+- `get_ge_info` — Catalogue metadata: default status, `view: "categories"` for IDs/names, or `view: "category_counts"` with `category` for letter counts.
 - `get_player_stats` — RS3 hiscores for a username. `gameMode` selects normal, ironman or hardcore. A 404 means the player was not found on that board; no other board is substituted.
 - `search_wiki` — Search RuneScape Wiki titles and source links when the page title is unknown.
 - `get_wiki_page_content` — Source reference following redirects; text only for a reviewed revision and matching content hash.
@@ -256,7 +254,7 @@ This tool queries fixed, bounded datasets with title values kept inside data lit
 
 ### Discovery names and legacy calls
 
-Discovery now uses `get_item_details`, `get_price_series` and `compare_item_prices` to distinguish full catalogue records, raw dated observations and side-by-side snapshots. Existing calls to `get_item_price`, `get_item_graph` and `compare_items` remain accepted as aliases with the same arguments and results. Aliases are not duplicated in the 16-tool discovery list.
+Discovery now uses `get_item_details`, `get_price_series` and `compare_item_prices` to distinguish full catalogue records, raw dated observations and side-by-side snapshots. Existing calls to `get_item_price`, `get_item_graph` and `compare_items` remain accepted as aliases with the same arguments and results. Aliases are not duplicated in the 14-tool discovery list.
 
 Clients or gateways with tool-name allowlists may need the new discovery names enabled. The connector ID and hosted endpoint remain the same. No legacy call name is removed.
 
@@ -267,3 +265,9 @@ Clients or gateways with tool-name allowlists may need the new discovery names e
 `get_wiki_drop_table { "page": "Abyssal demon", "limit": 20 }` returns indexed item references, quantity bounds, rolls and listed probabilities or controlled rarity labels. Unknown facts remain null. Use `nextOffset` to continue; optional `variant` must be an exact `sourceReference` from that article. Item references are not GE IDs: resolve them with `lookup_item`.
 
 Drop facts come from the RS3 `dropsline` structured index. Editorial notes and alternative-rate annotations are discarded; `hasOmittedAnnotations` flags their presence. Listed probabilities describe individual rows, not an unconditional combined loot model. Follow `sourceUrl` for conditions, nested tables and source context. The exact revision/hash review gate for article text remains unchanged.
+
+### Catalogue metadata views
+
+`get_ge_info {}` preserves the original configuration-status response. Use `{ "view": "categories" }` to list GE IDs/names, or `{ "view": "category_counts", "category": 24 }` to choose nonempty starting letters before `browse_items`. Category IDs identify groups, not items; their entry counts are not available stock. These views each return their corresponding existing result shape.
+
+Legacy `get_all_categories {}` and `get_category_info { "category": 24 }` calls remain accepted with unchanged results, alongside the three price-tool aliases. The two catalogue helpers are no longer duplicated in discovery. All existing call names remain supported; the published surface has 14 tools.

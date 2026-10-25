@@ -141,6 +141,27 @@ describe('MCP specification compliance', () => {
         expect(second.message.result).toEqual(first.message.result);
     });
 
+    it.each([true, false])('keeps catalogue views equal to legacy calls with legacy protocol=%s', async legacy => {
+        nock(RS3_GE_API).get('/catalogue/category.json?category=24').twice()
+            .reply(200, { types: [], alpha: [{ letter: 'a', items: 2 }] });
+        for (const [alias, args, viewArgs] of [
+            ['get_all_categories', {}, { view: 'categories' }],
+            ['get_category_info', { category: 24 }, { view: 'category_counts', category: 24 }],
+        ] as const) {
+            const modern = await mcpFetch(handler, 'tools/call', { legacy, name: 'get_ge_info', params: { name: 'get_ge_info', arguments: viewArgs } });
+            const original = await mcpFetch(handler, 'tools/call', { legacy, name: alias, params: { name: alias, arguments: args } });
+            expect(modern.message.error).toBeUndefined(); expect(original.message.error).toBeUndefined();
+            expect((modern.message.result as { isError?: boolean }).isError).toBeFalsy();
+            expect(original.message.result).toEqual(modern.message.result);
+        }
+    });
+    it('rejects incompatible catalogue selectors before fetching', async () => {
+        for (const args of [{ view: 'bad' }, { view: null }, { view: 'status', category: 24 },
+            { view: 'categories', category: 0 }, { view: 'category_counts' }, { view: 'category_counts', category: -1 }]) {
+            expect((await handlePriceTool('get_ge_info', args)).isError).toBe(true);
+        }
+    });
+
     describe('2026-07-28 protocol (createMcpHandler)', () => {
         it('should answer server/discover with identity and cache hints', async () => {
             const { status, message } = await mcpFetch(handler, 'server/discover');

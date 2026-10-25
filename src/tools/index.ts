@@ -24,7 +24,7 @@ export const allTools: Tool[] = [
     ...wikiTools,
     ...entityTools,
     ...wikiReferenceTools,
-].map(discoveryTool).map(tool => ({
+].filter(tool => !['get_all_categories', 'get_category_info'].includes(tool.name)).map(discoveryTool).map(tool => ({
     ...tool,
     // Older directory scanners still read the title from annotations.
     annotations: { ...tool.annotations, title: tool.title ?? tool.name },
