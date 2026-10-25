@@ -46,7 +46,7 @@ export const priceTools: Tool[] = [
         name: 'get_item_price',
         title: 'Get Item Details and Reported Trades',
         description:
-            "Read full Jagex GE records for selected RS3 items: metadata, guide prices, predefined trends and Wiki item-ID links. Use browse_items for category listings or get_ge_info for catalogue configuration status.\n\n" +
+            "Read per-item RS3 catalogue records with Jagex guide prices and Wiki ID links. Set includeLiveData for reported buy/sell transactions, buy limits and alchemy values. Use browse_items for category listings or get_ge_info for catalogue configuration status.\n\n" +
             "For daily guide-price/volume comparisons use compare_items; for dated observations get_item_graph; for calculated statistics summarize_price_history.\n\n" +
             "Choose exactly one input form, using IDs from lookup_item:\n\n| Input example | Behavior |\n| --- | --- |\n| {\"itemId\":4151} | Fetch directly; return item. |\n| {\"name\":\"Abyssal whip\"} | Resolve first; return item or an error with ambiguity candidates. |\n| {\"itemIds\":[4151]} | Return ordered batch rows, even for one ID; each item is in results[].data.item. |\n\n" +
             "Batch inputs are validated before fetching. An unavailable valid ID fails only its row; all rows failing makes the call an error. At most two reads run concurrently. A 429 stops queued IDs; honor Retry-After.\n\n" +

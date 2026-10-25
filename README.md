@@ -12,7 +12,7 @@ Connect Claude, ChatGPT, Cursor, and other assistants to RuneScape 3 Grand Excha
 
 An independent [Birdwell Labs](https://birdwellabs.com) project. No Jagex or Weird Gloop approval is claimed. [Support and rights concerns](mailto:support@birdwellabs.com) · [Permissions and source review](docs/permissions.md).
 
-Default prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Live high and low prices are a separate feed at [prices.runescape.wiki](https://prices.runescape.wiki/rs).
+Default prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Ask for reported instant-buy/sell prices to include the separate RS3 trade feed at [prices.runescape.wiki](https://prices.runescape.wiki/rs).
 
 [![Claude setup](https://img.shields.io/badge/Claude-Setup-D97757?style=for-the-badge)](#claude-setup)
 [![ChatGPT setup](https://img.shields.io/badge/ChatGPT-Setup-087F5B?style=for-the-badge)](#chatgpt-setup)

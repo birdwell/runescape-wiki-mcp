@@ -113,6 +113,5 @@ Raw history: `get_item_graph` defaults to Jagex daily/average maps. Set `source:
 
 Wiki search defaults to articles. Query prefixes such as `prefix:Category:Weapons` select other Wiki namespaces. Search returns references only; page text remains subject to the existing exact revision/content review policy.
 
-`get_item_graph` accepts optional `source` (`jagex`, default, or `weirdgloop`). Weirdgloop returns raw daily samples with millisecond timestamps and available volume; UTC date bounds work on both sources. Wiki namespace prefixes such as `prefix:Category:Weapons` override the article search default without enabling unreviewed text.
 
 Opt-in `get_item_price.includeLiveData` uses `https://prices.runescape.wiki/api/v2/rs`: reported high/low transaction prices (Unix seconds), plus numeric buy-limit/alchemy/base-value mapping facts. It preserves guide defaults and works in batches. These are not active orders or guaranteed fill prices; buy limits are caps, not remaining account quota. Quotes cache 30 seconds; mapping caches 10 minutes per process. Do not use the obsolete v1 RS3 path or substitute OSRS data.
