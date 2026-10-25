@@ -84,7 +84,7 @@ export const wikiTools: Tool[] = [
         title: 'Search Wiki Pages',
         description:
             "Find RS3 Wiki sources for items, NPCs/monsters, quests and guides. Use get_wiki_page_content for reviewed text/page references, lookup_item for GE identities or get_item_price for catalogue records.\n\n" +
-            "query accepts raw Wiki syntax; the server URL-encodes it. \"Abyssal demon\" \"drop\" requires both phrases; intitle:\"Cook's Assistant\" focuses titles. prefix:Category:Weapons selects Wiki categories instead of articles.\n\n" +
+            "query accepts raw Wiki syntax; the server URL-encodes it. \"Abyssal demon\" \"drop\" requires both phrases; intitle:\"Cook's Assistant\" focuses titles. prefix:Category:Weapons selects Wiki categories instead of articles. incategory:\"Novice quests\" finds articles by their quest classification.\n\n" +
             "limit caps one relevance-ranked set, not an offset. No continuation cursor exists: refine the query for different matches. No matches returns an empty set; invalid queries or API failures return errors.\n\n" +
             "Public reads require no credentials and are uncached. The shared HTTP budget defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {

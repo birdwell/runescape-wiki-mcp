@@ -122,7 +122,7 @@ export const priceTools: Tool[] = [
     {
         name: 'get_ge_info',
         title: 'Read GE Catalogue Metadata',
-        description: "Read RS3 GE catalogue configuration and category metadata. Use get_item_price for catalogue records/prices by item ID or name, browse_items for catalogue entries, or list_wiki_category_members for Wiki categories.\n\nview=status (default) returns configuration date/age, never item-price freshness. view=categories returns the built-in 44-ID list; duplicate names have distinct IDs. view=category_counts requires category and returns every starting-letter count; # means numeric names. Counts describe catalogue entries, not stock or offers.\n\ncategory is valid only for category_counts; it does not filter the full category list. The categories view needs no network; other views make one uncached Jagex read. No credentials required. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
+        description: "Read RS3 GE catalogue metadata. Use get_item_price for item records by ID/name, browse_items for entries, or list_wiki_category_members for Wiki categories.\n\n- view=status reports configuration date/age, not price freshness.\n- view=categories lists all 44 built-in IDs; duplicate names identify separate groups.\n- view=category_counts requires category 0-43, e.g. 24 for high-level melee weapons. Category 0 is one Miscellaneous group, not an all-groups sentinel. The response counts entries by starting letter (# means numbers), not stock or offers.\n\ncategory is rejected outside category_counts; it cannot filter the full list. categories needs no network; other views make one uncached Jagex read. No credentials required. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: { $schema: JSON_SCHEMA_2020_12, type: 'object', properties: {
             view: { type: 'string', enum: ['status', 'categories', 'category_counts'], default: 'status', description: 'Metadata view; omit for the original configuration status result' },
             category: categoryProperty,
@@ -169,12 +169,7 @@ export const priceTools: Tool[] = [
     {
         name: 'browse_items',
         title: 'Browse Catalogue Items',
-        description:
-            "Browse an RS3 catalogue group. Use lookup_item for name search or get_item_price for one item's detail.\n" +
-            "- Choose category from get_all_categories and a nonempty starting letter from get_category_info. category 24 + alpha \"a\" means high-level melee weapons beginning with A; # selects numbers.\n" +
-            "- page is local to the (category, alpha) pair: page 2 continues page 1 with those filters unchanged. Reset to page 1 when either filter changes. Defaults are alpha a and page 1.\n" +
-            "- Jagex total counts the category, not the selected letter. Advance pages until items is empty; an isError response is a failed request, not the last page. Guide prices lag live offers.\n" +
-            "- Public Jagex reads require no auth or local cache. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
+        description: "Browse one RS3 catalogue group. Use lookup_item for name search or get_item_price for one item record.\n\nDiscover category IDs with get_ge_info view=categories and nonempty letters with view=category_counts. IDs 0 and 42 both say Miscellaneous but are separate groups, not aliases.\n\nFor example, {\"category\":24,\"alpha\":\"#\",\"page\":2} requests the second numeric-name page of high-level melee weapons. Pass a literal #, not %23; the server encodes it. When changing category or alpha, restart page at 1 rather than continuing the old sequence.\n\nJagex total counts the category, not the letter. Stop on empty items; isError means failure, not completion. Guide prices lag activity.\n\nEach call makes one uncached public Jagex read. No credentials required; HTTP defaults to 60 requests/IP/minute. Honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

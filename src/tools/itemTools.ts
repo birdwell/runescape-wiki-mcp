@@ -19,7 +19,7 @@ import {
 export const itemTools: Tool[] = [
     {
         name: 'lookup_item',
-        title: 'Lookup Item',
+        title: 'Resolve Item Names to GE IDs',
         description:
             "Find tradeable RS3 items by name, returning matches with ID, name, wiki URL and available price, volume and sample timestamp.\n" +
             "- query is a literal item name or prefix: \"Abyssal whip\" tries an exact match; \"abyssal\" discovers alternatives. limit defaults to 5, maximum 10. An exact match stops the search even with a larger limit; otherwise wiki opensearch candidates are filtered to GE items.\n" +
@@ -49,7 +49,7 @@ export const itemTools: Tool[] = [
     },
     {
         name: 'get_item_graph',
-        title: 'Get Item Price Time Series',
+        title: 'Get Raw Item Price Observations',
         description: "Read raw RS3 guide-price observations. Use summarize_price_history for calculated trends or get_item_price for item records.\n\nsource=jagex (default) offers roughly 180 days with provider averages; weirdgloop offers roughly 90 days with daily volume. Neither supplies live offers.\n\nitemId skips name resolution; ambiguity returns candidates. from/to select inclusive UTC days: equal bounds cover the whole day but cannot extend provider retention.\n\nInvalid bounds fail before lookup. Unavailable dates yield empty data; provider errors never fall back. Each call reads one history endpoint.\n\nNo credentials or cache. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
