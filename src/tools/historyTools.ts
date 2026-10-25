@@ -37,9 +37,10 @@ export const historyTools: Tool[] = [
         name: 'summarize_price_history',
         title: 'Summarize Daily Price Statistics',
         description:
-            "Compute historical min/max/mean/change for one RS3 item. Use get_item_graph with source weirdgloop to inspect dated observations, or get_item_price for catalogue metadata and predefined Jagex trends.\n\n" +
-            "An itemId skips name resolution. days=7 selects the last seven usable observations from a fixed 90-day fetch, even if they span more than a calendar week. If only four exist, windowDays/sampleCount are four. Missing days are never backfilled; days changes the calculation, not the fetch.\n\n" +
-            "Unreported volume is excluded from its average. No usable history returns an error. These are historical guide prices, not forecasts or live offers. Public reads need no credentials or server cache. Shared HTTP limit: 60 requests/IP/minute by default; honor 429 Retry-After.",
+            "Calculate min/max, mean and start-to-end change from Weirdgloop daily prices; this tool returns statistics, not a time series. For timestamped Jagex guide-price observations or UTC date bounds, call get_item_graph instead. Use get_item_price for catalogue detail.\n" +
+            "- Choose itemId to skip name resolution, or name to resolve first. days selects trailing usable samples from a fixed 90-day fetch; it does not change fetch size. Fewer available samples reduce windowDays.\n" +
+            "- Return one aggregate: sample min/max, unweighted mean, newest-minus-oldest change and percentage relative to oldest. Volume averages exclude unreported values. There are no forecasts; no usable history is an error.\n" +
+            "- Daily history lags live offers. No auth or local cache. Shared HTTP budget: 60 requests/IP/minute; retry 429 after Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

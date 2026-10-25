@@ -45,10 +45,11 @@ export const priceTools: Tool[] = [
         name: 'get_item_price',
         title: 'Get Item Metadata and Guide Prices',
         description:
-            "Fetch RS3 catalogue metadata, an item-ID Wiki link and predefined Jagex guide-price trends. Use compare_items for numeric price/volume comparisons, get_item_graph for observations or summarize_price_history for chosen-window calculations.\n\n" +
-            "Choose one selector. itemId skips lookup; ambiguous names return candidates. itemIds accepts 1–10 unique IDs from lookup_item. Invalid batch entries reject the whole call before fetching; valid IDs unavailable from Jagex fail individually.\n\n" +
-            "An ID/name returns item; an array returns ordered batch rows even for one ID. All rows failing makes the call an error. Two requests run concurrently; a 429 stops queued work.\n\n" +
-            "Prices may use k/m abbreviations and lag live offers. No credentials or server cache are used. Shared HTTP limit: 60 requests/IP/minute by default; honor 429 Retry-After.",
+            "Fetch full Jagex records for selected RS3 items: catalogue metadata, guide prices, fixed 30/90/180-day trends and Wiki item-ID links.\n" +
+            "- Use browse_items for category listings or get_ge_info for catalogue configuration age. Use compare_items for numeric price/volume comparisons, get_item_graph for observations or summarize_price_history for calculated statistics.\n" +
+            "- Select itemId, name or itemIds, never combine them. Names resolve first; ambiguity returns candidates. IDs come from lookup_item. itemIds accepts 1\u201310 unique IDs. [4151,-1] rejects before any fetch; valid IDs that Jagex cannot find fail only their rows.\n" +
+            "- ID/name returns item; an array returns ordered results[].data.item even for one ID. Batches isolate row failures; all-failed is an error. At most two reads run concurrently; 429 stops queued work.\n" +
+            "- Guide prices can use k/m strings and lag live offers. No auth or server cache. Shared HTTP budget defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
