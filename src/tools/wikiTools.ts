@@ -115,7 +115,7 @@ function plainSnippet(snippet: string): string {
         .trim();
 }
 
-export async function handleWikiTool(name: string, args: ToolArguments): Promise<ToolResponse> {
+export async function handleWikiTool(name: string, args: ToolArguments, signal?: AbortSignal): Promise<ToolResponse> {
     switch (name) {
         case 'search_wiki': {
             const unexpected = rejectUnknownKeys(args, ['query', 'limit']);
@@ -137,7 +137,7 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
             const url =
                 `${RUNESCAPE_WIKI_API}?action=query&list=search&format=json` +
                 `&srlimit=${limit}&srsearch=${encodeURIComponent(query)}`;
-            const data = await makeApiRequest(url);
+            const data = await makeApiRequest(url, signal);
             const hits = (data?.query?.search ?? []) as WikiSearchHit[];
             const results = hits.flatMap(hit => {
                 if (typeof hit.title !== 'string' || hit.title.length === 0) {
@@ -164,7 +164,7 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
             const url =
                 `${RUNESCAPE_WIKI_API}?action=query&prop=extracts&format=json` +
                 `&explaintext=1&redirects=1&titles=${encodeURIComponent(page)}`;
-            const data = await makeApiRequest(url);
+            const data = await makeApiRequest(url, signal);
             const pages = (data?.query?.pages ?? {}) as Record<string, WikiPage>;
             const firstPage = Object.values(pages)[0];
 

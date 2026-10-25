@@ -92,6 +92,82 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 - `get_player_stats` — RS3 hiscores for a username. `gameMode: normal` works. Ironman and hardcore currently return HTTP 404 from Jagex.
 - `search_wiki` — Search RuneScape Wiki titles and snippets when the page title is unknown.
 - `get_wiki_page_content` — Plain-text wiki extract. Follows redirects.
+- `recommend_next_activity` — Opt-in Jev prototype for goal-based suggestions with wiki evidence, account context, alternatives and unknowns. Requires server-side configuration below; adding the source does not enable it on the hosted endpoint.
+
+### Try the Jev recommendation tool locally
+
+The MCP server owns the loop. The calling assistant supplies a goal and whatever
+account context it knows, then explains the structured result to the player.
+No separate agent framework or text-generation model is needed inside the server.
+
+Set these in a local, ignored `.env.local` file. Do not commit the API key:
+
+```dotenv
+RUNESCAPE_RECOMMENDATIONS_ENABLED=true
+TYPESAFE_API_KEY=your-typesafe-key
+# Optional; defaults to jev-latest
+TYPESAFE_MODEL=jev-latest
+```
+
+```bash
+bun run build
+node --env-file=.env.local dist/index.js
+# Or use dist/http.js for a local HTTP MCP endpoint.
+```
+
+The entry point does not automatically load dotenv files. For an MCP client's
+stdio configuration, pass the same settings through its server `env` block or
+include `--env-file=/absolute/path/to/.env.local` in the Node arguments.
+
+Example `recommend_next_activity` arguments:
+
+```json
+{
+  "goal": "Train Prayer toward bossing",
+  "context": {
+    "username": "YourName",
+    "gameMode": "normal",
+    "skills": { "Prayer": 50 },
+    "budgetGp": 2000000,
+    "sessionMinutes": 45,
+    "playStyle": "active",
+    "members": true,
+    "completedQuests": ["The Restless Ghost"],
+    "gear": [],
+    "notes": "Prefer methods that help unlock future combat upgrades."
+  }
+}
+```
+
+Only `goal` is required. Public hiscores fill missing skill levels when a username
+is supplied; caller-supplied levels take precedence and their provenance is returned.
+Quest completion, membership, gear and bank contents are not available from
+hiscores. Missing facts stay unknown. A completed-quest list records known completed
+quests; omission from that list does not prove a quest is incomplete.
+
+Each invocation makes at most three Jev requests: route the goal, shortlist wiki
+search results, then assess goal relevance, eligibility, budget and session fit
+in one batch. The server performs up to two wiki searches, evaluates at most six
+candidates, and reads at most three pages. Page excerpts are capped at 6,000
+characters. Requests have a 55-second deadline, individual fetch timeouts, and
+no automatic paid retries. Returned token counts let you measure actual usage;
+this prototype does not promise a particular dollar cost.
+
+The result includes `recommended`, `needs_context`, or `no_match`, a recommendation
+when supported, up to two alternatives, wiki excerpts and links, missing context,
+warnings, per-dimension Jev answers and token usage. Suggestions are wiki activities
+or guides, not an exhaustive optimized progression plan. Requirements are model
+assessments over excerpts, **not verified requirements**; `requirementsVerified`
+is always false in this version. It does not infer exact costs, GP/hour or durations.
+An assistant should communicate any conditions and ask for relevant missing facts.
+
+Goals, supplied account context and retrieved evidence are sent to TypeSafe for
+evaluation. The recommendation module keeps account data and decisions only for
+the request and caches public wiki page reads for five minutes, up to 64 pages.
+It does not cache goal searches or change the player's account. The other tools
+continue working when recommendations are disabled. Use locally or behind access
+control for the first trial; enabling this tool on a public server allows callers
+to consume the operator's paid Jev quota.
 
 ### Prompts
 
@@ -137,6 +213,7 @@ All requests send User-Agent:
 ```bash
 bun install
 bun run build
+bun run build:server-card # refresh local Smithery tool metadata after schema changes
 bun run start          # stdio MCP server
 bun run test           # unit + protocol compliance
 bun run inspector      # MCP Inspector

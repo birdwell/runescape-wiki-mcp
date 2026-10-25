@@ -27,6 +27,7 @@ describe('MCP Server', () => {
                 'get_player_stats',
                 'search_wiki',
                 'get_wiki_page_content',
+                'recommend_next_activity',
             ];
 
             expected.forEach(toolName => {

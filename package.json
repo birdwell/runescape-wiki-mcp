@@ -25,6 +25,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "build:server-card": "tsc && node scripts/build-server-card.mjs",
     "dev": "tsc --watch & node --watch dist/index.js",
     "watch": "tsc --watch",
     "start": "node dist/index.js",

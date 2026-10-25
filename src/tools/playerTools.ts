@@ -48,7 +48,7 @@ export const playerTools: Tool[] = [
     },
 ];
 
-export async function handlePlayerTool(name: string, args: ToolArguments): Promise<ToolResponse> {
+export async function handlePlayerTool(name: string, args: ToolArguments, signal?: AbortSignal): Promise<ToolResponse> {
     switch (name) {
         case 'get_player_stats': {
             const unexpected = rejectUnknownKeys(args, ['username', 'gameMode']);
@@ -74,7 +74,7 @@ export async function handlePlayerTool(name: string, args: ToolArguments): Promi
 
             let csvData: string;
             try {
-                csvData = await makeTextApiRequest(url);
+                csvData = await makeTextApiRequest(url, signal);
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
                 if (message.includes('404')) {

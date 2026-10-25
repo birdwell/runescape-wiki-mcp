@@ -42,7 +42,7 @@ export const SERVER_CONFIG = {
 
 /** Shown to MCP clients before they pick a tool. */
 export const SERVER_INSTRUCTIONS =
-    'RS3 only. Prices are Jagex guide prices and Weirdgloop daily history, and they lag the live high/low market at prices.runescape.wiki. Do not call them real-time. Do not rank the whole Grand Exchange. Resolve names with lookup_item. get_player_stats works for normal mode; ironman and hardcore currently return HTTP 404 from Jagex. estimate_flip is an estimate after the 2% seller tax. Unofficial, not affiliated with Jagex or the RuneScape Wiki.';
+    'RS3 only. Prices are Jagex guide prices and Weirdgloop daily history, and they lag the live high/low market at prices.runescape.wiki. Do not call them real-time. Do not rank the whole Grand Exchange. Resolve names with lookup_item. get_player_stats works for normal mode; ironman and hardcore currently return HTTP 404 from Jagex. estimate_flip is an estimate after the 2% seller tax. recommend_next_activity is an opt-in paid Jev prototype: pass a goal and known account context, communicate unknowns and conditional suggestions, and never describe its requirement judgments as verified. Unofficial, not affiliated with Jagex or the RuneScape Wiki.';
 
 // RuneScape 3 skills in order (30 skills total)
 export const RS3_SKILLS = [

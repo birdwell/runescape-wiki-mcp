@@ -8,6 +8,7 @@ import { wikiTools, handleWikiTool } from './wikiTools.js';
 import { historyTools, handleHistoryTool } from './historyTools.js';
 import { compareTools, handleCompareTool } from './compareTools.js';
 import { flipTools, handleFlipTool } from './flipTools.js';
+import { recommendationTools, handleRecommendationTool } from './recommendationTools.js';
 import { ToolArguments, ToolResponse } from '../types.js';
 import { unknownToolError } from '../errors.js';
 
@@ -19,9 +20,13 @@ export const allTools: Tool[] = [
     ...flipTools,
     ...playerTools,
     ...wikiTools,
+    ...recommendationTools,
 ];
 
 export async function handleTool(name: string, args: ToolArguments): Promise<ToolResponse> {
+    if (recommendationTools.some(tool => tool.name === name)) {
+        return handleRecommendationTool(name, args);
+    }
     if (itemTools.some(tool => tool.name === name)) {
         return handleItemTool(name, args);
     }
@@ -55,4 +60,5 @@ export {
     historyTools,
     compareTools,
     flipTools,
+    recommendationTools,
 };
