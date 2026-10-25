@@ -31,7 +31,9 @@ export const recommendationTools: Tool[] = [{
     name: 'recommend_next_activity',
     title: 'Recommend Next RS3 Activity',
     description: 'Recommend an RS3 next activity for a goal and optional account context. ' +
-        'Fetches public hiscores and wiki evidence, then uses up to three paid Jev calls. ' +
+        'Fetches public hiscores and wiki evidence. Quest goals fetch the complete public RuneMetrics journal ' +
+        'and compare every unfinished quest with wiki rewards/requirements in bounded batches, then fetch finalist guide summaries. ' +
+        'Uses up to 24 paid Jev calls for quests, three for other activities. ' +
         'Requires operator opt-in and a TypeSafe API key. Supplied goal/account context is sent to TypeSafe. ' +
         'Unknown quests, gear, money and requirements remain explicit; suggestions may be conditional. ' +
         'Returns sources, alternatives, missing context and token usage. No account changes or persistence.',
@@ -49,6 +51,9 @@ export const recommendationTools: Tool[] = [{
             account: { type: 'object', additionalProperties: true },
             sources: { type: 'array', items: { type: 'object', additionalProperties: true } },
             usage: { type: 'object', additionalProperties: true },
+            questCoverage: { type: 'object', additionalProperties: true },
+            questDecision: { type: 'object', additionalProperties: true },
+            blockedAlternatives: { type: 'array', items: { type: 'object', additionalProperties: true } },
         },
         required: ['status', 'goal', 'recommendation', 'alternatives', 'missingContext', 'warnings',
             'account', 'sources', 'usage'],

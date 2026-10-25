@@ -89,6 +89,7 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 - `get_all_categories` — Category IDs 0–43 and their names.
 - `get_category_info` — How many items sit under each letter in one category.
 - `get_ge_info` — Grand Exchange database metadata (`lastConfigUpdateRuneday`), not prices.
+- `get_player_quests` — Complete public RuneMetrics quest journal, including completed/started/not-started status and Jagex eligibility. No Jev key required.
 - `get_player_stats` — RS3 hiscores for a username. `gameMode: normal` works. Ironman and hardcore currently return HTTP 404 from Jagex.
 - `search_wiki` — Search RuneScape Wiki titles and snippets when the page title is unknown.
 - `get_wiki_page_content` — Plain-text wiki extract. Follows redirects.
@@ -141,11 +142,41 @@ Example `recommend_next_activity` arguments:
 
 Only `goal` is required. Public hiscores fill missing skill levels when a username
 is supplied; caller-supplied levels take precedence and their provenance is returned.
-Quest completion, membership, gear and bank contents are not available from
-hiscores. Missing facts stay unknown. A completed-quest list records known completed
-quests; omission from that list does not prove a quest is incomplete.
+Quest completion comes from RuneMetrics for quest goals; membership, gear and bank
+contents remain unknown unless provided. For other goals, a caller-supplied completed
+list records known completions only; absence does not mean a quest is unfinished.
 
-Each invocation makes at most three Jev requests: route the goal, shortlist wiki
+For a quest question, supply the username and natural-language goal:
+
+```json
+{
+  "goal": "What is the best mining quest to do?",
+  "context": { "username": "YourName" }
+}
+```
+
+The server reads the fresh public RuneMetrics journal and the wiki pages for its
+quests, resolves title aliases and quest disambiguation, and reads the wiki's
+shared prerequisite table. Completed quests are excluded. Every unfinished quest
+is sent to Jev with completion rewards, separate conditional post-quest rewards,
+skill and quest prerequisites, current status, eligibility, and known blockers.
+Independent comparisons run in bounded batches, then a final comparison picks a
+quest to do now and useful blocked targets. The planner fetches the finalists'
+quick-guide checklists and returns their starting location, length, items, enemies,
+and opening walkthrough steps. Started quests retain their status; the exact stage
+must be read from the player's in-game journal.
+
+Quest goals use at most 24 Jev requests, including routing, with two comparison
+requests in flight at once. Individual request bodies stay below 40,000 serialized
+characters. `questCoverage` reports journal totals, metadata coverage and the exact
+number of unfinished quests evaluated. Missing/private journals and missing wiki
+facts are reported explicitly. Skill/prerequisite checks and Jagex eligibility
+constrain the choices; current membership, inventory, combat readiness, boost
+alternatives and miscellaneous requirements may still need checking. A stale
+caller-supplied completion list does not override the fresh official journal.
+Public wiki quest metadata is cached for six hours; player journals are never cached.
+
+Other activity goals make at most three Jev requests: route the goal, shortlist wiki
 search results, then assess goal relevance, eligibility, budget and session fit
 in one batch. The server performs up to two wiki searches, evaluates at most six
 candidates, and reads at most three pages. Page excerpts are capped at 6,000
@@ -159,9 +190,10 @@ this prototype does not promise a particular dollar cost.
 The result includes `recommended`, `needs_context`, or `no_match`, a recommendation
 when supported, up to two alternatives, wiki excerpts and links, missing context,
 warnings, per-dimension Jev answers and token usage. Suggestions are wiki activities
-or guides, not an exhaustive optimized progression plan. Requirements are model
+or guides, not an exhaustive optimized progression plan. For non-quest suggestions, requirements are model
 assessments over excerpts, **not verified requirements**; `requirementsVerified`
-is always false in this version. It does not infer exact costs, GP/hour or durations.
+is false. Quest suggestions report deterministic checks and their remaining limits
+through `requirementChecks`, `blockers`, and `unknowns`. It does not infer exact costs, GP/hour or durations.
 An assistant should communicate any conditions and ask for relevant missing facts.
 
 Goals, supplied account context and retrieved evidence are sent to TypeSafe for

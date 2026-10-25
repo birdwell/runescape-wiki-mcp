@@ -42,7 +42,7 @@ export function recommendationConfiguration(): { apiKey: string; model: string }
 export class JevSession {
     readonly usage = { rounds: 0, inputTokens: 0, outputTokens: 0, models: [] as string[] };
 
-    constructor(private readonly config: { apiKey: string; model: string }) {}
+    constructor(private readonly config: { apiKey: string; model: string; maxRounds?: number }) {}
 
     requestLength(state: unknown, questions: Record<string, ChoiceQuestion>): number {
         return JSON.stringify({ model: this.config.model, state, questions }).length;
@@ -53,7 +53,7 @@ export class JevSession {
         questions: Record<string, ChoiceQuestion>,
         signal: AbortSignal
     ): Promise<Record<string, ChoiceAnswer>> {
-        if (this.usage.rounds >= MAX_JEV_ROUNDS) {
+        if (this.usage.rounds >= (this.config.maxRounds ?? MAX_JEV_ROUNDS)) {
             throw new Error('Jev round limit reached.');
         }
         const body = JSON.stringify({ model: this.config.model, state, questions });

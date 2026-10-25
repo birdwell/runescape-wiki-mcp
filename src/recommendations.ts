@@ -2,6 +2,7 @@ import { RS3_SKILLS } from './constants.js';
 import { JevSession, MAX_JEV_REQUEST_CHARS, recommendationConfiguration, type ChoiceQuestion } from './jev.js';
 import { handlePlayerTool } from './tools/playerTools.js';
 import { handleWikiTool } from './tools/wikiTools.js';
+import { recommendQuests } from './questRecommendations.js';
 import type { RecommendationInput } from './tools/recommendationTools.js';
 import type { ToolArguments, ToolResponse } from './types.js';
 
@@ -121,6 +122,9 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
     const category = route.category.confidence >= MIN_CONFIDENCE ? route.category.choice : 'general';
     const focusSkill = route.skill.confidence >= MIN_CONFIDENCE && route.skill.choice !== 'none'
         ? route.skill.choice : undefined;
+    if (category === 'questing' || /\bquests?\b/i.test(goal)) {
+        return recommendQuests(input, account, session.usage, focusSkill, signal);
+    }
     const queries = [...new Set([
         // Remove MediaWiki search operators; the server supplies all search parameters.
         goal.replace(/[^\p{L}\p{N} '\-]/gu, ' ').trim().slice(0, 200),

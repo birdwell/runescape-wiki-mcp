@@ -2,6 +2,7 @@
 
 import type { Tool } from '@modelcontextprotocol/server';
 import { GAME_MODE_PATHS, RS3_HISCORES_ORIGIN, RS3_SKILLS } from '../constants.js';
+import { fetchPlayerQuests } from '../questData.js';
 import { JSON_SCHEMA_2020_12, playerStatsOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { GameMode, PlayerStatsResponse, ToolArguments, ToolResponse } from '../types.js';
 import { createSuccessResponse, makeTextApiRequest } from '../utils.js';
@@ -19,6 +20,17 @@ function isGameMode(value: string): value is GameMode {
 }
 
 export const playerTools: Tool[] = [
+    {
+        name: 'get_player_quests',
+        title: 'Get Player Quest Journal',
+        description: 'Fetch the complete public RS3 RuneMetrics quest journal: completed, started and not-started quests, membership requirements and Jagex eligibility flags. Reports private/unavailable profiles without guessing completion. Does not require Jev.',
+        inputSchema: {
+            $schema: JSON_SCHEMA_2020_12, type: 'object',
+            properties: { username: { type: 'string', minLength: 1, maxLength: 12 } },
+            required: ['username'], additionalProperties: false,
+        },
+        ...READ_ONLY_TOOL,
+    },
     {
         name: 'get_player_stats',
         title: 'Get Player Stats',
@@ -50,6 +62,14 @@ export const playerTools: Tool[] = [
 
 export async function handlePlayerTool(name: string, args: ToolArguments, signal?: AbortSignal): Promise<ToolResponse> {
     switch (name) {
+        case 'get_player_quests': {
+            const unexpected = rejectUnknownKeys(args, ['username']);
+            if (unexpected) return unexpected;
+            const username = requireString(args?.username, 'username', { minLength: 1, maxLength: 12 });
+            if (isToolResponse(username)) return username;
+            return createSuccessResponse(`Quest journal for ${username}`, await fetchPlayerQuests(username,
+                signal ?? AbortSignal.timeout(12_000)));
+        }
         case 'get_player_stats': {
             const unexpected = rejectUnknownKeys(args, ['username', 'gameMode']);
             if (unexpected) {
