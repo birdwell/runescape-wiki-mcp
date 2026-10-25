@@ -75,6 +75,11 @@ export const itemDetailOutputSchema = {
             properties: {
                 id: itemIdProperty,
                 name: { type: 'string' as const },
+                type: { type: 'string' as const, description: 'Jagex catalogue category name' },
+                members: { type: 'string' as const, enum: ['true', 'false'], description: 'Whether the item requires membership; Jagex returns a string' },
+                icon: { type: 'string' as const, description: 'Small item icon URL' },
+                icon_large: { type: 'string' as const, description: 'Large item icon URL' },
+                typeIcon: { type: 'string' as const, description: 'Catalogue category icon URL' },
                 description: { type: 'string' as const, description: 'In-game examine text' },
                 current: {
                     type: 'object' as const,

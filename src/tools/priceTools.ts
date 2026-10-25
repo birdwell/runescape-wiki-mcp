@@ -38,16 +38,12 @@ const nameOrIdProperties = {
 export const priceTools: Tool[] = [
     {
         name: 'get_item_price',
-        title: 'Get Item Price',
+        title: 'Get Item Price and Details',
         description:
-            "Read one RS3 item's Jagex Grand Exchange guide-price detail, including current price, trend periods and " +
-            "examine text. Use lookup_item to discover an uncertain name, compare_items for multiple price snapshots, " +
-            "summarize_price_history for statistics, or get_item_graph for daily samples. Pass exactly one of itemId " +
-            "or name; itemId from lookup_item skips name lookup; name \"Abyssal whip\" resolves first and ambiguous " +
-            "names return an error listing candidates. Prices can be compact strings such as \"80k\" and lag live " +
-            "offers.\n\n" +
-            "No auth or local result cache; unavailable items and upstream failures return errors. HTTP shares a " +
-            "default 60 requests/IP/minute budget; honor Retry-After on 429.",
+            "Read one RS3 item's Jagex catalogue details: guide price, price trends, name, examine text, item type, membership requirement and icon URLs. Use this for general GE item metadata as well as price detail.\n" +
+            "- Pass exactly one of itemId or name. itemId from lookup_item skips name resolution; name resolves first and ambiguous names return an error listing candidates.\n" +
+            "- Use lookup_item for name discovery, compare_items for multiple snapshots, summarize_price_history for statistics or get_item_graph for daily samples.\n" +
+            "- Prices may be compact strings such as \"80k\" and lag live offers; members is Jagex's string \"true\" or \"false\". No auth or local cache; unavailable items and upstream failures return tool errors. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
