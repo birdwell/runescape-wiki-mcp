@@ -22,7 +22,9 @@ export const recommendationInput = z.strictObject({
         gear: names.optional(),
         notes: z.string().trim().max(1000).optional(),
     }).default({}),
-});
+}).refine(input => JSON.stringify(input).length <= 20_000, {
+    message: 'Goal and account context together must fit within 20,000 serialized JSON characters. Narrow quest and gear lists to relevant entries.',
+}).describe('Goal and optional account context. Combined serialized JSON must not exceed 20,000 characters; oversized input is rejected before any paid calls.');
 export type RecommendationInput = z.infer<typeof recommendationInput>;
 
 export const recommendationTools: Tool[] = [{

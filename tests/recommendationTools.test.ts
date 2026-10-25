@@ -18,12 +18,12 @@ function answer(question: ChoiceQuestion, selected: string, confidence = 1) {
 
 function fixture(options: {
     eligibility?: string; budget?: string; session?: string; confidence?: number;
-    pages?: number; extractFailure?: boolean;
+    pages?: number; extractFailure?: boolean; extract?: string;
 } = {}) {
     sequence += 1;
     const titles = Array.from({ length: options.pages ?? 2 }, (_, index) => `Prayer method ${sequence}-${index}`);
     const calls: RequestBody[] = [];
-    const extracts = 'Train Prayer using this method. Check the skill level and any unlocks before starting. ' +
+    const extracts = options.extract ?? 'Train Prayer using this method. Check the skill level and any unlocks before starting. ' +
         'There is no supported exact cost or duration in this fixture.';
     nock('https://runescape.wiki').get('/api.php').query(q => q.list === 'search').twice().reply(200, {
         query: { search: titles.map(title => ({ title, snippet: 'A Prayer training method.' })) },
@@ -162,6 +162,37 @@ describe('recommend_next_activity', () => {
         const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer' });
         expect(calls).toHaveLength(2);
         expect(response.structuredContent).toMatchObject({ status: 'no_match', recommendation: null });
+    });
+
+    it('fits long escaped excerpts around a large valid account without failing after paid rounds', async () => {
+        const { calls } = fixture({ pages: 3, extract: '"\\'.repeat(4000) });
+        const context = {
+            skills: { Prayer: 50 },
+            completedQuests: Array.from({ length: 100 }, (_, i) => `${i}${'q'.repeat(77)}`),
+            gear: Array.from({ length: 100 }, (_, i) => `${i}${'g'.repeat(77)}`),
+            notes: 'n'.repeat(1000),
+        };
+        const args = { goal: 'Train Prayer', context };
+        expect(recommendationInput.safeParse(args).success).toBe(true);
+        const response = await handleTool('recommend_next_activity', args);
+        expect(response.isError).toBeFalsy();
+        expect(calls).toHaveLength(3);
+        expect(JSON.stringify({ model: 'jev-latest', ...calls[2] }).length).toBeLessThanOrEqual(40_000);
+        expect(calls[2].state.account.completedQuests).toEqual(context.completedQuests);
+        expect((response.structuredContent?.warnings as string[]).join(' ')).toContain('shortened');
+        expect((response.structuredContent?.sources as { excerpt: string }[])[0].excerpt)
+            .toBe(calls[2].state.pages[0].evidence);
+    });
+
+    it('rejects oversized combined account context before any paid request', async () => {
+        const args = { goal: 'Train Prayer', context: {
+            completedQuests: Array(100).fill('q'.repeat(100)),
+            gear: Array(100).fill('g'.repeat(100)), notes: 'n'.repeat(1000),
+        } };
+        expect(recommendationInput.safeParse(args).success).toBe(false);
+        const response = await handleTool('recommend_next_activity', args);
+        expect(response.isError).toBe(true);
+        expect(response.content[0].text).toContain('20,000');
     });
 
     it('returns an empty result without further Jev calls when searches find nothing', async () => {

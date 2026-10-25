@@ -4,6 +4,7 @@ import { z } from 'zod';
 // Contract: https://docs.typesafe.ai/api/system-one
 const ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
 export const MAX_JEV_ROUNDS = 3;
+export const MAX_JEV_REQUEST_CHARS = 40_000;
 const probability = z.number().finite().min(0).max(1);
 const answerSchema = z.object({
     type: z.literal('choice'),
@@ -43,6 +44,10 @@ export class JevSession {
 
     constructor(private readonly config: { apiKey: string; model: string }) {}
 
+    requestLength(state: unknown, questions: Record<string, ChoiceQuestion>): number {
+        return JSON.stringify({ model: this.config.model, state, questions }).length;
+    }
+
     async decide(
         state: unknown,
         questions: Record<string, ChoiceQuestion>,
@@ -52,7 +57,7 @@ export class JevSession {
             throw new Error('Jev round limit reached.');
         }
         const body = JSON.stringify({ model: this.config.model, state, questions });
-        if (body.length > 40_000) {
+        if (body.length > MAX_JEV_REQUEST_CHARS) {
             throw new Error('Recommendation context exceeds the Jev request limit.');
         }
         this.usage.rounds += 1;

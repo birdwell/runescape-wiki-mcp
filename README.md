@@ -150,7 +150,10 @@ search results, then assess goal relevance, eligibility, budget and session fit
 in one batch. The server performs up to two wiki searches, evaluates at most six
 candidates, and reads at most three pages. Page excerpts are capped at 6,000
 characters. Requests have a 55-second deadline, individual fetch timeouts, and
-no automatic paid retries. Returned token counts let you measure actual usage;
+an aggregate 20,000-character serialized JSON limit on caller input, checked before
+paid calls. Excerpts are shortened further when needed to keep the complete Jev
+request within 40,000 serialized characters; returned sources reflect those excerpts.
+There are no automatic paid retries. Returned token counts let you measure actual usage;
 this prototype does not promise a particular dollar cost.
 
 The result includes `recommended`, `needs_context`, or `no_match`, a recommendation
