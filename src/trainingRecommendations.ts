@@ -21,6 +21,16 @@ export function experienceGap(skill: string, level: number | undefined, target: 
         currentExperience: current, basis: experience === undefined ? 'Level floor; remaining XP is an upper bound' : 'Reported account XP' };
 }
 
+function explicitlyRequiresQuest(evidence: string, title: string): boolean {
+    const escaped = questKey(title).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const text = questKey(evidence);
+    const match = new RegExp(`\\brequires?\\s+(?:(?:the\\s+)?completion of\\s+)?(?:the\\s+)?${escaped}(?=$|[\\s,.!;:])`).exec(text);
+    if (!match) return false;
+    // Do not turn an explicit negation into a blocker. More ambiguous prose is
+    // left to the conditional evidence judgment rather than guessed here.
+    return !/\b(?:not|optional|recommended)\b|n't\b/.test(text.slice(Math.max(0, match.index - 35), match.index));
+}
+
 export interface TrainingPlan {
     status: 'recommended' | 'needs_context' | 'no_match' | 'goal_met';
     skill: string; currentLevel?: number; targetLevel: number;
@@ -30,6 +40,7 @@ export interface TrainingPlan {
     missingContext: string[]; warnings: string[];
     coverage: { guides: string[]; parsedMethods: number; comparedMethods: number; scope: string };
     sources: TrainingMethod['source'][];
+    blockedMethods: { method: string; blockers: string[] }[];
     questJournal?: { source: string; fetchedAt: string; total: number; completed: string[]; unfinished: string[]; scope: string };
 }
 
@@ -38,7 +49,7 @@ export async function planTraining(goal: string, account: PlanningAccount, skill
     const current = account.skills[skill];
     const plan: TrainingPlan = { status: 'needs_context', skill, currentLevel: current, targetLevel,
         experience: experienceGap(skill, current, targetLevel, account.skillExperience[skill]),
-        steps: [], alternatives: [], missingContext: [], sources: [], warnings: [],
+        steps: [], alternatives: [], missingContext: [], sources: [], warnings: [], blockedMethods: [],
         coverage: { guides: [], parsedMethods: 0, comparedMethods: 0,
             scope: 'Methods in supported level/method training tables; not every activity in the game.' } };
     if (current === undefined) { plan.missingContext.push(`Current ${skill} level`); return plan; }
@@ -80,7 +91,15 @@ export async function planTraining(goal: string, account: PlanningAccount, skill
                 scope: 'Fresh status for titles mentioned in method evidence only. Other quest statuses remain unknown to this comparison.' };
         } catch { plan.warnings.push('Fresh quest status was unavailable; quest-locked training methods remain conditional.'); }
     }
-    const relevant = methods.filter(method => method.minimumLevel < targetLevel &&
+    const blocked = new Set<TrainingMethod>();
+    for (const method of methods) {
+        const quests = plan.questJournal?.unfinished.filter(title => explicitlyRequiresQuest(method.evidence, title)) ?? [];
+        if (quests.length) {
+            blocked.add(method);
+            plan.blockedMethods.push({ method: method.name, blockers: quests.map(title => `Requires ${title}; the fresh journal marks it unfinished.`) });
+        }
+    }
+    const relevant = methods.filter(method => !blocked.has(method) && method.minimumLevel < targetLevel &&
         (account.members !== false || method.membership === 'free'));
     relevant.sort((a, b) => Number(b.recommendedUntil > current) - Number(a.recommendedUntil > current) || b.minimumLevel - a.minimumLevel);
     relevant.forEach((method, index) => { method.id = `m${index}`; });
@@ -136,7 +155,7 @@ export async function planTraining(goal: string, account: PlanningAccount, skill
         plan.steps.push({ ...interval, method, conditional, decision: answer });
     }
     plan.alternatives = candidates.filter(method => method.minimumLevel <= current &&
-        method.id !== plan.steps[0]?.method.id).slice(0, 3);
+        method.id !== plan.steps[0]?.method.id).slice(0, 3).map(method => ({ ...method, conditional: true, requirementsVerified: false }));
     plan.status = plan.steps.length ? (plan.steps[0].conditional ? 'needs_context' : 'recommended') :
         plan.missingContext.some(item => item.startsWith('Clarify')) ? 'needs_context' : 'no_match';
     return plan;
