@@ -45,11 +45,10 @@ export const priceTools: Tool[] = [
         name: 'get_item_price',
         title: 'Get Item Metadata and Guide Prices',
         description:
-            "Read a selected item\u2019s Jagex catalogue record: examine text, membership, icons, guide price, predefined 30/90/180-day trends and a direct item-ID Wiki link.\n" +
-            "Choose exactly one selector. itemId skips lookup; name resolves first and ambiguity returns candidates. itemIds retrieves 1\u201310 unique GE IDs from lookup_item. An ID or name returns one item record; an array returns ordered batch rows even for one ID.\n" +
-            "Each batch row contains data or an error; all rows failing makes the call an error. Two requests run concurrently, and upstream 429 stops queued work.\n" +
-            "For side-by-side numeric price/volume snapshots use compare_items; for dated observations use get_item_graph; for chosen-window statistics use summarize_price_history.\n" +
-            "Authentication is unnecessary and responses are not cached. Guide prices lag live offers and may use k/m abbreviations. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
+            "Fetch RS3 catalogue metadata, an item-ID Wiki link and predefined Jagex guide-price trends. Use compare_items for numeric price/volume comparisons, get_item_graph for observations or summarize_price_history for chosen-window calculations.\n\n" +
+            "Choose one selector. itemId skips lookup; ambiguous names return candidates. itemIds accepts 1–10 unique IDs from lookup_item. Invalid batch entries reject the whole call before fetching; valid IDs unavailable from Jagex fail individually.\n\n" +
+            "An ID/name returns item; an array returns ordered batch rows even for one ID. All rows failing makes the call an error. Two requests run concurrently; a 429 stops queued work.\n\n" +
+            "Prices may use k/m abbreviations and lag live offers. No credentials or server cache are used. Shared HTTP limit: 60 requests/IP/minute by default; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

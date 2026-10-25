@@ -21,10 +21,9 @@ export const itemTools: Tool[] = [
         name: 'lookup_item',
         title: 'Resolve Item Names to GE IDs',
         description:
-            "Resolve item names or prefixes to tradeable RS3 GE identities. This discovery step can return several candidates; get_item_price reads a selected catalogue record. Matches include Wiki links and available price samples.\n" +
-            "- query is a literal item name or prefix: \"Abyssal whip\" tries an exact match; \"abyssal\" discovers alternatives. limit defaults to 5, maximum 10. An exact match stops the search even with a larger limit; otherwise wiki opensearch candidates are filtered to GE items.\n" +
-            "- Choose a returned ID for get_item_price detail, summarize_price_history statistics or get_item_graph daily samples. No matches returns a tool error; optional price fields can be absent and samples lag live offers.\n" +
-            "- No auth or local cache. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
+            "Resolve tradeable RS3 item names or prefixes to GE IDs. Choose a candidate for get_item_price catalogue details, get_item_graph observations or summarize_price_history statistics. Use search_wiki for NPC/quest sources.\n\n" +
+            "query is literal text, not Wiki search syntax. \"Abyssal whip\" stops on an exact match; \"abyssal\" explores alternatives. limit caps candidates, not guaranteed matches: Wiki candidates without GE identities are removed, so fewer results may survive. No surviving matches returns an error, not an empty success.\n\n" +
+            "Optional price samples can be absent and lag live offers. Public reads need no credentials or server cache. The shared HTTP budget defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

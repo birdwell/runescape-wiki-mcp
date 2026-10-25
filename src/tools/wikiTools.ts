@@ -83,10 +83,10 @@ export const wikiTools: Tool[] = [
         name: 'search_wiki',
         title: 'Search Wiki Pages',
         description:
-            "Find RS3 Wiki source pages for items, NPCs/monsters, quests and guides. Use get_wiki_page_content for reviewed text or page references, lookup_item for GE identities, and get_item_price for catalogue records.\n" +
-            "query searches article text. Quotes group phrases: \"Abyssal demon\" \"drop\" requires both. intitle:\"Cook's Assistant\" focuses title matches. Pass raw syntax; the server handles URL encoding. prefix:Category:Weapons switches to the Wiki category namespace.\n" +
-            "limit caps the first relevance-ranked set, not an offset. There is no continuation cursor; refine the query for different matches. Empty results mean no matches; invalid queries and API failures are errors.\n" +
-            "Authentication is unnecessary and results are not cached. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
+            "Find RS3 Wiki sources for items, NPCs/monsters, quests and guides. Use get_wiki_page_content for reviewed text/page references, lookup_item for GE identities or get_item_price for catalogue records.\n\n" +
+            "query accepts raw Wiki syntax; the server URL-encodes it. \"Abyssal demon\" \"drop\" requires both phrases; intitle:\"Cook's Assistant\" focuses titles. prefix:Category:Weapons selects Wiki categories instead of articles.\n\n" +
+            "limit caps one relevance-ranked set, not an offset. No continuation cursor exists: refine the query for different matches. No matches returns an empty set; invalid queries or API failures return errors.\n\n" +
+            "Public reads require no credentials and are uncached. The shared HTTP budget defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

@@ -37,10 +37,9 @@ export const historyTools: Tool[] = [
         name: 'summarize_price_history',
         title: 'Summarize Daily Price Statistics',
         description:
-            "Answer a recent RS3 item trend question with computed min/max/mean/change statistics. For individual dated observations use get_item_graph with source weirdgloop; for catalogue details and predefined Jagex trends use get_item_price.\n" +
-            "Choose itemId to skip name lookup, or name to resolve first. days selects trailing usable observations from one fixed 90-day fetch. It changes the calculation window, not the request size.\n" +
-            "Missing days are not backfilled. windowDays and sampleCount report observations used, not elapsed calendar days; fewer available observations shrink both. The mean is unweighted and change compares newest with oldest. Unreported volume is excluded from its average. No usable history returns an error.\n" +
-            "This computes historical statistics, not forecasts. Authentication is unnecessary and responses are not cached. Prices lag live offers. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
+            "Compute historical min/max/mean/change for one RS3 item. Use get_item_graph with source weirdgloop to inspect dated observations, or get_item_price for catalogue metadata and predefined Jagex trends.\n\n" +
+            "An itemId skips name resolution. days=7 selects the last seven usable observations from a fixed 90-day fetch, even if they span more than a calendar week. If only four exist, windowDays/sampleCount are four. Missing days are never backfilled; days changes the calculation, not the fetch.\n\n" +
+            "Unreported volume is excluded from its average. No usable history returns an error. These are historical guide prices, not forecasts or live offers. Public reads need no credentials or server cache. Shared HTTP limit: 60 requests/IP/minute by default; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
