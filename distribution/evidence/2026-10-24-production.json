@@ -1,0 +1,66 @@
+{
+  "checkedAt": "2026-10-24T21:25:48.086Z",
+  "endpoint": "https://runescape-wiki-mcp.fly.dev/mcp",
+  "checks": [
+    {
+      "name": "Discovery and read-only annotations",
+      "passed": false,
+      "error": "lookup_item: missing display title\n+ actual - expected\n\n+ 'undefined'\n- 'string'\n"
+    },
+    {
+      "name": "Item resolution and guide price",
+      "passed": true,
+      "detail": {
+        "itemId": 4151
+      }
+    },
+    {
+      "name": "Jagex graph",
+      "passed": true
+    },
+    {
+      "name": "GE metadata, categories and catalogue",
+      "passed": true
+    },
+    {
+      "name": "Seven-day history summary",
+      "passed": true
+    },
+    {
+      "name": "Comparison and hypothetical flip arithmetic",
+      "passed": true
+    },
+    {
+      "name": "Normal-mode hiscores",
+      "passed": true
+    },
+    {
+      "name": "Wiki search and content",
+      "passed": false,
+      "error": "tools/call: Unknown tool: search_wiki"
+    },
+    {
+      "name": "Wiki content by exact title",
+      "passed": true
+    },
+    {
+      "name": "Invalid input fails safely",
+      "passed": true
+    }
+  ],
+  "toolNames": [
+    "lookup_item",
+    "get_item_graph",
+    "get_item_price",
+    "get_ge_info",
+    "get_category_info",
+    "get_all_categories",
+    "browse_items",
+    "summarize_price_history",
+    "compare_items",
+    "estimate_flip",
+    "get_player_stats",
+    "get_wiki_page_content"
+  ],
+  "passed": false
+}

@@ -21,7 +21,11 @@ export const allTools: Tool[] = [
     ...playerTools,
     ...wikiTools,
     ...recommendationTools,
-];
+].map(tool => ({
+    ...tool,
+    // Older directory scanners still read the title from annotations.
+    annotations: { ...tool.annotations, title: tool.title ?? tool.name },
+}));
 
 export async function handleTool(name: string, args: ToolArguments): Promise<ToolResponse> {
     if (recommendationTools.some(tool => tool.name === name)) {

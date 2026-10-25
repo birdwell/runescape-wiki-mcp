@@ -3,7 +3,7 @@ export default {
     preset: 'ts-jest/presets/default-esm',
     testEnvironment: 'node',
     // Nock's fetch interception can leak across reused ESM VM environments.
-    // Recycle workers between suites and bound concurrency locally and in CI.
+    // Recycle each worker after a suite; keep concurrency bounded on local hosts and CI.
     maxWorkers: 2,
     workerIdleMemoryLimit: '1MB',
     cache: false,
