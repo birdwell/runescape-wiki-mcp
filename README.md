@@ -31,6 +31,8 @@ Price questions use `lookup_item`, `get_item_price`, `compare_items`, `summarize
 
 Hosted endpoint: `https://runescape-wiki-mcp.fly.dev/mcp`
 
+[Privacy policy](https://birdwellabs.com/privacy) describes the tool-request data, diagnostics and service providers involved.
+
 No server account, API key, game login or local installation is needed. Use Streamable HTTP with no authentication.
 
 ### Claude setup
@@ -115,8 +117,8 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 - `get_category_info` — How many items sit under each letter in one category.
 - `get_ge_info` — Grand Exchange database metadata (`lastConfigUpdateRuneday`), not prices.
 - `get_player_stats` — RS3 hiscores for a username. `gameMode: normal` works. Ironman and hardcore currently return HTTP 404 from Jagex.
-- `search_wiki` — Search RuneScape Wiki titles and snippets when the page title is unknown.
-- `get_wiki_page_content` — Plain-text wiki extract. Follows redirects.
+- `search_wiki` — Search RuneScape Wiki titles and source links when the page title is unknown.
+- `get_wiki_page_content` — Source reference following redirects; text only for a reviewed revision and matching content hash.
 
 ### Prompts
 
@@ -156,11 +158,17 @@ All requests send User-Agent:
 
 ### Attribution and third-party content
 
-RuneScape and its game content belong to Jagex Limited. This content is not endorsed by or affiliated with Jagex. See [Jagex's Fan Content Policy](https://legal.jagex.com/docs/policies/fan-content-policy). These credits do not establish additional permissions or a partnership.
+Created using intellectual property belonging to Jagex Limited under the terms of Jagex's Fan Content Policy. This content is not endorsed by or affiliated with Jagex.
+
+See [Jagex's Fan Content Policy](https://legal.jagex.com/docs/policies/fan-content-policy). These credits do not establish additional permissions or a partnership.
 
 Price history and item lookup use the [Weirdgloop API](https://api.weirdgloop.org/). Wiki text is by [RuneScape Wiki contributors](https://runescape.wiki/), generally licensed under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/), subject to [content and revision-specific exceptions](https://meta.weirdgloop.org/w/Licensing).
 
-Wiki extracts and search snippets include source article links, contributor-history links, the license and a description of formatting changes. Noncommercial use and share-alike conditions apply to that content and adaptations. Images and other media have their own terms. Preserve the attribution and applicable license when redistributing wiki content; downstream summaries and adaptations must also respect those terms.
+Wiki search returns titles and links without copying snippets. Unreviewed pages return links only, with `contentStatus: "link_only"`, `text: null` and `attribution.license: null`. Both text and structured results carry source and contributor-history links. The server does not infer content permissions from a site's footer or namespace.
+
+Extracts require a content-specific review in `src/wikiContentPolicy.ts`: exact title and revision, SHA-256 of the API's untrimmed plain-text extract, the actual license, copyright notices, reviewer, date and supporting review notes. No live pages are approved by default. Even approved pages fall back to links if the revision, namespace or content hash changes. Review the entire extract for imported or separately licensed material and preserve its notices. A digest verifies the reviewed bytes; it does not establish legal permission.
+
+Noncommercial use and share-alike conditions apply where required by the reviewed license. Images and other media have their own terms. Preserve the attribution and applicable license when redistributing wiki content; downstream summaries and adaptations must also respect those terms.
 
 The MIT license covers this project's original software, not third-party article text, game data, artwork or trademarks. Attribution alone does not settle the outstanding API, commercial-use or branding permission questions.
 

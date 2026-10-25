@@ -43,7 +43,7 @@ runescape-wiki-mcp/
 | `get_ge_info` | — | `lastConfigUpdateRuneday` |
 | `get_player_stats` | `username`, optional `gameMode` | `normal` works; ironman/hardcore currently HTTP 404 from Jagex |
 | `search_wiki` | `query`, optional `limit` | Wiki title search. Not a price search. |
-| `get_wiki_page_content` | `page` | Plain text; follows redirects |
+| `get_wiki_page_content` | `page` | Source link by default; reviewed revision/hash required for text; follows redirects |
 
 Prompts: `check_item_price`, `compare_ge_items`, `estimate_item_flip`, `player_overview`.
 

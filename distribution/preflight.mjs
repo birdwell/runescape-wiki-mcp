@@ -109,11 +109,17 @@ await check('Wiki search and content', async () => {
     const page = search.structuredContent?.results?.[0];
     assert(page?.title && page.url.startsWith('https://runescape.wiki/'));
     const result = await call('get_wiki_page_content', { page: page.title });
-    assert(result.content?.some(part => part.text?.length > 100));
+    assert.equal(result.structuredContent?.contentStatus, 'link_only');
+    assert.equal(result.structuredContent?.text, null);
+    assert.equal(result.structuredContent?.attribution?.license, null);
+    assert(result.structuredContent?.attribution?.sourceUrl.startsWith('https://runescape.wiki/'));
 });
 await check('Wiki content by exact title', async () => {
     const result = await call('get_wiki_page_content', { page: 'Abyssal whip' });
-    assert(result.content?.some(part => part.text?.length > 100));
+    assert.equal(result.structuredContent?.contentStatus, 'link_only');
+    assert.equal(result.structuredContent?.text, null);
+    assert.equal(result.structuredContent?.attribution?.license, null);
+    assert(result.structuredContent?.attribution?.sourceUrl.startsWith('https://runescape.wiki/'));
 });
 await check('Invalid input fails safely', async () => {
     await call('get_item_price', {}, true);

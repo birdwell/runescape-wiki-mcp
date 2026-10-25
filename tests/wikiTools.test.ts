@@ -1,160 +1,132 @@
-// Tests for wiki tools
-
+import { createHash } from 'node:crypto';
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import nock from 'nock';
 import { handleWikiTool, wikiTools } from '../src/tools/wikiTools.js';
+import { wikiContentReviews, type WikiContentReview } from '../src/wikiContentPolicy.js';
 
-describe('Wiki Tools', () => {
-    beforeEach(() => {
-        nock.cleanAll();
+const extract = '  Fictional fixture text. Copyright Fixture Contributors.  ';
+function review(overrides: Partial<WikiContentReview> = {}) {
+    wikiContentReviews.push({
+        title: 'Fixture', revisionId: 42,
+        extractSha256: createHash('sha256').update(extract).digest('hex'),
+        licenseName: 'Fixture license', licenseUrl: 'https://example.org/license',
+        copyrightNotices: ['Copyright Fixture Contributors.'],
+        reviewedBy: 'Test reviewer', reviewedAt: '2026-10-24',
+        reviewNote: 'Fictional test data, not approval of any live wiki content.', ...overrides,
+    });
+}
+function pageReply(prop: string, page: Record<string, unknown>) {
+    return nock('https://runescape.wiki').get('/api.php')
+        .query(query => query.prop === prop && query.redirects === '1' && query.rvprop === 'ids')
+        .reply(200, { query: { pages: { '1': { pageid: 1, title: 'Fixture', ns: 0,
+            revisions: [{ revid: 42 }], ...page } } } });
+}
+async function getPage() {
+    return handleWikiTool('get_wiki_page_content', { page: 'Fixture redirect' });
+}
+function expectLinks(result: Awaited<ReturnType<typeof getPage>>) {
+    expect(result.isError).toBeFalsy();
+    expect(result.structuredContent).toMatchObject({ contentStatus: 'link_only', text: null,
+        attribution: { license: null, copyrightNotices: [] } });
+    expect(JSON.stringify(result)).not.toContain(extract.trim());
+}
+
+describe('Wiki content boundaries', () => {
+    beforeEach(() => { nock.cleanAll(); wikiContentReviews.splice(0); });
+    afterEach(() => { nock.cleanAll(); wikiContentReviews.splice(0); });
+
+    it('publishes both wiki output schemas', () => {
+        expect(wikiTools).toHaveLength(2);
+        for (const tool of wikiTools) expect(tool.outputSchema).toBeDefined();
     });
 
-    afterEach(() => {
-        nock.cleanAll();
+    it('suppresses upstream snippets and includes attribution in structured search results', async () => {
+        const request = nock('https://runescape.wiki').get('/api.php')
+            .query(q => q.list === 'search' && q.srprop === '' && q.srnamespace === '0' && q.srlimit === '3')
+            .reply(200, { query: { search: [{ title: 'Fixture', snippet: '<b>Unreviewed text</b>' }] } });
+        const result = await handleWikiTool('search_wiki', { query: 'fixture', limit: 3 });
+        expect(request.isDone()).toBe(true);
+        expect(result.structuredContent).toMatchObject({ results: [{ title: 'Fixture', snippet: '',
+            url: 'https://runescape.wiki/w/Fixture', contentStatus: 'link_only',
+            attribution: { author: 'RuneScape Wiki contributors', license: null,
+                sourceUrl: 'https://runescape.wiki/w/Fixture',
+                historyUrl: 'https://runescape.wiki/w/Fixture?action=history' } }] });
+        expect(JSON.stringify(result)).not.toContain('Unreviewed text');
+        expect(result.content[0].text).toContain('RuneScape Wiki contributors');
     });
 
-    it('should register wiki search and page content', () => {
-        expect(wikiTools.some(t => t.name === 'search_wiki')).toBe(true);
-        expect(wikiTools.some(t => t.name === 'get_wiki_page_content')).toBe(true);
-        const page = wikiTools.find(t => t.name === 'get_wiki_page_content');
-        expect(page?.description).toContain('search_wiki');
+    it('returns empty search results', async () => {
+        nock('https://runescape.wiki').get('/api.php').query(true).reply(200, { query: { search: [] } });
+        expect((await handleWikiTool('search_wiki', { query: 'unknown' })).structuredContent).toEqual({ results: [] });
     });
 
-    describe('search_wiki', () => {
-        it('should return titles, plain snippets, and wiki urls', async () => {
-            nock('https://runescape.wiki')
-                .get('/api.php')
-                .query(query => query.action === 'query' && query.list === 'search' && query.srsearch === 'Noxious scythe')
-                .reply(200, {
-                    query: {
-                        search: [
-                            {
-                                title: 'Noxious scythe',
-                                snippet: 'The <span class="searchmatch">Noxious</span> scythe is a weapon.',
-                            },
-                        ],
-                    },
-                });
-
-            const result = await handleWikiTool('search_wiki', { query: 'Noxious scythe', limit: 3 });
-            expect(result.isError).toBeFalsy();
-            expect(result.structuredContent).toEqual({
-                results: [
-                    {
-                        title: 'Noxious scythe',
-                        snippet: 'The Noxious scythe is a weapon.',
-                        url: 'https://runescape.wiki/w/Noxious_scythe',
-                    },
-                ],
-            });
-            const text = result.content.map(part => part.text).join('\n');
-            expect(text).toContain('RuneScape Wiki contributors');
-            expect(text).toContain('https://runescape.wiki/w/Noxious_scythe?action=history');
-            expect(text).toContain('https://creativecommons.org/licenses/by-nc-sa/3.0/');
-            expect(text).toContain('HTML highlighting removed');
-        });
-
-        it('should return an empty result list when nothing matches', async () => {
-            nock('https://runescape.wiki')
-                .get('/api.php')
-                .query(true)
-                .reply(200, { query: { search: [] } });
-
-            const result = await handleWikiTool('search_wiki', { query: 'zzzz-not-a-page' });
-            expect(result.isError).toBeFalsy();
-            expect(result.structuredContent).toEqual({ results: [] });
-            expect(result.content).toHaveLength(1);
-        });
-
-        it('should require query', async () => {
-            const result = await handleWikiTool('search_wiki', {});
-            expect(result.isError).toBe(true);
-            expect(result.content[0].text).toBe('query is required');
-        });
-
-        it('should reject a limit outside 1-10', async () => {
-            const result = await handleWikiTool('search_wiki', { query: 'whip', limit: 0 });
-            expect(result.isError).toBe(true);
-            expect(result.content[0].text).toContain('limit');
-        });
+    it('uses the resolved title and never requests extracts for unreviewed pages', async () => {
+        const metadata = pageReply('info|revisions', { title: 'Resolved title', extract });
+        const result = await getPage();
+        expectLinks(result);
+        expect(metadata.isDone()).toBe(true);
+        expect(result.structuredContent).toMatchObject({ title: 'Resolved title', revisionId: 42,
+            url: 'https://runescape.wiki/w/Resolved_title' });
+        expect(nock.pendingMocks()).toEqual([]);
     });
 
-    describe('get_wiki_page_content', () => {
-        it('should return page extract text and follow redirects', async () => {
-            nock('https://runescape.wiki')
-                .get('/api.php')
-                .query(true)
-                .reply(200, {
-                    query: {
-                        redirects: [{ from: 'Whip', to: 'Whips' }],
-                        pages: {
-                            '484136': {
-                                pageid: 484136,
-                                title: 'Whips',
-                                extract: 'Whips are fast slashing weapons.',
-                            },
-                        },
-                    },
-                });
+    it.each([6, 828, undefined])('returns links for namespace %s even with a matching review', async ns => {
+        review(); pageReply('info|revisions', { ns });
+        expectLinks(await getPage());
+    });
 
-            const result = await handleWikiTool('get_wiki_page_content', { page: 'Whip' });
-            expect(result.isError).toBeFalsy();
-            expect(result.content[0].text).toContain('Wiki Page: Whips');
-            expect(result.content[0].text).toContain('fast slashing weapons');
-            expect(result.content[0].text).toContain('"Whips": https://runescape.wiki/w/Whips');
-            expect(result.content[0].text).toContain('https://runescape.wiki/w/Whips?action=history');
-            expect(result.content[0].text).toContain('https://creativecommons.org/licenses/by-nc-sa/3.0/');
-            expect(result.content[0].text).toContain('formatting omitted');
-            expect(result.content[0].text).toContain('except where the source states otherwise');
-            expect(result.content[0].text).not.toContain('https://runescape.wiki/w/Whip?');
-        });
+    it('returns links without fetching extracts when the reviewed revision is stale', async () => {
+        review(); pageReply('info|revisions', { revisions: [{ revid: 43 }] });
+        expectLinks(await getPage());
+    });
 
-        it('should error when page is missing', async () => {
-            nock('https://runescape.wiki')
-                .get('/api.php')
-                .query(true)
-                .reply(200, {
-                    query: {
-                        pages: {
-                            '-1': {
-                                title: 'MissingPage',
-                                missing: true,
-                            },
-                        },
-                    },
-                });
+    it('preserves the reviewed license and notices in text and structured content', async () => {
+        review(); pageReply('info|revisions', {}); pageReply('extracts|revisions', { extract });
+        const result = await getPage();
+        expect(result.structuredContent).toMatchObject({ contentStatus: 'reviewed_extract',
+            text: extract.trim(), revisionId: 42, attribution: {
+                license: { name: 'Fixture license', url: 'https://example.org/license' },
+                sourceUrl: 'https://runescape.wiki/w/Fixture?oldid=42',
+                copyrightNotices: ['Copyright Fixture Contributors.'],
+                historyUrl: 'https://runescape.wiki/w/Fixture?action=history',
+            } });
+        expect(result.content[0].text).toContain('Copyright Fixture Contributors.');
+        expect(result.content[0].text).toContain('https://example.org/license');
+        expect(result.content[0].text).toContain('formatting omitted');
+        expect(nock.isDone()).toBe(true);
+    });
 
-            const result = await handleWikiTool('get_wiki_page_content', { page: 'MissingPage' });
-            expect(result.isError).toBe(true);
-            expect(result.content[0].text).toContain('was not found');
-            expect(result.content[0].text).toContain('search_wiki');
-        });
+    it.each([
+        { extract: `${extract} changed` },
+        { extract, revisions: [{ revid: 43 }] },
+        { extract, title: 'Unexpected redirect' },
+        { extract, ns: 6 },
+        { extract: '' },
+        { extract, missing: '' },
+    ])('fails closed when the extract response changes: %j', async current => {
+        review(); pageReply('info|revisions', {}); pageReply('extracts|revisions', current);
+        expectLinks(await getPage());
+        expect(nock.isDone()).toBe(true);
+    });
 
-        it('should error on empty extract', async () => {
-            nock('https://runescape.wiki')
-                .get('/api.php')
-                .query(true)
-                .reply(200, {
-                    query: {
-                        pages: {
-                            '1': {
-                                pageid: 1,
-                                title: 'Empty',
-                                extract: '',
-                            },
-                        },
-                    },
-                });
+    it.each([
+        { extractSha256: 'invalid' }, { licenseUrl: 'http://example.org/license' },
+        { reviewedBy: '' }, { reviewedAt: 'invalid' }, { reviewNote: '' },
+    ])('ignores incomplete reviews: %j', async invalid => {
+        review(invalid); pageReply('info|revisions', {}); expectLinks(await getPage());
+    });
 
-            const result = await handleWikiTool('get_wiki_page_content', { page: 'Empty' });
-            expect(result.isError).toBe(true);
-            expect(result.content[0].text).toContain('no extractable text');
-        });
+    it('handles missing pages without attributing nonexistent content', async () => {
+        pageReply('info|revisions', { pageid: -1, missing: '' });
+        const result = await getPage();
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('was not found');
+    });
 
-        it('should require page', async () => {
-            const result = await handleWikiTool('get_wiki_page_content', {});
-            expect(result.isError).toBe(true);
-            expect(result.content[0].text).toBe('page is required');
-        });
+    it('validates required arguments and search bounds', async () => {
+        for (const [tool, args] of [
+            ['search_wiki', {}], ['get_wiki_page_content', {}],
+            ['search_wiki', { query: 'test', limit: 0 }],
+        ] as const) expect((await handleWikiTool(tool, args)).isError).toBe(true);
     });
 });
