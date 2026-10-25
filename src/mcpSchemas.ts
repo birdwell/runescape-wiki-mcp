@@ -143,7 +143,7 @@ export const priceSummaryOutputSchema = {
         maxPrice: { type: 'number' as const, description: 'Highest price in the window, in coins' },
         avgPrice: { type: 'number' as const, description: 'Average price in the window, rounded to whole coins' },
         changeAbs: { type: 'number' as const, description: 'latestPrice minus oldestPriceInWindow' },
-        changePct: { type: 'number' as const, description: 'Percent change across the window, rounded to two decimals' },
+        changePct: { type: 'number' as const, description: 'Percent change across the window, rounded to two decimals; 0 when the oldest price is 0' },
         avgDailyVolume: { type: 'number' as const, description: 'Average daily volume rounded to a whole number, when the source provided it' },
     },
     required: [

@@ -37,10 +37,10 @@ export const historyTools: Tool[] = [
         name: 'summarize_price_history',
         title: 'Summarize Price History',
         description:
-            "Compute one RS3 item's min, max, average, change and available volume over recent Weirdgloop daily samples. Use get_item_graph for raw daily series, get_item_price for Jagex detail or lookup_item for ID discovery.\n" +
-            "- Choose itemId to skip name lookup, or name to resolve first. days defaults to 30 and selects 7-90 trailing samples: days 7 returns one weekly aggregate, not seven rows or a forecast. It changes the statistics, not the upstream 90-day fetch.\n" +
-            "- Fewer usable samples shorten windowDays; no usable history returns a tool error. avgPrice and avgDailyVolume round to whole numbers; changePct to two decimals.\n" +
-            "- History lags live offers. No auth or local cache; upstream errors propagate. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
+            "Compute one RS3 item's recent Weirdgloop daily-price statistics. Use get_item_graph for raw or calendar-date-filtered samples, get_item_price for catalogue detail or lookup_item for discovery.\n" +
+            "- Select itemId to skip name lookup, or name to resolve first. days selects the last 7-90 usable daily samples, default 30; it changes the aggregate, not the upstream 90-day fetch size. days 7 returns one weekly summary, not seven rows or a forecast.\n" +
+            "- Min/max and the simple, unweighted mean use that selected sample window. Change is newest minus oldest price within it; percentage change uses that oldest price as baseline. Average volume uses only samples with reported volume.\n" +
+            "- Fewer samples shorten windowDays; no usable history returns a tool error. History lags live offers. Calls need no auth or local cache. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

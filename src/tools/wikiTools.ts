@@ -80,10 +80,11 @@ export const wikiTools: Tool[] = [
         name: 'search_wiki',
         title: 'Search Wiki',
         description:
-            "Discover RS3 Wiki article titles and source links when the exact title is unknown. Pass a result title to get_wiki_page_content for revision and reuse status; use lookup_item for item IDs or get_item_price for guide prices.\n" +
-            "- query is search text, not a URL: \"abyssal whip special attack\" finds related articles. limit selects the top 1-10 matches, default 5; increasing it widens the first result set. There is no continuation cursor, so refine query for other matches.\n" +
-            "- Only article namespace 0 is searched. snippets are empty and contentStatus is link_only; no hits returns an empty array, upstream failures a tool error.\n" +
-            "- No auth or local cache. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
+            "Discover RS3 Wiki article titles and source links. Pass a chosen title to get_wiki_page_content for revision/reuse status; use lookup_item for GE IDs or get_item_price for guide prices.\n" +
+            "- query is literal search text such as \"abyssal whip special attack\", not a URL or pre-encoded string. It is forwarded to wiki search after URL encoding; specific item-plus-topic words narrow the matches.\n" +
+            "- limit caps the first relevance-ranked result set, not an offset or page number. Raising it returns more top matches; refining query changes the matches. There is no continuation cursor.\n" +
+            "- Only article namespace 0 is searched. snippets are empty and contentStatus is link_only. No matches returns an empty array; upstream failures return tool errors.\n" +
+            "- Calls need no auth or local cache. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -111,10 +112,10 @@ export const wikiTools: Tool[] = [
         name: 'get_wiki_page_content',
         title: 'Get Wiki Page Content',
         description:
-            "Inspect one RS3 Wiki page by known title, resolving redirects to its canonical title and revision. Use search_wiki for unknown titles or get_item_price for guide prices.\n" +
-            "- Pass page \"Abyssal whip\" as a literal title, not a URL or encoded string; the server encodes it. One page per call; no section selector or pagination.\n" +
-            "- A reviewed article revision with a matching extract hash returns whole reviewed_extract text and attribution. Otherwise success is link_only with text null, reason and source URL. Explain that article text was not returned; never infer a summary from the title. No argument overrides review. Missing pages return a tool error.\n" +
-            "- No auth, wiki edits or local cache. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
+            "Read a known RS3 Wiki page reference and its canonical title/revision. Use search_wiki for title discovery or get_item_price for guide prices.\n" +
+            "- page is a literal title such as \"Abyssal whip\", not a URL or percent-encoded string. Preserve the spelling/case of a search result; the server handles URL encoding and redirects. Choose a specific title when results have multiple meanings: this tool does not perform semantic disambiguation.\n" +
+            "- A reviewed article revision with a matching extract hash returns whole reviewed_extract text and attribution. Otherwise link_only success has text null, reason and source URL: no article summary was returned. No argument overrides review. Missing pages are tool errors; there is no pagination or section selector.\n" +
+            "- Calls require no auth, never edit the wiki, and have no local cache. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

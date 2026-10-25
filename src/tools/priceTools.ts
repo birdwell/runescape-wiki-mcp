@@ -40,10 +40,10 @@ export const priceTools: Tool[] = [
         name: 'get_item_price',
         title: 'Get Item Price and Details',
         description:
-            "Read one RS3 item's Jagex catalogue details: guide price, price trends, name, examine text, item type, membership requirement and icon URLs. Use this for general GE item metadata as well as price detail.\n" +
-            "- Pass exactly one of itemId or name. itemId from lookup_item skips name resolution; name resolves first and ambiguous names return an error listing candidates.\n" +
-            "- Use lookup_item for name discovery, compare_items for multiple snapshots, summarize_price_history for statistics or get_item_graph for daily samples.\n" +
-            "- Prices may be compact strings such as \"80k\" and lag live offers; members is Jagex's string \"true\" or \"false\". No auth or local cache; unavailable items and upstream failures return tool errors. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
+            "Read one RS3 item's Jagex guide price and catalogue metadata: trends, examine text, type, membership requirement and icon URLs.\n" +
+            "- Supply itemId as a GE ID from lookup_item, not a wiki page ID. Alternatively supply name as a literal, unencoded item name such as \"Abyssal whip\". An ID skips name resolution; ambiguous names fail with candidates. Supply exactly one selector.\n" +
+            "- Use this for general GE item metadata or price detail. Use lookup_item for discovery, compare_items for multiple snapshots, summarize_price_history for statistics or get_item_graph for dated samples.\n" +
+            "- Prices may use compact strings such as \"80k\" and lag live offers. Public Jagex calls need no auth and are not cached here; unavailable items and upstream failures return tool errors. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -77,10 +77,10 @@ export const priceTools: Tool[] = [
         name: 'get_category_info',
         title: 'Category Info',
         description:
-            "Count catalogue entries by starting letter within one RS3 category before browsing.\n" +
-            "- Get category from get_all_categories: 24 means high-level melee weapons; 0 is one Miscellaneous group, not all items. Category IDs are not item IDs.\n" +
-            "- Returns types and alpha entries with letter and items counts. Pass a nonempty letter to browse_items, using # for numeric names. Use lookup_item for name search; this tool returns counts, not item details.\n" +
-            "- No auth or local cache; upstream failures return tool errors. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
+            "Count entries under every starting letter of one RS3 catalogue category, to choose nonempty groups before browse_items. Use lookup_item for name search.\n" +
+            "- Get category from get_all_categories. It selects one catalogue group, not an item or starting letter: 24 means high-level melee weapons, and 0 is one Miscellaneous group. There is no all-categories sentinel; query each desired ID separately.\n" +
+            "- One call returns all alpha letters with item counts; no per-letter argument is needed. # denotes numeric names. These count distinct catalogue entries, not stock or available offers.\n" +
+            "- Each call makes one public Jagex request without auth or a local cache. Jagex controls snapshot freshness; upstream failures return tool errors. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -146,10 +146,11 @@ export const priceTools: Tool[] = [
         name: 'browse_items',
         title: 'Browse Catalogue Items',
         description:
-            "Browse RS3 catalogue entries by category and starting letter. Use lookup_item for name search or get_item_price for single-item detail.\n" +
-            "- Get category from get_all_categories and nonempty letters from get_category_info. For example, category 24 with alpha \"a\" browses high-level melee weapons beginning with A. Use # for numbers.\n" +
-            "- alpha defaults to a and page to 1. Increment page by 1 until items is empty; reset page to 1 whenever category or alpha changes. Errors set isError and are not an empty page.\n" +
-            "- Returns Jagex total and items with guide prices that lag live offers. No auth or local cache. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
+            "Browse an RS3 catalogue group. Use lookup_item for name search or get_item_price for one item's detail.\n" +
+            "- Choose category from get_all_categories and a nonempty starting letter from get_category_info. category 24 + alpha \"a\" means high-level melee weapons beginning with A; # selects numbers.\n" +
+            "- page is local to the (category, alpha) pair: page 2 continues page 1 with those filters unchanged. Reset to page 1 when either filter changes. Defaults are alpha a and page 1.\n" +
+            "- Jagex total counts the category, not the selected letter. Advance pages until items is empty; an isError response is a failed request, not the last page. Guide prices lag live offers.\n" +
+            "- Public Jagex reads require no auth or local cache. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
