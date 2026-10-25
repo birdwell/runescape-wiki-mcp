@@ -38,7 +38,9 @@ export function discoveryTool(tool: Tool): Tool {
         ];
         published.title = 'Read Current Item Data';
         published.outputSchema = { type: 'object', anyOf: [published.outputSchema!, comparisonOutputSchema] };
-        input.properties.itemIds.description = 'Known GE IDs for ordered record batches or comparison snapshots; exclusive with itemId';
+        input.properties.itemIds.description = 'GE IDs of the target candidates';
+        input.properties.includeLiveData.description = 'Optional trade/mapping enrichment for the records view';
+        delete input.examples;
     }
     if (tool.name === 'compare_items') {
         delete input.properties.names;
