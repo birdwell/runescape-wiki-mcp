@@ -34,6 +34,14 @@ describe('Compare Tools', () => {
         expect(tool?.annotations?.readOnlyHint).toBe(true);
     });
 
+    it.each([{ names: ['Abyssal whip', 'Abyssal whip'] }, { itemIds: [4151, 4151] }])(
+        'rejects duplicate selectors before upstream reads: %j', async args => {
+            const result = await handleCompareTool('compare_items', args);
+            expect(result.isError).toBe(true);
+            expect(result.content[0].text).toContain('unique entries');
+        }
+    );
+
     describe('compare by names', () => {
         it('returns one row per name', async () => {
             mockLatestByName('Abyssal whip', {

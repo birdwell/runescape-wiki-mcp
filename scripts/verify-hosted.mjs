@@ -107,6 +107,10 @@ try {
  if(!monster.structuredContent.records.some(row=>row.stats?.combatLevel>0&&row.stats?.lifePoints>0)||monster.structuredContent.attribution.license!==null) throw new Error('Structured monster facts failed');
  const quest=await call('get_wiki_entity_facts',{page:"Cook's Assistant",kind:'quest'});
  if(!quest.structuredContent.records.some(row=>row.isMembers===false&&row.difficulty==='Novice'&&/^\d{4}-\d{2}-\d{2}$/.test(row.releaseDate))) throw new Error('Structured quest facts failed');
+ for (const duplicateArgs of [{itemIds:[itemId,itemId]},{names:['Abyssal whip','Abyssal whip']}]) {
+  const invalid=await call('compare_item_prices',duplicateArgs,true);
+  if(!invalid.content?.some(part=>part.text?.includes('unique entries'))) throw new Error('Comparison uniqueness contract failed');
+ }
  const invalidTitle=await call('get_wiki_page_content',{page:'https://runescape.wiki/w/Abyssal_whip'},true);
  if(!invalidTitle.content?.some(part=>part.text?.includes('wiki title'))) throw new Error('Invalid URL title did not return actionable validation');
  const card=await fetch(endpoint+'/server-card').then(r=>r.json());

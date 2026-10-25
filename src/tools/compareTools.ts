@@ -37,14 +37,7 @@ export const compareTools: Tool[] = [
     {
         name: 'compare_items',
         title: 'Compare Daily Item Prices',
-        description:
-            "Compare latest available Weirdgloop price snapshots for a chosen RS3 item set in one call. Supply exactly " +
-            "one of names or itemIds, with 1-10 entries; IDs avoid name lookup, while each name selects its first " +
-            "matching item. Resolve uncertain names with lookup_item first; use get_item_price for one item's detailed " +
-            "Jagex trends or estimate_flip for tax-adjusted profit. Rows preserve input order; unresolved entries " +
-            "become error rows and available volume/timestamps can be absent.\n\n" +
-            "No auth or local result cache; snapshots lag live offers and are not historical comparisons. HTTP shares " +
-            "a default 60 requests/IP/minute budget; honor Retry-After on 429.",
+        description: "Compare latest available Weirdgloop daily price snapshots for a chosen RS3 item set. Use get_item_price for catalogue details/trends, estimate_flip for profit, or get_item_graph for historical observations.\n\nSupply one unique 1-10-entry JSON array:\n- names: [\"Abyssal whip\",\"Dragon bones\"]. Each name selects its first match; use lookup_item first if uncertain. Different names that resolve to one ID remain separate rows.\n- itemIds: [4151,536]. Integers bypass name lookup. Do not mix arrays or pass a comma-separated string.\n\nRows preserve input order. Unresolved entries remain error rows, even if every lookup fails. Available timestamps/volume can be absent; snapshots for different items need not share a date. These are guide prices, not live offers or historical comparisons.\n\nPublic reads need no credentials and are uncached. HTTP defaults to 60 requests/IP/minute; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -120,6 +113,7 @@ function requireCompareArray<T>(
         }
         parsed.push(result as T);
     }
+    if (new Set(parsed).size !== parsed.length) return validationError(`${name} must contain unique entries`);
     return parsed;
 }
 
