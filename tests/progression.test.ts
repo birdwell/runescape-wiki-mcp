@@ -78,6 +78,24 @@ describe('guide extraction and deterministic progression facts', () => {
         expect(method.evidence).not.toContain('Less specific');
         expect(method.source.url).toContain('#entry');
     });
+    it.each(['Levels 1+: Bright wisps', 'Bright wisps', 'Levels 20+: Bright wisps'])('prefers the specific row body over the earlier %s heading', earlier => {
+        const html = `<h2 id="earlier">${earlier}</h2><p>Earlier broad prose.</p>` +
+            '<h2 id="specific">Levels 20–30</h2><p>Harvest bright wisps. Requires completion of Ode of the Devourer.</p>' +
+            '<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th></tr>' +
+            '<tr><td>20–30</td><td>Bright wisps</td><td>14,000</td></tr></table>';
+        const method = parseTrainingMethods(guide('Divination training', html), 'Divination', 'members')[0];
+        expect(method.evidence).toContain('Requires completion of Ode of the Devourer');
+        expect(method.evidence).not.toContain('Earlier broad prose');
+        expect(method.source.url).toContain('#specific');
+    });
+    it('does not borrow an earlier open-ended method section when no later-row prose is supported', () => {
+        const html = '<h2 id="earlier">Levels 1+: Bright wisps</h2><p>Earlier broad prose.</p>' +
+            '<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th></tr>' +
+            '<tr><td>20+</td><td>Bright wisps</td><td>14,000</td></tr></table>';
+        const method = parseTrainingMethods(guide('Divination training', html), 'Divination', 'members')[0];
+        expect(method.evidence).not.toContain('Earlier broad prose');
+        expect(method.source.url).not.toContain('#');
+    });
     it('keeps nested table cells out of the parent table grid', () => {
         const tables = guideTables(guide('Nested', '<table><tr><td>A<table><tr><td>B</td></tr></table></td><td>C</td></tr></table>'));
         expect(tables[0]).toHaveLength(1);

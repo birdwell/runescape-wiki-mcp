@@ -110,13 +110,39 @@ export function guideSections(guide: Guide): GuideSection[] {
     return sections;
 }
 
-export function levelRange(text: string, skill: string): { minimum: number; maximum: number } | undefined {
+export function levelRange(text: string, skill: string): { minimum: number; maximum: number; maximumSpecified: boolean } | undefined {
     const normalized = text.replace(new RegExp(`\\b${skill}\\b`, 'gi'), '').replace(/\[\d+\]/g, '').trim();
     const match = /^(\d{1,3})(?:\s*[–—-]\s*(\d{1,3}))?\s*\+?$/.exec(normalized);
     if (!match) return undefined;
     const minimum = Number(match[1]), maximum = match[2] ? Number(match[2]) : 120;
     if (minimum < 1 || maximum > 120 || maximum < minimum) return undefined;
-    return { minimum, maximum };
+    return { minimum, maximum, maximumSpecified: match[2] !== undefined };
+}
+
+function trainingSection(sections: GuideSection[], name: string, range: NonNullable<ReturnType<typeof levelRange>>): GuideSection | undefined {
+    const normalized = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ')
+        .trim().split(/\s+/).map(word => word.length > 4 ? word.replace(/s$/, '') : word).join(' ');
+    const phrases = name.split('/').map(normalized).filter(Boolean);
+    const mentionsMethod = (text: string) => phrases.some(phrase => ` ${normalized(text)} `.includes(` ${phrase} `));
+    const candidates = sections.flatMap(section => {
+        const bounds = /levels?\s+(\d+)(?:\s*[–—-]\s*(\d+))?/i.exec(section.title);
+        const start = bounds ? Number(bounds[1]) : undefined;
+        const end = bounds?.[2] ? Number(bounds[2]) : undefined;
+        const named = mentionsMethod(section.title);
+        if (!named && !(start === range.minimum && mentionsMethod(section.text))) return [];
+        let specificity = 1; // An unnumbered method heading is only a general fallback.
+        if (start !== undefined) {
+            if (start === range.minimum) {
+                // The synthetic 120 for a table's "60+" must not count as an exact end.
+                specificity = end === undefined ? 3 : range.maximumSpecified && end === range.maximum ? 5 : 4;
+            } else if (end !== undefined && start < range.minimum && end >= range.minimum) {
+                specificity = 2;
+            } else return []; // An earlier open-ended heading cannot establish later-row requirements.
+        }
+        return [{ section, score: specificity * 2 + Number(named), width: end === undefined ? Infinity : end - start! }];
+    });
+    candidates.sort((a, b) => b.score - a.score || a.width - b.width);
+    return candidates[0]?.section;
 }
 
 export interface TrainingMethod {
@@ -164,27 +190,7 @@ export function parseTrainingMethods(guide: Guide, skill: string, membership: Tr
             const costs = headers.flatMap((header, i) => /cost|profit|loss|gp\//i.test(header)
                 ? [{ label: header, text: row[i]?.text ?? '' }] : []);
             if (!rates.length && !headers.some(header => /^afk$/i.test(header))) continue;
-            const normalized = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ')
-                .trim().split(/\s+/).map(word => word.length > 4 ? word.replace(/s$/, '') : word).join(' ');
-            const phrases = name.split('/').map(normalized).filter(Boolean);
-            const mentionsMethod = (text: string) => phrases.some(phrase => ` ${normalized(text)} `.includes(` ${phrase} `));
-            const band = (title: string) => /levels?\s+(\d+)(?:\s*[–—-]\s*(\d+))?/i.exec(title);
-            const matchingBand = (section: GuideSection) => {
-                const bounds = band(section.title);
-                return bounds && Number(bounds[1]) === range.minimum && (!bounds[2] || Number(bounds[2]) === range.maximum);
-            };
-            const coversStart = (section: GuideSection) => {
-                const bounds = band(section.title);
-                return bounds && Number(bounds[1]) <= range.minimum && (!bounds[2] || Number(bounds[2]) >= range.minimum);
-            };
-            const named = sections.filter(section => mentionsMethod(section.title) &&
-                (!band(section.title) || coversStart(section)));
-            // A table's 60 or 60+ means an entry level, not a source heading
-            // ending at 120. Keep prose covering that entry level, preferring
-            // exact bands and then the same starting level when available.
-            const sameStart = (section: GuideSection) => Number(band(section.title)?.[1]) === range.minimum;
-            const section = named.find(matchingBand) ?? named.find(sameStart) ?? named[0] ?? sections.find(section =>
-                sameStart(section) && coversStart(section) && mentionsMethod(section.text));
+            const section = trainingSection(sections, name, range);
             const requirementsColumn = headers.findIndex(header => /requirements?/i.test(header));
             const evidence = [section?.text, ...headers.map((header, i) => `${header}: ${row[i]?.text ?? ''}`)].filter(Boolean).join('\n').slice(0, 1800);
             if (result.some(method => method.name === name && method.minimumLevel === range.minimum)) continue;
