@@ -115,11 +115,12 @@ export const wikiTools: Tool[] = [
         name: 'get_wiki_page_content',
         title: 'Get Wiki Content or References',
         description:
-            "Get reviewed Wiki article content or a source reference when text is unavailable. Use search_wiki to find titles; use get_item_price for GE prices.\n" +
-            "- Pass page as one unencoded title or pages as 1-10 titles, e.g. [\"Abyssal whip\", \"Grand Exchange\"]. Titles must name existing pages after redirects. URLs, #fragments and |separators are rejected.\n" +
-            "- page returns a flat object; pages returns ordered rows even for one title. Repeated or redirected titles keep separate rows.\n" +
-            "- The server sets output contentStatus. Approved, unchanged article text returns reviewed_extract with attribution; otherwise a successful link_only reference has null text, a source link and reason. Clients cannot approve text.\n" +
-            "- Bad argument formats reject the call before fetching. Valid batches isolate missing-page/API errors per row and fail only when all rows fail. They use at most two concurrent requests and stop queued work on 429. No auth or cache; shared HTTP limit 60 requests/IP/minute. Honor Retry-After.",
+            "Get reviewed Wiki article text, or a source reference when text is unavailable. Use search_wiki for titles; get_item_price for prices.\n" +
+            "- page takes one unencoded title; pages takes 1-10, e.g. [\"Abyssal whip\"]. URLs, #fragments and |separators reject the call before fetching.\n" +
+            "- For page, read the flat response. For pages, even one title, check results[i].error before reading results[i].data. Rows preserve order and duplicates; redirects resolve.\n" +
+            "- The server sets output contentStatus: reviewed_extract includes approved, unchanged text and attribution; successful link_only has null text, url and reason. Inputs cannot approve content.\n" +
+            "- In valid batches, missing-page/API errors are per row; the call fails only if all rows fail. At most two requests run concurrently; 429 stops queued work.\n" +
+            "- No authentication is required and responses are not cached here. Shared HTTP budget: 60 requests/IP/minute. Honor Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
