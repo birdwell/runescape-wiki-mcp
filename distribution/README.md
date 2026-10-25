@@ -77,8 +77,8 @@ The Claude draft has its listing copy, categories (Media & Entertainment and
 Data & Analytics), use cases and public support/docs links filled. A published
 privacy URL is required before the Listing step validates. The publisher selected
 by the maintainer is **Birdwell Labs**, recorded in `submission-config.json`.
-Company website,
-data-handling review, real-client testing and compliance acknowledgments remain.
+The company website is https://birdwellabs.com. Data-handling review, real-client
+testing and compliance acknowledgments remain.
 The form warns that uncontrolled third-party API wrappers are typically not
 accepted. The draft accurately identifies our use of third-party APIs; it does
 not claim Jagex/Wiki ownership or a partnership. Include evidence of legitimate
@@ -103,6 +103,7 @@ is the selected publisher; the publishing platform still needs to verify that id
 ```json
 {
   "developerName": "Birdwell Labs",
+  "publisherURL": "https://birdwellabs.com",
   "category": "an applicable category selected in the dashboard",
   "privacyPolicyURL": "the published HTTPS privacy policy URL",
   "termsOfServiceURL": "the published HTTPS terms URL",
@@ -128,6 +129,12 @@ the item, wiki or public player identifier needed by the relevant upstream;
 infrastructure can receive connection metadata. Do not promise "no data stored"
 or a retention period that has not been checked. Analytics PR #25 is separate
 from this kit and is not evidence of production analytics configuration.
+
+A basic privacy page for the company website and RuneScape MCP is prepared in
+https://github.com/birdwell/birdwell-labs/pull/2. Its proposed URL is
+https://birdwellabs.com/privacy. Leave `privacyPolicyURL` unset until the website
+change is approved, deployed and checked. Terms of service still need separate
+preparation.
 
 Read-only Fly secret-name inspection on October 24 found `SENTRY_DSN` and
 `SENTRY_ENVIRONMENT`, and no PostHog secret names. Values were not read. This

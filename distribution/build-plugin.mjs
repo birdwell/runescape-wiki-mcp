@@ -20,7 +20,7 @@ const missing = ['privacyPolicyURL', 'termsOfServiceURL', 'demo_recording_url', 
 if (!draft && missing.length) {
     throw new Error(`Submission blocked: set ${missing.join(', ')} in distribution/submission-config.json. See distribution/README.md.`);
 }
-for (const key of ['privacyPolicyURL', 'termsOfServiceURL', 'demo_recording_url']) {
+for (const key of ['privacyPolicyURL', 'termsOfServiceURL', 'demo_recording_url', 'publisherURL']) {
     if (!config[key]) continue;
     const url = new URL(config[key]);
     if (url.protocol !== 'https:' || url.username || url.password) throw new Error(`${key} must use HTTPS without embedded credentials`);
@@ -35,7 +35,7 @@ await mkdir(`${output}assets`, { recursive: true });
 const manifest = {
     $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json',
     name: 'runescape-wiki', version: '1.0.0', description: listing.summary,
-    author: { name: config.developerName ?? 'birdwell', url: 'https://github.com/birdwell' },
+    author: { name: config.developerName ?? 'birdwell', url: config.publisherURL ?? 'https://github.com/birdwell' },
     homepage: listing.website, repository: listing.repository, license: 'MIT', keywords: listing.keywords,
     extensions: { 'com.openai': {
         interface: {
