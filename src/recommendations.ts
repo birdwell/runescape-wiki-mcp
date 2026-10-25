@@ -66,6 +66,7 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
     const skillSources: Record<string, string> = Object.fromEntries(
         Object.keys(skills).map(skill => [skill, 'caller'])
     );
+    const unrankedSkills: string[] = [];
     if (context.username) {
         try {
             const response = await handlePlayerTool('get_player_stats', {
@@ -77,6 +78,10 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
             } else {
                 for (const [skill, row] of Object.entries(response.structuredContent ?? {})) {
                     const level = (row as { level?: unknown }).level;
+                    if (skill !== 'Overall' && level === 0 && skills[skill] === undefined) {
+                        unrankedSkills.push(skill);
+                        skillSources[skill] = 'hiscores_unranked';
+                    }
                     if (skill !== 'Overall' && RS3_SKILLS.includes(skill as typeof RS3_SKILLS[number]) &&
                         typeof level === 'number' && level > 0 && skills[skill] === undefined) {
                         skills[skill] = level;
@@ -98,7 +103,7 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         ...(context.completedQuests === undefined ? ['Relevant completed quests and unlocks'] : []),
         ...(context.gear === undefined ? ['Relevant equipment owned'] : []),
     ];
-    const account = { ...context, skills, skillSources };
+    const account = { ...context, skills, skillSources, unrankedSkills };
     const finish = (status: string, ranked: Record<string, unknown>[] = [], pages: Page[] = []) => ({
         status, goal,
         recommendation: ranked[0] ?? null,

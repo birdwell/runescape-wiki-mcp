@@ -45,7 +45,7 @@ function mockWiki(extra: Record<string, string> = {}) {
             return [200, { query: { pages } }];
         });
 }
-function mockJev() {
+function mockJev(nextOverride?: string) {
     const calls: { state: any; questions: Record<string, ChoiceQuestion> }[] = [];
     nock('https://api.typesafe.ai').persist().post('/v1/systemone').reply(async (request: Request) => {
         const body = await request.json() as typeof calls[number];
@@ -57,6 +57,7 @@ function mockJev() {
                     question.criteria[quest.id] && quest.rewards.xp.some((xp: any) => xp.skill === 'Mining'));
                 candidates.sort((a, b) => Math.max(...b.rewards.xp.map((xp: any) => xp.amount)) - Math.max(...a.rewards.xp.map((xp: any) => xp.amount)));
                 selected = candidates[0]?.id ?? 'none';
+                if (id === 'next' && nextOverride) selected = nextOverride;
             }
             return [id, { type: 'choice', choice: selected, confidence: 1,
                 probabilities: Object.fromEntries(Object.keys(question.criteria).map(option => [option, option === selected ? 1 : 0])) }];
@@ -135,6 +136,13 @@ describe('quest facts and account eligibility', () => {
         expect(result.unknowns.join(' ')).toContain('Check alternatives/boosts');
     });
 
+    it('never presents an unranked/missing skill as a known zero-level gap', () => {
+        const parsed = parseQuestPage('Locked Mining Quest', source('Locked Mining Quest', 15000, 'Thieving', 25));
+        const result = assessQuest(journal[3], parsed, new Map([['Locked Mining Quest', []]]), new Map(), {}, true);
+        expect(result.missingSkillLevels).toBeNull();
+        expect(result.unknowns).toContain('Thieving level is unknown.');
+    });
+
     it('resolves non-quest names to their quest page rather than using a D&D or boss page', async () => {
         mockWiki();
         const result = await fetchQuestCatalogue(['Tears Example'], AbortSignal.timeout(1000));
@@ -178,6 +186,41 @@ describe('quest facts and account eligibility', () => {
 });
 
 describe('quest recommendation pipeline', () => {
+    it('does not bill a redundant final comparison when only one blocked future target remains', async () => {
+        mockAccount([journal[3]]); mockWiki(); const calls = mockJev('none');
+        const result = await handleTool('recommend_next_activity', { goal: 'Best mining quest',
+            context: { username: 'TestPlayer', skills: { Mining: 64, Thieving: 22 }, members: true } });
+        expect(result.structuredContent).toMatchObject({ status: 'no_match', recommendation: null, missingContext: [], usage: { rounds: 2 } });
+        expect(calls).toHaveLength(2);
+        expect(result.structuredContent?.blockedAlternatives).toHaveLength(1);
+    });
+
+    it('keeps commented and scripted rewards out of actual Jev comparison state', async () => {
+        const title = 'Injection Example Quest';
+        mockAccount([{ ...journal[2], title }]);
+        mockWiki({ [title]: '<!--{{Quest rewards|rewards={{Sxp|Mining|999999}}}}-->' +
+            '<script>{{Quest rewards|rewards={{Sxp|Mining|888888}}}}</script>' + source(title, 1000) });
+        const calls = mockJev();
+        const result = await handleTool('recommend_next_activity', { goal: 'Best mining quest',
+            context: { username: 'TestPlayer', skills: { Mining: 64 }, members: true } });
+        expect(result.isError).toBeFalsy();
+        expect(calls[1].state.quests[0].rewards.xp).toEqual([{ skill: 'Mining', amount: 1000 }]);
+        expect((result.structuredContent?.recommendation as any).rewards.xp).toEqual([{ skill: 'Mining', amount: 1000 }]);
+    });
+    it('returns no_match, not an unexplained context gap, when no next quest fits', async () => {
+        mockAccount(); mockWiki(); mockJev('none');
+        const result = await handleTool('recommend_next_activity', { goal: 'Best mining quest',
+            context: { username: 'TestPlayer', skills: { Mining: 64, Thieving: 22 }, members: true } });
+        expect(result.structuredContent).toMatchObject({ status: 'no_match', recommendation: null, missingContext: [] });
+    });
+
+    it('includes an actionable explanation when Jev explicitly needs context', async () => {
+        mockAccount(); mockWiki(); mockJev('insufficient_context');
+        const result = await handleTool('recommend_next_activity', { goal: 'Best mining quest',
+            context: { username: 'TestPlayer', skills: { Mining: 64, Thieving: 22 } } });
+        expect(result.structuredContent).toMatchObject({ status: 'needs_context', recommendation: null });
+        expect((result.structuredContent?.missingContext as string[]).join(' ')).toContain('Clarify');
+    });
     it('feeds every unfinished quest with rewards/requirements, excludes completed quests and fetches targeted guides', async () => {
         mockAccount(); mockWiki(); const calls = mockJev();
         const result = await handleTool('recommend_next_activity', { goal: 'What is the best mining quest?',

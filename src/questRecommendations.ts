@@ -1,4 +1,4 @@
-import { JevSession, MAX_JEV_REQUEST_CHARS, recommendationConfiguration, type ChoiceQuestion } from './jev.js';
+import { JevSession, MAX_JEV_REQUEST_CHARS, recommendationConfiguration, type ChoiceAnswer, type ChoiceQuestion } from './jev.js';
 import { fetchPlayerQuests, fetchQuestCatalogue, fetchQuestGuide, questKey, type JournalQuest } from './questData.js';
 import { wikiText, type QuestMetadata } from './questParsing.js';
 import { attributedWikiSource } from './wikiAttribution.js';
@@ -21,8 +21,8 @@ interface QuestCandidate {
     enemies: string;
     metadataAvailable: boolean;
     prerequisitesAvailable: boolean;
-    missingSkillLevels: number;
-    missingQuestCount: number;
+    missingSkillLevels: number | null;
+    missingQuestCount: number | null;
 }
 
 export function assessQuest(
@@ -38,6 +38,7 @@ export function assessQuest(
     const blockers: string[] = [];
     const unknowns: string[] = [];
     let missingSkillLevels = 0, missingQuestCount = 0;
+    let unknownSkillGap = false, unknownQuestGap = prerequisites === undefined;
     if (!quest.userEligible) blockers.push('RuneMetrics marks this quest not currently eligible.');
     if (quest.members && members === false) blockers.push('Requires membership.');
     if (quest.members && members === undefined) unknowns.push('Current membership status is unknown.');
@@ -45,7 +46,7 @@ export function assessQuest(
     if (prerequisites === undefined) unknowns.push('Wiki prerequisite quest data is unavailable.');
     for (const requirement of metadata?.requirements.skills ?? []) {
         const level = skills[requirement.skill];
-        if (level === undefined) unknowns.push(`${requirement.skill} level is unknown.`);
+        if (level === undefined) { unknowns.push(`${requirement.skill} level is unknown.`); unknownSkillGap = true; }
         else if (level < requirement.level) {
             missingSkillLevels += requirement.level - level;
             const gap = `${requirement.skill} ${requirement.level} required; current level ${level}.`;
@@ -62,8 +63,8 @@ export function assessQuest(
         const name = required.replace(/^(Partial:|Full:)/, '');
         const status = statuses.get(questKey(name));
         if (status === 'COMPLETED') continue;
-        if (status === undefined) unknowns.push(`Prerequisite status unknown: ${required}`);
-        else if (partial && status === 'STARTED') unknowns.push(`Required quest stage is unverified: ${name}`);
+        if (status === undefined) { unknowns.push(`Prerequisite status unknown: ${required}`); unknownQuestGap = true; }
+        else if (partial && status === 'STARTED') { unknowns.push(`Required quest stage is unverified: ${name}`); unknownQuestGap = true; }
         else { blockers.push(`Complete ${name}${partial ? ' to the required stage' : ''} first.`); missingQuestCount += 1; }
     }
     return { id: '', title, status: quest.status, members: quest.members, jagexEligible: quest.userEligible,
@@ -75,14 +76,15 @@ export function assessQuest(
         rewards: metadata?.rewards ?? { xp: [], text: '', postQuest: '' },
         length: metadata?.guide.length ?? '',
         enemies: metadata?.guide.enemies ?? '',
-        missingSkillLevels, missingQuestCount,
+        missingSkillLevels: unknownSkillGap ? null : missingSkillLevels,
+        missingQuestCount: unknownQuestGap ? null : missingQuestCount,
     };
 }
 
 function pickQuestion(candidates: QuestCandidate[], future: boolean): ChoiceQuestion {
     return { type: 'choice',
         instructions: future
-            ? 'Which blocked quest in this batch is the best NEAR-TERM target for the goal? Prefer useful rewards with small skill gaps and few missing quests over distant endgame rewards with large gaps. A few missing levels and no missing quests is usually a stronger next target than many levels and a quest chain. Choose none if unrelated.'
+            ? 'Which blocked quest in this batch is the best NEAR-TERM target for the goal? Prefer useful rewards with small KNOWN skill gaps and few missing quests over distant endgame rewards with large gaps. Null gaps mean unknown, never zero or easy. A few missing levels and no missing quests is usually a stronger next target than many levels and a quest chain. Choose none if unrelated.'
             : 'Which quest in this batch is the best next quest for the player goal? Compare actual rewards, unlocks, length and progress already made. Consider mandatory fights against the supplied skill levels and gear; never assume combat readiness. Only consider listed, unfinished, non-blocked quests with available reward/requirement data. Unknown membership/items remain conditions. Avoid unrelated XP, and do not count conditional or post-quest XP as guaranteed completion rewards. Choose none if nothing fits.',
         criteria: {
             none: 'No relevant quest in this batch fits this decision',
@@ -193,6 +195,8 @@ export async function recommendQuests(
         throw new Error('The complete quest catalogue exceeds the bounded comparison budget. No quest-comparison calls were made; narrow optional account context.');
     }
     const winners = new Set<string>(), future = new Set<string>();
+    const futureAnswers = new Map<string, ChoiceAnswer>();
+    let needsClarification = false;
     // Two independent comparison requests at once, with a fixed total request-count ceiling.
     for (let i = 0; i < batches.length; i += 2) {
         const results = await Promise.all(batches.slice(i, i + 2).map(async quests => ({
@@ -201,24 +205,41 @@ export async function recommendQuests(
         for (const { quests, answers } of results) {
             coverage.evaluated += quests.length;
             coverage.comparisonBatches += 1;
+            if (answers.next.choice === 'insufficient_context') needsClarification = true;
             if (quests.some(quest => quest.id === answers.next.choice && quest.eligibility !== 'blocked')) winners.add(answers.next.choice);
-            if (quests.some(quest => quest.id === answers.future.choice && quest.eligibility === 'blocked')) future.add(answers.future.choice);
+            if (quests.some(quest => quest.id === answers.future.choice && quest.eligibility === 'blocked')) {
+                future.add(answers.future.choice); futureAnswers.set(answers.future.choice, answers.future);
+            }
         }
     }
     coverage.complete = coverage.evaluated === coverage.unfinished && coverage.metadataAvailable === coverage.unfinished &&
         coverage.missingPrerequisiteData.length === 0;
     const finalists = candidates.filter(candidate => winners.has(candidate.id) || future.has(candidate.id));
-    if (!finalists.length) return output('no_match');
+    if (!finalists.length) {
+        if (needsClarification) missingContext.push('Clarify the goal or supply the account facts marked unknown; no next quest could be selected.');
+        return output(needsClarification ? 'needs_context' : 'no_match');
+    }
     // Full account context is already represented in each assessment. Keep final comparison compact.
     const finalState = { game: 'RS3', goal: input.goal, focusSkill, quests: finalists,
         account: { skills: account.skills, members: input.context.members, gameMode: input.context.gameMode,
             budgetGp: input.context.budgetGp, sessionMinutes: input.context.sessionMinutes,
             playStyle: input.context.playStyle, gear: input.context.gear, notes: input.context.notes } };
-    const finalQuestions = questionsFor(finalists);
+    const finalQuestions: Record<string, ChoiceQuestion> = {
+        ...(winners.size ? { next: pickQuestion(finalists, false) } : {}),
+        future: pickQuestion(finalists, true),
+    };
     if (session.requestLength(finalState, finalQuestions) > MAX_JEV_REQUEST_CHARS) {
         throw new Error('Quest finalists exceed the comparison budget. No final decision was fabricated.');
     }
-    const decision = await session.decide(finalState, finalQuestions, signal);
+    const onlyFuture = !winners.size && finalists.length === 1;
+    const decision: Record<string, ChoiceAnswer> = onlyFuture
+        ? { future: futureAnswers.get(finalists[0].id)! }
+        : await session.decide(finalState, finalQuestions, signal);
+    questDecision.finalComparison = onlyFuture ? 'sole future finalist from batch comparison' : 'Jev finalist comparison';
+    questDecision.nextEvaluated = winners.size > 0;
+    // No next-quest question is billed when all remaining finalists are blocked.
+    decision.next ??= { type: 'choice', choice: needsClarification ? 'insufficient_context' : 'none',
+        confidence: 0, probabilities: { none: 1 } };
     const order = (kind: 'next' | 'future') => finalists.filter(candidate =>
         kind === 'next' ? winners.has(candidate.id) : future.has(candidate.id))
         .sort((a, b) => (decision[kind].probabilities[b.id] ?? 0) - (decision[kind].probabilities[a.id] ?? 0));
@@ -264,5 +285,12 @@ export async function recommendQuests(
     if (formatted.length && decision.next.confidence < 0.5) {
         warnings.push('Jev is uncertain between the final quest choices; compare the alternatives before choosing.');
     }
-    return output(!formatted.length || formatted[0].conditional ? 'needs_context' : 'recommended', formatted, blocked);
+    if (!formatted.length) {
+        if (decision.next.choice === 'insufficient_context') {
+            missingContext.push('Clarify the goal or supply the account facts marked unknown; no next quest could be selected.');
+            return output('needs_context', [], blocked);
+        }
+        return output('no_match', [], blocked);
+    }
+    return output(formatted[0].conditional ? 'needs_context' : 'recommended', formatted, blocked);
 }

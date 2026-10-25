@@ -1,4 +1,5 @@
 // Read data from wiki templates and the quest-requirement Lua table without executing either.
+import { htmlText, withoutWikiComments } from './wikiText.js';
 export function splitWikiFields(text: string): string[] {
     const fields: string[] = [];
     let braces = 0, links = 0, start = 0;
@@ -44,8 +45,7 @@ function fields(parts: string[] | undefined): Record<string, string> {
 }
 
 export function wikiText(text: string): string {
-    let plain = text.replace(/<!--[\s\S]*?-->/g, '')
-        .replace(/<ref\b[^>]*>[\s\S]*?<\/ref>|<ref\b[^>]*\/>/gi, '')
+    let plain = withoutWikiComments(text)
         .replace(/\[\[(?:File|Image|Category):[^\]]*\]\]/gi, '')
         .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2')
         .replace(/\[\[([^\]]+)\]\]/g, '$1');
@@ -59,9 +59,7 @@ export function wikiText(text: string): string {
             return args.filter(arg => !arg.includes('=')).join(' ');
         });
     }
-    return plain.replace(/<[^>]*>/g, '').replace(/'{2,5}/g, '')
-        .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|&apos;/g, "'")
-        .replace(/&quot;/g, '"').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
+    return htmlText(plain.replace(/'{2,5}/g, ''));
 }
 
 export interface QuestMetadata {
@@ -84,7 +82,9 @@ export interface QuestMetadata {
 }
 
 export function parseQuestPage(title: string, source: string, revisionId?: number): QuestMetadata {
-    source = source.replace(/<!--[\s\S]*?-->/g, '');
+    // Remove non-content elements before reading template fields, but leave entities
+    // encoded until each field's one and only text-conversion pass.
+    source = htmlText(withoutWikiComments(source), false);
     const details = fields(templates(source, 'Quest details')[0]);
     const reward = fields(templates(source, 'Quest rewards')[0]);
     const requirements = details.requirements ?? '';
