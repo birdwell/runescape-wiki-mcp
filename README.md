@@ -249,7 +249,7 @@ There are no automatic paid retries. Returned token counts let you measure actua
 this prototype does not promise a particular dollar cost.
 
 The result includes `recommended`, `needs_context`, `no_match`, or `goal_met`, a recommendation
-when supported, up to two alternatives, wiki excerpts and links, missing context,
+when supported, alternatives, wiki excerpts and links, missing context,
 warnings, per-dimension Jev answers and token usage. Suggestions are wiki activities
 or guides, not an exhaustive optimized progression plan. For general activity suggestions, requirements are model
 assessments over excerpts, **not verified requirements**; `requirementsVerified`

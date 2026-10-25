@@ -1,7 +1,7 @@
 import { JevSession, MAX_JEV_REQUEST_CHARS, type ChoiceQuestion } from './jev.js';
 import { fetchGuide, guideSections, guideTables, inventionRequirements, type Guide } from './wikiGuides.js';
 import { fetchPlayerQuests, fetchQuestCatalogue, fetchQuestGuide, questKey, type JournalQuest } from './questData.js';
-import type { QuestMetadata } from './questParsing.js';
+import { wikiText, type QuestMetadata } from './questParsing.js';
 import { attributedWikiSource } from './wikiAttribution.js';
 import { experienceGap, planTraining, type PlanningAccount } from './trainingRecommendations.js';
 import type { RecommendationInput } from './tools/recommendationTools.js';
@@ -54,7 +54,7 @@ export function buildUnlockPath(target: UnlockDefinition, account: PlanningAccou
         if (prerequisites === undefined) path.unknowns.push(`Prerequisites unknown: ${title}`);
         for (const dependency of prerequisites ?? []) {
             if (dependency.startsWith('Follows:')) continue;
-            if (dependency.startsWith('Misc:')) { path.unknowns.push(dependency.slice(5)); continue; }
+            if (dependency.startsWith('Misc:')) { path.unknowns.push(wikiText(dependency.slice(5))); continue; }
             const name = dependency.replace(/^(Partial:|Full:)/, '');
             if (dependency.startsWith('Partial:') && journalByName.get(questKey(name))?.status === 'STARTED') {
                 path.unknowns.push(`Required stage of ${name} is unverified.`); continue;
