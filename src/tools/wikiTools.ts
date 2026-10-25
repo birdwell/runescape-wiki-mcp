@@ -112,10 +112,10 @@ export const wikiTools: Tool[] = [
         name: 'get_wiki_page_content',
         title: 'Get Wiki Page Content',
         description:
-            "Resolve a known RS3 Wiki title to its canonical URL and revision. Use search_wiki to discover titles; use get_item_price for GE prices.\n" +
-            "- page takes a literal title, e.g. \"Abyssal whip\". Copy search-result spelling; encoding and redirects are handled. Namespace-prefixed titles such as Category:Weapons resolve to references only.\n" +
-            "- Both outcomes are successes: reviewed_extract includes whole article text and attribution when an article revision and extract hash match a recorded review; link_only includes text:null, reason and source link. A link is not a summary. No argument bypasses review. Missing pages are errors.\n" +
-            "- No auth, edits or local cache. Shared HTTP budget: 60 requests/IP/minute; retry 429 after Retry-After.",
+            "Fetch an RS3 Wiki page reference. Use search_wiki for discovery and get_item_price for prices.\n" +
+            "page takes a literal title, e.g. \"Abyssal whip\", not a URL. Redirects resolve; non-article namespaces return links only.\n" +
+            "reviewed_extract returns text and attribution when a local review matches the canonical title, revision and SHA-256 of the untrimmed extract. Otherwise link_only succeeds with null text, reason and URL. Missing pages error.\n" +
+            "No auth, edits, cache or review override. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
