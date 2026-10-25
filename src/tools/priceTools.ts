@@ -68,7 +68,7 @@ export const priceTools: Tool[] = [
         name: 'get_ge_info',
         title: 'GE Catalogue Refresh Status',
         description:
-            "Inspect GE catalogue configuration freshness, not item-price freshness. Returns the upstream RuneDay plus its UTC date, age in UTC days, fetch time and canonical category count. priceFreshness is not_reported: a recent configuration update says nothing about current offers.\n" +
+            "Inspect GE catalogue configuration updates. Returns RuneDay plus UTC date/age, fetch time and category count. priceFreshness is not_reported: these dates do not measure item-price freshness.\n" +
             "Call with {} for catalogue diagnostics. Use get_item_price for item metadata/prices, get_all_categories for category IDs, or get_item_graph for dated price observations.\n" +
             "Reads Jagex once without auth or cache. Upstream failures are errors. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: EMPTY_OBJECT_SCHEMA,

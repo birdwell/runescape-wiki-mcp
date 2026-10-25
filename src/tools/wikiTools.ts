@@ -115,9 +115,10 @@ export const wikiTools: Tool[] = [
         name: 'get_wiki_page_content',
         title: 'Get Wiki Page Content',
         description:
-            "Fetch RS3 Wiki references by known title. Use search_wiki for discovery; get_item_price for GE prices. Supply page for one reference or pages for a batch, never both. Titles are literal; redirects resolve. Batches preserve title order with per-row data/errors, at most two concurrent requests; upstream 429 stops queued work. All failed rows make the call an error.\n" +
-            "reviewed_extract returns text and attribution only when a local review matches the canonical article title, revision and untrimmed-extract SHA-256. Otherwise link_only succeeds with null text, reason and URL. Non-article namespaces return links only; missing pages error.\n" +
-            "No auth, edits, cache or review override. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
+            "Fetch known Wiki page references. Use search_wiki for discovery; get_item_price for GE prices.\n" +
+            "page accepts one unencoded title; pages accepts a title array, e.g. [\"Abyssal whip\", \"Grand Exchange\"]. Copy search titles verbatim, without URLs or fragments; redirects resolve. page returns a flat reference; pages always returns ordered rows, even for one title.\n" +
+            "Inspect OUTPUT contentStatus; it is not an input option. Server review matching canonical article title, revision and untrimmed-extract SHA-256 selects reviewed_extract (text and attribution) or link_only (null text, reason and source link). Clients cannot override it.\n" +
+            "Missing pages error. Batches run at most two concurrent requests, stop queued work on upstream 429, and error when all rows fail. No auth, edits or cache. Shared HTTP limit: 60 requests/IP/minute; honor Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
