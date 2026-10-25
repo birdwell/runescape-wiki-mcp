@@ -22,4 +22,16 @@ describe('public copy', () => {
         expect(SERVER_CONFIG.description.length).toBeLessThanOrEqual(100);
         expect(SERVER_CONFIG.description).toContain('guide prices');
     });
+
+    it('credits upstream providers and distinguishes wiki content from the software license', () => {
+        for (const text of [homepageHtml(), readFileSync('README.md', 'utf8')]) {
+            expect(text).toContain('https://api.weirdgloop.org/');
+            expect(text).toContain('RuneScape Wiki contributors');
+            expect(text).toContain('https://creativecommons.org/licenses/by-nc-sa/3.0/');
+            expect(text).toContain('https://meta.weirdgloop.org/w/Licensing');
+            expect(text).toContain('https://legal.jagex.com/docs/policies/fan-content-policy');
+            expect(text).toContain('not endorsed by or affiliated with Jagex');
+            expect(text).toContain('third-party');
+        }
+    });
 });

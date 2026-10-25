@@ -47,6 +47,11 @@ describe('Wiki Tools', () => {
                     },
                 ],
             });
+            const text = result.content.map(part => part.text).join('\n');
+            expect(text).toContain('RuneScape Wiki contributors');
+            expect(text).toContain('https://runescape.wiki/w/Noxious_scythe?action=history');
+            expect(text).toContain('https://creativecommons.org/licenses/by-nc-sa/3.0/');
+            expect(text).toContain('HTML highlighting removed');
         });
 
         it('should return an empty result list when nothing matches', async () => {
@@ -58,6 +63,7 @@ describe('Wiki Tools', () => {
             const result = await handleWikiTool('search_wiki', { query: 'zzzz-not-a-page' });
             expect(result.isError).toBeFalsy();
             expect(result.structuredContent).toEqual({ results: [] });
+            expect(result.content).toHaveLength(1);
         });
 
         it('should require query', async () => {
@@ -95,6 +101,12 @@ describe('Wiki Tools', () => {
             expect(result.isError).toBeFalsy();
             expect(result.content[0].text).toContain('Wiki Page: Whips');
             expect(result.content[0].text).toContain('fast slashing weapons');
+            expect(result.content[0].text).toContain('"Whips": https://runescape.wiki/w/Whips');
+            expect(result.content[0].text).toContain('https://runescape.wiki/w/Whips?action=history');
+            expect(result.content[0].text).toContain('https://creativecommons.org/licenses/by-nc-sa/3.0/');
+            expect(result.content[0].text).toContain('formatting omitted');
+            expect(result.content[0].text).toContain('except where the source states otherwise');
+            expect(result.content[0].text).not.toContain('https://runescape.wiki/w/Whip?');
         });
 
         it('should error when page is missing', async () => {

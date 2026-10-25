@@ -9,6 +9,8 @@ export const RS_GE_API = RS3_GE_API;
 
 export const RS3_HISCORES_ORIGIN = 'https://secure.runescape.com';
 export const RUNESCAPE_WIKI_API = 'https://runescape.wiki/api.php';
+export const WIKI_LICENSE_URL = 'https://creativecommons.org/licenses/by-nc-sa/3.0/';
+export const WIKI_LICENSING_URL = 'https://meta.weirdgloop.org/w/Licensing';
 export const WEIRDGLOOP_EXCHANGE_API = 'https://api.weirdgloop.org/exchange/history/rs';
 
 // Full hiscores lite paths. Ironman/hardcore are documented by Jagex but currently
