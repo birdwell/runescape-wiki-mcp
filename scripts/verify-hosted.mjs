@@ -21,8 +21,8 @@ async function call(name, args, expectedError = false) {
 try {
  const listed = await rpc('tools/list');
  await writeFile('/tmp/rs-production-tools.json', JSON.stringify({serverName:'RuneScape Wiki',tools:listed.tools},null,2));
- if (listed.tools.length !== 13 || !listed.tools.some(t=>t.name==='search_wiki')) throw new Error('Expected 13 tools including search_wiki');
- console.log('Production exposes all 13 tools.');
+ if (listed.tools.length !== 14 || !listed.tools.some(t=>t.name==='search_wiki')) throw new Error('Expected 14 tools including search_wiki');
+ console.log('Production exposes all 14 tools.');
  const search = await call('search_wiki',{query:'Abyssal whip',limit:3});
  const hits = search.structuredContent?.results;
  if(!hits?.length) throw new Error('Wiki search returned no hits');
@@ -84,6 +84,10 @@ try {
  for(const field of ['highTime','lowTime']) if(live[field]!==null&&(!Number.isSafeInteger(live[field])||live[field]<1e9||live[field]>1e11)) throw new Error('Trade timestamps must use Unix seconds');
  const enrichedBatch=await call('get_item_price',{itemIds:[itemId,secondId],includeLiveData:true});
  if(enrichedBatch.structuredContent.succeeded!==2||enrichedBatch.structuredContent.results.some(row=>!row.data.item.liveTrades||!row.data.item.wikiFacts||new URL(row.data.item.liveTrades.sourceUrl).pathname!==`/rs/item/${row.query}`)) throw new Error('RS3 enriched batch failed');
+ const monster=await call('get_wiki_entity_facts',{page:'Abyssal demon',kind:'monster',limit:3});
+ if(!monster.structuredContent.records.some(row=>row.stats?.combatLevel>0&&row.stats?.lifePoints>0)||monster.structuredContent.attribution.license!==null) throw new Error('Structured monster facts failed');
+ const quest=await call('get_wiki_entity_facts',{page:"Cook's Assistant",kind:'quest'});
+ if(!quest.structuredContent.records.some(row=>row.isMembers===false&&row.difficulty==='Novice'&&/^\d{4}-\d{2}-\d{2}$/.test(row.releaseDate))) throw new Error('Structured quest facts failed');
  const invalidTitle=await call('get_wiki_page_content',{page:'https://runescape.wiki/w/Abyssal_whip'},true);
  if(!invalidTitle.content?.some(part=>part.text?.includes('wiki title'))) throw new Error('Invalid URL title did not return actionable validation');
  const card=await fetch(endpoint+'/server-card').then(r=>r.json());

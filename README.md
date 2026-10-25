@@ -244,3 +244,9 @@ Catalogue records include `item.wikiUrl`, an official Wiki item-ID lookup link t
 This uses the [RS3 API v2](https://runescape.wiki/w/RuneScape:Real-time_Prices), not the OSRS API or the obsolete RS3 v1 path. Trade timestamps are Unix seconds. Missing sides remain null; recorded trades are not an order book or guaranteed executable offers. A published buy limit does not reveal a player's remaining quota.
 
 Public trade snapshots cache for 30 seconds and the shared numeric mapping for 10 minutes per server process, with concurrent requests coalesced and at most 512 cached item snapshots. `fetchedAt` records the original retrieval time on cache hits. Only numeric mapping facts are exposed; mapping examine text, names and media are discarded. Wiki article text still requires the existing per-revision/content review.
+
+### Structured monster and quest facts
+
+`get_wiki_entity_facts { "page": "Abyssal demon", "kind": "monster" }` returns indexed numeric combat statistics. `kind: "quest"` returns quest IDs, membership, controlled difficulty/type labels and normalized release dates. Discover titles with `search_wiki`. Redirects resolve before querying; `limit` (1–10, default 5) caps variants, and `truncated` signals additional indexed rows. A mismatched page/kind is an error. Entity IDs are not GE item IDs.
+
+This tool queries fixed, bounded datasets with title values kept inside data literals. It never fetches article prose, images or narrative summaries. Returned references identify the page/variant; attribution links identify the source without inferring an article-content license. The existing exact revision/hash policy still governs `get_wiki_page_content` text.

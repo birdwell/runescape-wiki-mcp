@@ -115,3 +115,5 @@ Wiki search defaults to articles. Query prefixes such as `prefix:Category:Weapon
 
 
 Opt-in `get_item_price.includeLiveData` uses `https://prices.runescape.wiki/api/v2/rs`: reported high/low transaction prices (Unix seconds), plus numeric buy-limit/alchemy/base-value mapping facts. It preserves guide defaults and works in batches. These are not active orders or guaranteed fill prices; buy limits are caps, not remaining account quota. Quotes cache 30 seconds; mapping caches 10 minutes per process. Do not use the obsolete v1 RS3 path or substitute OSRS data.
+
+`get_wiki_entity_facts` adds structured `monster` combat statistics or `quest` metadata from a canonical Wiki page. Use page titles, not URLs/section fragments. limit is 1–10 variant rows (default 5). Numeric/Boolean facts, controlled labels and dates only; no article prose or images. Entity IDs are not GE item IDs.
