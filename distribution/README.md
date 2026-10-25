@@ -1,5 +1,11 @@
 # Directory corrections and native chat submissions
 
+## Permission status for future copy
+
+Use the [source review and outstanding permissions](../docs/permissions.md) when preparing listings. Birdwell Labs operates this independent project; no Jagex or Weird Gloop approval is claimed. Describe wiki output as source links by default, with text available only for reviewed revisions. Keep the privacy and support links visible. Directory acceptance, working APIs and other projects' approvals are not evidence of approval for this server. Do not tick ownership, authorization or partnership declarations without supporting evidence for the specific statement.
+
+The [provider request drafts](../docs/permission-requests.md) are unsent preparation, not permission records. The older submission notes below are historical observations and do not establish current form state or eligibility.
+
 Prepared October 24, 2026. `listing.json` contains copy for the hosted service;
 `review-cases.json` contains five positive and three negative chat review cases.
 These are proposed cases, not proof of successful Claude or ChatGPT conversations.

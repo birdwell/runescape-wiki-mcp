@@ -53,7 +53,7 @@ const manifest = {
             ...(config.demo_recording_url ? { demo_recording_url: config.demo_recording_url } : {}),
             commerce: false, commerce_description: 'Read-only game information. No purchases, payments or game trades.',
         },
-        publication: { release_notes: 'Initial chat plugin package for RS3 guide prices, daily history, flip estimates, normal-mode hiscores and wiki content.' },
+        publication: { release_notes: 'Initial chat plugin package for RS3 guide prices, daily history, flip estimates, normal-mode hiscores and wiki source links; article text requires a reviewed revision.' },
     } },
 };
 const mcp = {

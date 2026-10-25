@@ -1,6 +1,6 @@
 ## RuneScape Wiki MCP
 
-Ask your assistant about RuneScape 3 guide prices, daily trends, normal-mode hiscores and wiki pages. All tools are read-only. This is an unofficial community project, unaffiliated with Jagex or the RuneScape Wiki.
+Ask your assistant about RuneScape 3 guide prices, daily trends, normal-mode hiscores and wiki pages. All tools are read-only. Maintained independently by Birdwell Labs; unaffiliated with Jagex or the RuneScape Wiki. No Jagex or Weird Gloop approval is claimed.
 
 ## Connect in Claude or ChatGPT
 
@@ -29,7 +29,8 @@ Use Streamable HTTP and no authentication. No API key, game login or local insta
 | compare_items | Compare up to ten items |
 | estimate_flip | Estimate hypothetical profit after the 2% seller tax |
 | get_player_stats | Read public normal-mode RS3 hiscores |
-| get_wiki_page_content | Read a RuneScape Wiki page by title |
+| search_wiki | Find RuneScape Wiki titles and source links |
+| get_wiki_page_content | Return a source link; text requires a reviewed revision and matching hash |
 | browse_items | Browse the Grand Exchange catalogue by category |
 | get_all_categories | List category IDs |
 | get_category_info | Read category metadata |
@@ -41,6 +42,12 @@ Sources are the Jagex Grand Exchange API, Jagex normal-mode hiscores, Weirdgloop
 
 RS3 only. Old School RuneScape and ironman/hardcore hiscores are not supported. Historical coverage depends on upstream availability.
 
+## Attribution and data handling
+
+Jagex supplies Grand Exchange data and public hiscores. Weird Gloop supplies daily exchange history; wiki contributors retain their article rights. Wiki pages return links by default. Reviewed text includes source/history links and its applicable licence and notices. The project's MIT licence covers its original software, not third-party content or trademarks.
+
+This server does not connect to the game client or request Jagex credentials. A player-name lookup sends the supplied name to Jagex. Your assistant receives tool results under its provider's own data-handling terms. Privacy: https://birdwellabs.com/privacy. Source review: https://github.com/birdwell/runescape-wiki-mcp/blob/main/docs/permissions.md.
+
 ## Support
 
-Report problems at https://github.com/birdwell/runescape-wiki-mcp/issues. Local stdio installation is also documented in the repository for clients that require it.
+Contact support@birdwellabs.com for support or rights concerns, or report technical problems at https://github.com/birdwell/runescape-wiki-mcp/issues. Local stdio installation is also documented in the repository for clients that require it.
