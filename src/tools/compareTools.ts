@@ -36,7 +36,7 @@ const compareArrayProperty = {
 export const compareTools: Tool[] = [
     {
         name: 'compare_items',
-        title: 'Compare Items',
+        title: 'Compare Daily Item Prices',
         description:
             "Compare latest available Weirdgloop price snapshots for a chosen RS3 item set in one call. Supply exactly " +
             "one of names or itemIds, with 1-10 entries; IDs avoid name lookup, while each name selects its first " +

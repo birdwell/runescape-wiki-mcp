@@ -20,11 +20,7 @@ const fields = {
 };
 export const entityTools: Tool[] = [{
     name: 'get_wiki_entity_facts', title: 'Get Structured Monster and Quest Facts',
-    description:
-        "Read structured RS3 monster statistics or quest metadata. Use search_wiki for titles, get_wiki_page_content for reviewed text/references, or get_item_price for GE items.\n\n" +
-        "kind chooses the dataset; a mismatched page/kind errors. page follows redirects but rejects URLs/fragments. Returned entity IDs are not GE IDs.\n\n" +
-        "limit caps variants of one page, not search hits. Rows are ordered; truncated signals additional variants. No variant is chosen implicitly and no cursor exists.\n\n" +
-        "Only numeric/Boolean facts, fixed quest labels, dates and references; no article prose or images. Index data may lag. Public reads need no credentials or server cache. Shared HTTP budget defaults to 60 requests/IP/minute; honor 429 Retry-After.",
+    description: "Read structured RS3 monster statistics or quest metadata. Use search_wiki for titles, get_wiki_page_content for reviewed text/source links, or get_item_price for GE records.\n\nUse an article title and its matching kind: {\"page\":\"Abyssal demon\",\"kind\":\"monster\",\"limit\":3} or {\"page\":\"Cook's Assistant\",\"kind\":\"quest\"}. Redirects resolve; URLs/fragments and mismatched page/kind pairs fail.\n\nlimit bounds variants of one page, not search hits. Inspect records[].reference; no variant is chosen implicitly. If truncated, increase limit up to 10 or follow sourceUrl; there is no cursor. Entity IDs are not GE IDs.\n\nResults contain numeric/Boolean facts, controlled labels, dates and references, without article prose or images. Index reads are uncached and may lag. No credentials are required; HTTP defaults to 60 requests/IP/minute. Honor 429 Retry-After.",
     inputSchema: { $schema: JSON_SCHEMA_2020_12, type: 'object', properties: {
         page: { type: 'string', minLength: 1, maxLength: 255, description: "Wiki page title, e.g. Abyssal demon or Cook's Assistant; redirects are resolved" },
         kind: { type: 'string', enum: ['monster', 'quest'], description: 'Structured dataset: combat monster statistics or quest metadata' },

@@ -1,6 +1,6 @@
 import type { Tool } from '@modelcontextprotocol/server';
 
-// Discovery uses precise resource names. Existing calls remain valid indefinitely.
+// Discovery uses precise resource names. Existing call names remain valid compatibility aliases.
 const discoveryNames = new Map([
     ['get_item_price', 'get_item_details'],
     ['get_item_graph', 'get_price_series'],

@@ -11,7 +11,7 @@ export const resources: Resource[] = [
         uri: RESOURCE_URIS.GE_INFO,
         name: 'Grand Exchange Database Info',
         description:
-            'Jagex catalogue configuration freshness with derived UTC date and age. Not item prices — use get_item_price or lookup_item for prices.',
+            'Jagex catalogue configuration freshness with derived UTC date and age. Not item prices — use get_item_details or lookup_item for prices.',
         mimeType: 'application/json',
     },
     {
