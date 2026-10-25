@@ -46,13 +46,13 @@ export const priceTools: Tool[] = [
         name: 'get_item_price',
         title: 'Get Item Details and Reported Trades',
         description:
-            "Read Jagex item records with guide prices and Wiki ID links, optionally enriched with RS3 reported trades and numeric item facts. Use browse_items for category listings or get_ge_info for catalogue configuration status.\n\n" +
-            "For daily guide-price/volume comparisons use compare_items; for dated observations get_item_graph; for calculated statistics summarize_price_history.\n\n" +
-            "Choose exactly one input form, using IDs from lookup_item:\n\n| Input example | Behavior |\n| --- | --- |\n| {\"itemId\":4151} | Fetch directly; return item. |\n| {\"name\":\"Abyssal whip\"} | Resolve first; return item or an error with ambiguity candidates. |\n| {\"itemIds\":[4151]} | Return ordered batch rows, even for one ID; each item is in results[].data.item. |\n\n" +
-            "Batch inputs are validated before fetching. An unavailable valid ID fails only its row; all rows failing makes the call an error. At most two reads run concurrently. A 429 stops queued IDs; honor Retry-After.\n\n" +
-            "includeLiveData adds item.liveTrades and item.wikiFacts; guide fields stay unchanged. Reported transactions are not executable orders, and published buy limits are not remaining account quota.\n\n" +
-            "Trades cache 30 seconds and the numeric mapping 10 minutes per process; fetchedAt retains the original retrieval time. Guide records remain uncached and lag market activity. No credentials are required. The shared HTTP budget defaults to 60 requests/IP/minute.",
-
+            "Read Jagex item records and Wiki ID links, optionally enriched with reported RS3 trades and numeric facts. Use browse_items for category listings or get_ge_info for configuration age.\n\n" +
+            "Use compare_items for daily guide-price comparisons, get_item_graph for observations, or summarize_price_history for calculations.\n\n" +
+            "Choose one identity selector; get IDs from lookup_item:\n\n| Selector | Result |\n| --- | --- |\n| itemId | Direct read; item. |\n| name | Resolve first; item or ambiguity error with candidates. |\n| itemIds | Ordered results[] rows with query and data.item or error, plus succeeded/failed counts; even one ID stays a batch. |\n\n" +
+            "Validate batches before fetching. Unavailable valid IDs fail per row; all-failed is an error. At most two reads run concurrently. A 429 stops queued IDs; honor Retry-After.\n\n" +
+            "includeLiveData adds item.liveTrades and item.wikiFacts; guide fields stay unchanged. Transactions are not executable orders; buy limits are not remaining account quota.\n\n" +
+            "Cache TTLs: trades 30 seconds, mapping 10 minutes. Cache hits retain fetchedAt. Guide records are uncached and lag market activity.\n\n" +
+            "No credentials required. Shared HTTP budget: 60 requests/IP/minute by default.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

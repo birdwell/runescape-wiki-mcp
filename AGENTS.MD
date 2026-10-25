@@ -44,6 +44,7 @@ runescape-wiki-mcp/
 | `get_player_stats` | `username`, optional `gameMode` | Normal, ironman and hardcore boards; 404 is player/board-specific |
 | `search_wiki` | `query`, optional `limit` | Wiki title search. Not a price search. |
 | `get_wiki_page_content` | `page` **or** `pages` (1–10) | Single/batch references; text only for a reviewed revision and extract hash |
+| `get_wiki_entity_facts` | `page`, `kind` (monster/quest), optional `limit` | Structured scalar facts and variant references; no article prose |
 
 Prompts: `check_item_price`, `compare_ge_items`, `estimate_item_flip`, `player_overview`.
 
