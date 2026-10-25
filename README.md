@@ -201,6 +201,27 @@ alternatives and miscellaneous requirements may still need checking. A stale
 caller-supplied completion list does not override the fresh official journal.
 Public wiki quest metadata is cached for six hours; player journals are never cached.
 
+For a skill training plan, use a goal such as "Train Mining to 70", or supply
+`goalType: "skill_training"`, `targetSkill: "Mining"` and `targetLevel: 70`.
+The server reads wiki training tables, preserves separate rate assumptions such as
+buying energy versus gathering it, and compares methods available at each milestone.
+`trainingPlan` includes the next method, guide excerpts, source estimates, alternatives,
+and the remaining XP when it can be calculated. Missing XP uses an explicitly labeled
+level-floor upper bound. Invention's elite XP curve is not calculated with the standard formula.
+Plans cover up to six milestones and report any remaining range. Recommended level
+bands never become hard upper eligibility limits. Unsupported guide layouts remain explicit.
+
+For unlock progression, use a goal such as "Help me unlock Invention", or supply
+`goalType: "unlock_progression"` and `unlock: "Invention"`. The planner reads sourced
+requirements, walks unfinished prerequisite quests in order, and returns every known
+missing skill target. It selects one next action and fetches its training or quest guide.
+The initial catalogue covers Invention, targets in the wiki PvM unlock guide, and named
+quest rewards found in the account's quest catalogue. Broad comparisons cover the
+closest 16 targets; this is not a catalogue of every RuneScape unlock. Quest completion
+does not prove a reward was claimed or that additional challenges or ability levels are met.
+
+Training goals use at most two Jev requests; unlock goals use at most three, including
+training selection. Set `goalType: "activity"` to use the original general activity search.
 Other activity goals make at most three Jev requests: route the goal, shortlist wiki
 search results, then assess goal relevance, eligibility, budget and session fit
 in one batch. The server performs up to two wiki searches, evaluates at most six
@@ -212,18 +233,21 @@ request within 40,000 serialized characters; returned sources reflect those exce
 There are no automatic paid retries. Returned token counts let you measure actual usage;
 this prototype does not promise a particular dollar cost.
 
-The result includes `recommended`, `needs_context`, or `no_match`, a recommendation
+The result includes `recommended`, `needs_context`, `no_match`, or `goal_met`, a recommendation
 when supported, up to two alternatives, wiki excerpts and links, missing context,
 warnings, per-dimension Jev answers and token usage. Suggestions are wiki activities
-or guides, not an exhaustive optimized progression plan. For non-quest suggestions, requirements are model
+or guides, not an exhaustive optimized progression plan. For general activity suggestions, requirements are model
 assessments over excerpts, **not verified requirements**; `requirementsVerified`
 is false. Quest suggestions report deterministic checks and their remaining limits
-through `requirementChecks`, `blockers`, and `unknowns`. It does not infer exact costs, GP/hour or durations.
+through `requirementChecks`, `blockers`, and `unknowns`. Training and unlock plans return
+`trainingCoverage` and `unlockCoverage`; rates and profit figures are source estimates,
+not current-price or personal-performance predictions. It does not invent costs or durations.
 An assistant should communicate any conditions and ask for relevant missing facts.
 
 Goals, supplied account context and retrieved evidence are sent to TypeSafe for
 evaluation. The recommendation module keeps account data and decisions only for
-the request and caches public wiki page reads for five minutes, up to 64 pages.
+the request. It caches general wiki extracts for five minutes, up to 64 pages, and public
+training/unlock guides for six hours, up to 16 pages.
 It does not cache goal searches or change the player's account. The other tools
 continue working when recommendations are disabled. Use locally or behind access
 control for the first trial; enabling this tool on a public server allows callers

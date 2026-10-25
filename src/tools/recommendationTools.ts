@@ -9,11 +9,17 @@ import type { ToolArguments, ToolResponse } from '../types.js';
 const names = z.array(z.string().trim().min(1).max(100)).max(100);
 export const recommendationInput = z.strictObject({
     goal: z.string().trim().min(1).max(300),
+    goalType: z.enum(['activity', 'quests', 'skill_training', 'unlock_progression']).optional(),
+    targetSkill: z.enum(RS3_SKILLS.filter(skill => skill !== 'Overall')).optional(),
+    targetLevel: z.number().int().min(1).max(120).optional(),
+    unlock: z.string().trim().min(1).max(100).optional(),
     context: z.strictObject({
         username: z.string().trim().min(1).max(12).regex(/^[a-zA-Z0-9 _-]+$/).optional(),
         gameMode: z.enum(['normal', 'ironman', 'hardcore']).optional(),
         skills: z.partialRecord(z.enum(RS3_SKILLS.filter(skill => skill !== 'Overall')),
             z.number().int().min(1).max(120)).optional(),
+        skillExperience: z.partialRecord(z.enum(RS3_SKILLS.filter(skill => skill !== 'Overall')),
+            z.number().int().min(0).max(200_000_000)).optional(),
         budgetGp: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
         sessionMinutes: z.number().int().min(1).max(1440).optional(),
         playStyle: z.enum(['afk', 'active', 'either']).optional(),
@@ -30,9 +36,11 @@ export type RecommendationInput = z.infer<typeof recommendationInput>;
 export const recommendationTools: Tool[] = [{
     name: 'recommend_next_activity',
     title: 'Recommend Next RS3 Activity',
-    description: 'Recommend an RS3 next activity for a goal and optional account context. ' +
+    description: 'Recommend an RS3 next activity, skill training plan or unlock progression path for a goal and optional account context. ' +
         'Fetches public hiscores and wiki evidence. Quest goals fetch the complete public RuneMetrics journal ' +
         'and compare every unfinished quest with wiki rewards/requirements in bounded batches, then fetch finalist guide summaries. ' +
+        'Skill training reads level/method tables and source estimates; unlock progression builds prerequisite quest and skill paths from wiki evidence. ' +
+        'Optional goalType, targetSkill, targetLevel and unlock make the intended planner explicit. ' +
         'Uses up to 24 paid Jev calls for quests, three for other activities. ' +
         'Requires operator opt-in and a TypeSafe API key. Supplied goal/account context is sent to TypeSafe. ' +
         'Unknown quests, gear, money and requirements remain explicit; suggestions may be conditional. ' +
@@ -42,7 +50,7 @@ export const recommendationTools: Tool[] = [{
         $schema: JSON_SCHEMA_2020_12,
         type: 'object',
         properties: {
-            status: { type: 'string', enum: ['recommended', 'needs_context', 'no_match'] },
+            status: { type: 'string', enum: ['recommended', 'needs_context', 'no_match', 'goal_met'] },
             goal: { type: 'string' },
             recommendation: { type: ['object', 'null'], additionalProperties: true },
             alternatives: { type: 'array', items: { type: 'object', additionalProperties: true } },
@@ -54,6 +62,10 @@ export const recommendationTools: Tool[] = [{
             questCoverage: { type: 'object', additionalProperties: true },
             questDecision: { type: 'object', additionalProperties: true },
             blockedAlternatives: { type: 'array', items: { type: 'object', additionalProperties: true } },
+            trainingPlan: { type: 'object', additionalProperties: true },
+            trainingCoverage: { type: 'object', additionalProperties: true },
+            unlockPlan: { type: 'object', additionalProperties: true },
+            unlockCoverage: { type: 'object', additionalProperties: true },
         },
         required: ['status', 'goal', 'recommendation', 'alternatives', 'missingContext', 'warnings',
             'account', 'sources', 'usage'],

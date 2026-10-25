@@ -71,7 +71,7 @@ describe('recommend_next_activity', () => {
     it('executes the three-stage loop and preserves unknown account facts', async () => {
         const { calls, titles } = fixture();
         const response = await handleTool('recommend_next_activity', {
-            goal: 'Train Prayer toward bossing', context: { skills: { Prayer: 50 }, budgetGp: 0 },
+            goalType: 'activity', goal: 'Train Prayer toward bossing', context: { skills: { Prayer: 50 }, budgetGp: 0 },
         });
         expect(response.isError).toBeFalsy();
         expect(calls).toHaveLength(3);
@@ -91,19 +91,19 @@ describe('recommend_next_activity', () => {
 
     it('excludes candidates judged blocked instead of recommending around known restrictions', async () => {
         fixture({ eligibility: 'blocked' });
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
         expect(response.structuredContent).toMatchObject({ status: 'no_match', recommendation: null, alternatives: [] });
     });
 
     it.each([{ budget: 'exceeds' }, { session: 'conflicts' }])('excludes candidates with a known constraint conflict %j', async options => {
         fixture(options);
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
         expect(response.structuredContent?.recommendation).toBeNull();
     });
 
     it('returns a nonconditional recommendation only when all assessed dimensions support it', async () => {
         fixture({ eligibility: 'possible', budget: 'fits', session: 'fits' });
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer', context: {
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer', context: {
             skills: { Prayer: 50 }, gameMode: 'normal', members: true, completedQuests: [],
             gear: [], budgetGp: 1000, sessionMinutes: 20, playStyle: 'active',
         } });
@@ -113,7 +113,7 @@ describe('recommend_next_activity', () => {
 
     it('does not treat low-confidence choices as a confident recommendation', async () => {
         const { calls } = fixture({ confidence: 0.1 });
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
         expect(response.structuredContent?.recommendation).toBeNull();
         expect(calls).toHaveLength(2);
     });
@@ -122,7 +122,7 @@ describe('recommend_next_activity', () => {
         const { calls } = fixture();
         nock('https://secure.runescape.com').get('/m=hiscore/index_lite.ws')
             .query({ player: 'TestPlayer' }).reply(200, '1,2000,100000\n1,80,10000\n1,70,9000');
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer',
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer',
             context: { username: 'TestPlayer', skills: { Attack: 90 } } });
         expect(calls[0].state.account.skills).toEqual({ Attack: 90, Defence: 70 });
         expect(response.structuredContent?.account).toMatchObject({
@@ -134,7 +134,7 @@ describe('recommend_next_activity', () => {
         fixture();
         const ironman = nock('https://secure.runescape.com').get('/m=hiscore_ironman/index_lite.ws')
             .query(true).reply(404);
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer',
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer',
             context: { username: 'TestPlayer', gameMode: 'ironman' } });
         expect(ironman.isDone()).toBe(true);
         expect(response.structuredContent?.account).toMatchObject({ skills: {} });
@@ -143,7 +143,7 @@ describe('recommend_next_activity', () => {
 
     it('excludes completed quest titles before evaluating candidates', async () => {
         const { titles, calls } = fixture();
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer',
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer',
             context: { completedQuests: [titles[0]] } });
         expect(calls[1].state.candidates).toHaveLength(1);
         expect(response.structuredContent?.recommendation).toMatchObject({ title: titles[1] });
@@ -151,7 +151,7 @@ describe('recommend_next_activity', () => {
 
     it('bounds searches to six candidates and reads no more than three pages', async () => {
         const { calls } = fixture({ pages: 10 });
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
         expect(calls[1].state.candidates).toHaveLength(6);
         expect(calls[2].state.pages).toHaveLength(3);
         expect(response.structuredContent?.alternatives).toHaveLength(2);
@@ -159,7 +159,7 @@ describe('recommend_next_activity', () => {
 
     it('does not evaluate candidates whose wiki extract could not be fetched', async () => {
         const { calls } = fixture({ extractFailure: true });
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
         expect(calls).toHaveLength(2);
         expect(response.structuredContent).toMatchObject({ status: 'no_match', recommendation: null });
     });
@@ -172,7 +172,7 @@ describe('recommend_next_activity', () => {
             gear: Array.from({ length: 100 }, (_, i) => `${i}${'g'.repeat(77)}`),
             notes: 'n'.repeat(1000),
         };
-        const args = { goal: 'Train Prayer', context };
+        const args = { goalType: 'activity', goal: 'Train Prayer', context };
         expect(recommendationInput.safeParse(args).success).toBe(true);
         const response = await handleTool('recommend_next_activity', args);
         expect(response.isError).toBeFalsy();
@@ -185,7 +185,7 @@ describe('recommend_next_activity', () => {
     });
 
     it('rejects oversized combined account context before any paid request', async () => {
-        const args = { goal: 'Train Prayer', context: {
+        const args = { goalType: 'activity', goal: 'Train Prayer', context: {
             completedQuests: Array(100).fill('q'.repeat(100)),
             gear: Array(100).fill('g'.repeat(100)), notes: 'n'.repeat(1000),
         } };
@@ -197,20 +197,20 @@ describe('recommend_next_activity', () => {
 
     it('returns an empty result without further Jev calls when searches find nothing', async () => {
         fixture({ pages: 0 });
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
         expect(response.structuredContent).toMatchObject({ status: 'no_match', usage: { rounds: 1 } });
     });
 
     it('fails closed without operator opt-in, before any network calls', async () => {
         delete process.env.RUNESCAPE_RECOMMENDATIONS_ENABLED;
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
         expect(response.isError).toBe(true);
         expect(response.content[0].text).toContain('Recommendations are disabled');
     });
 
     it('requires a key even when enabled', async () => {
         delete process.env.TYPESAFE_API_KEY;
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
         expect(response.isError).toBe(true);
         expect(response.content[0].text).toContain('TYPESAFE_API_KEY');
     });
@@ -230,7 +230,7 @@ describe('recommend_next_activity', () => {
     it('does not reflect a provider error body or retry a failed paid request', async () => {
         const provider = nock('https://api.typesafe.ai').post('/v1/systemone')
             .reply(429, 'sensitive provider detail test-key-never-live');
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
         expect(provider.isDone()).toBe(true);
         expect(response.isError).toBe(true);
         expect(response.content[0].text).toContain('HTTP 429');
@@ -244,7 +244,7 @@ describe('recommend_next_activity', () => {
                 confidence: 1, probabilities: { execute_shell: 1 } } },
             usage: { input_tokens: 1, output_tokens: 1 },
         });
-        const response = await handleTool('recommend_next_activity', { goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
         expect(response.isError).toBe(true);
         expect(response.content[0].text).toContain('out-of-range');
     });
@@ -258,7 +258,7 @@ describe('recommend_next_activity', () => {
                 'MCP-Protocol-Version': '2026-07-28', 'Mcp-Method': 'tools/call',
                 'Mcp-Name': 'recommend_next_activity' },
             body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: {
-                name: 'recommend_next_activity', arguments: { goal: 'Train Prayer' },
+                name: 'recommend_next_activity', arguments: { goalType: 'activity', goal: 'Train Prayer' },
                 _meta: { 'io.modelcontextprotocol/protocolVersion': '2026-07-28',
                     'io.modelcontextprotocol/clientInfo': { name: 'recommendation-test', version: '1' },
                     'io.modelcontextprotocol/clientCapabilities': {} },
