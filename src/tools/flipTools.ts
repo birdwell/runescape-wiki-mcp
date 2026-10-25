@@ -32,12 +32,7 @@ export const flipTools: Tool[] = [
     {
         name: 'estimate_flip',
         title: 'Estimate Flip Profit',
-        description:
-            "Estimate RS3 resale profit after seller tax. ESTIMATE ONLY; never places an order. Use get_item_price for price detail, compare_items for snapshots or lookup_item for uncertain names.\n" +
-            "- Choose itemId to skip name resolution, or name to resolve first. buyPrice and sellPrice are per-unit offers; quantity scales total investment, tax and profit, not the per-unit margin.\n" +
-            "- An omitted price uses Weirdgloop, falling back to Jagex guide price. Omit both and both sides use the same price, usually producing a tax loss. Supply itemId and both offers for a calculation without network access.\n" +
-            "- Tax is 2% per unit rounded down; bonds and sales at 50 coins or less are exempt.\n- Optional buyLimitRemaining caps the currently executable quantity; fillTimeMinutes models whole-request round-trip duration and profit per hour. These are caller assumptions, not observed quotas or fill predictions; samples lag live offers.\n" +
-            "- No auth or local cache. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
+        description: "Calculate RS3 resale-profit scenarios after seller tax. ESTIMATE ONLY; never places an order. Use get_item_price for price detail, compare_items for snapshots, or lookup_item for uncertain names.\n\nitemId skips name resolution; name resolves first. quantity scales total investment, tax and profit, not per-unit margin.\n\nAn omitted price uses Weirdgloop, then Jagex guide price. Omitting both gives identical buy/sell prices, usually a tax loss. Supply itemId and both prices to calculate without network access.\n\nTax is 2% of each unit's sell price, rounded down. Bonds and sales at 50 coins or less are exempt.\n\nFor quantity=20 and buyLimitRemaining=5, quota profit covers five units; requested totals still cover twenty. fillTimeMinutes divides the full-request profit into an hourly rate, including any assumed quota wait. Both inputs are caller assumptions, not observed limits or fill predictions.\n\nSampled prices lag live offers. No credentials or cache. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

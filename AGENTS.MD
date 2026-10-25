@@ -105,7 +105,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{"io.
 ## Important notes
 
 - RS3 only (not OSRS)
-- Prices are Jagex guide prices and Weirdgloop daily history. They lag the live high/low feed at prices.runescape.wiki. Do not describe them as real-time.
+- Default prices are Jagex guide prices and Weirdgloop daily history. They lag the live high/low feed at prices.runescape.wiki. Do not describe them as real-time.
 - Do not invent item IDs — call `lookup_item`
 - Rebuild Smithery server card after tool schema changes
 - Respect API rate limits
