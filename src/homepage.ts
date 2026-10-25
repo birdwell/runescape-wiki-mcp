@@ -1,6 +1,6 @@
 // Public homepage for the hosted server. The page is the pitch; GitHub is the source.
 
-import { PUBLIC_ORIGIN, REPOSITORY_URL } from './constants.js';
+import { PUBLIC_ORIGIN, REPOSITORY_URL, WIKI_LICENSE_URL, WIKI_LICENSING_URL } from './constants.js';
 import { CANONICAL_MCP_URL, serverCardUrl } from './discovery.js';
 
 const SMITHERY_URL = 'https://smithery.ai/servers/birdwell/runescape-wiki-mcp';
@@ -55,6 +55,11 @@ export function homepageHtml(): string {
   <h2>Connect</h2>
   <p>Paste this into Claude Desktop or Cursor. The hosted URL needs no install.</p>
   <pre><code>${CONNECT_CONFIG}</code></pre>
+  <h2>Sources and attribution</h2>
+  <p>Grand Exchange guide prices and public hiscores come from <a href="https://www.runescape.com/">Jagex</a>. Daily price history and item lookup use the <a href="https://api.weirdgloop.org/">Weirdgloop API</a>.</p>
+  <p>Wiki text is by <a href="https://runescape.wiki/">RuneScape Wiki contributors</a>, generally under <a href="${WIKI_LICENSE_URL}">CC BY-NC-SA 3.0</a>, subject to <a href="${WIKI_LICENSING_URL}">source-specific exceptions</a>. Wiki results include article and contributor-history links, license notices and descriptions of formatting changes. Noncommercial and share-alike conditions apply to that content and adaptations.</p>
+  <p>RuneScape and its game content belong to Jagex Limited. This content is not endorsed by or affiliated with Jagex. See the <a href="https://legal.jagex.com/docs/policies/fan-content-policy">Fan Content Policy</a>. These credits do not establish additional permissions or a partnership.</p>
+  <p>The MCP software is <a href="${REPOSITORY_URL}/blob/main/LICENSE">MIT licensed</a>; third-party content retains its own licenses and rights.</p>
   <p class="links">
     <a href="${REPOSITORY_URL}">GitHub</a>
     <a href="${NPM_URL}">npm</a>

@@ -154,6 +154,16 @@ Guide prices come from Jagex. Daily history comes from Weirdgloop. Both lag the 
 All requests send User-Agent:  
 `RuneScape Wiki MCP Server - github.com/birdwell/runescape-wiki-mcp`
 
+### Attribution and third-party content
+
+RuneScape and its game content belong to Jagex Limited. This content is not endorsed by or affiliated with Jagex. See [Jagex's Fan Content Policy](https://legal.jagex.com/docs/policies/fan-content-policy). These credits do not establish additional permissions or a partnership.
+
+Price history and item lookup use the [Weirdgloop API](https://api.weirdgloop.org/). Wiki text is by [RuneScape Wiki contributors](https://runescape.wiki/), generally licensed under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/), subject to [content and revision-specific exceptions](https://meta.weirdgloop.org/w/Licensing).
+
+Wiki extracts and search snippets include source article links, contributor-history links, the license and a description of formatting changes. Noncommercial use and share-alike conditions apply to that content and adaptations. Images and other media have their own terms. Preserve the attribution and applicable license when redistributing wiki content; downstream summaries and adaptations must also respect those terms.
+
+The MIT license covers this project's original software, not third-party article text, game data, artwork or trademarks. Attribution alone does not settle the outstanding API, commercial-use or branding permission questions.
+
 ## Develop
 
 - Node.js 20+
@@ -189,4 +199,4 @@ src/
 
 ## License
 
-MIT — unofficial; not affiliated with Jagex or the RuneScape Wiki.
+Original software: MIT. Third-party content retains its own licenses and rights; see [Attribution and third-party content](#attribution-and-third-party-content). Unofficial; not affiliated with Jagex or the RuneScape Wiki.
