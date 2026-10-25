@@ -45,10 +45,11 @@ export const priceTools: Tool[] = [
         name: 'get_item_price',
         title: 'Get Item Metadata and Guide Prices',
         description:
-            "Fetch Jagex catalogue details: examine text, type, membership, icons, guide price and Jagex's fixed 30/90/180-day trend fields. itemId or name returns item directly; itemIds returns results[].data.item, even for a one-ID array.\n" +
-            "IDs are GE IDs from lookup_item. Choose exactly one selector; name resolves first and ambiguous names fail with candidates. Batches preserve ID order with per-row data/errors; all failed rows make the call an error. At most two upstream requests run concurrently; upstream 429 stops queued work.\n" +
-            "Use compare_items for numeric Weirdgloop snapshot comparisons, not catalogue metadata; get_item_graph for dated observations; summarize_price_history for aggregate statistics.\n" +
-            "Jagex prices can be compact strings and lag live offers. No auth or local cache. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
+            "Read a selected item\u2019s Jagex catalogue record: examine text, membership, icons, guide price, predefined 30/90/180-day trends and a direct item-ID Wiki link.\n" +
+            "Choose exactly one selector. itemId skips lookup; name resolves first and ambiguity returns candidates. itemIds retrieves 1\u201310 unique GE IDs from lookup_item. An ID or name returns one item record; an array returns ordered batch rows even for one ID.\n" +
+            "Each batch row contains data or an error; all rows failing makes the call an error. Two requests run concurrently, and upstream 429 stops queued work.\n" +
+            "For side-by-side numeric price/volume snapshots use compare_items; for dated observations use get_item_graph; for chosen-window statistics use summarize_price_history.\n" +
+            "Authentication is unnecessary and responses are not cached. Guide prices lag live offers and may use k/m abbreviations. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -222,7 +223,12 @@ export async function handlePriceTool(name: string, args: ToolArguments): Promis
             const data = await makeApiRequest(
                 `${RS3_GE_API}/catalogue/detail.json?item=${itemId}`
             );
-            return createSuccessResponse(`Item Detail for ${itemId}`, data);
+            if (!data?.item || typeof data.item !== 'object' || Array.isArray(data.item)) {
+                throw new Error(`Jagex returned no catalogue item for ${itemId}`);
+            }
+            const detail = { ...data, item: { ...data.item,
+                wikiUrl: `https://runescape.wiki/w/Special:Lookup?type=item&id=${itemId}` } };
+            return createSuccessResponse(`Item Detail for ${itemId}`, detail);
         }
 
         case 'get_ge_info': {

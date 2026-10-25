@@ -75,6 +75,7 @@ export const itemDetailOutputSchema = {
             properties: {
                 id: itemIdProperty,
                 name: { type: 'string' as const },
+                wikiUrl: { type: 'string' as const, format: 'uri', description: 'Wiki item-ID lookup link; redirects to the corresponding article without a title search' },
                 type: { type: 'string' as const, description: 'Jagex catalogue category name' },
                 members: { type: 'string' as const, enum: ['true', 'false'], description: 'Whether the item requires membership; Jagex returns a string' },
                 icon: { type: 'string' as const, description: 'Small item icon URL' },

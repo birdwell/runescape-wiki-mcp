@@ -49,7 +49,7 @@ try {
  if(!Number.isInteger(secondId)||secondId<0) throw new Error('Second metadata ID not resolved');
  const metadataBatch=await call('get_item_price',{itemIds:[itemId,secondId]});
  if(metadataBatch.structuredContent.succeeded!==2||metadataBatch.structuredContent.failed!==0||
-    metadataBatch.structuredContent.results.some((row,i)=>row.query!==[itemId,secondId][i]||row.data.item.id!==row.query||!row.data.item.description||!row.data.item.type)) throw new Error('Catalogue metadata batch failed');
+    metadataBatch.structuredContent.results.some((row,i)=>row.query!==[itemId,secondId][i]||row.data.item.id!==row.query||new URL(row.data.item.wikiUrl).searchParams.get('id')!==String(row.query)||!row.data.item.description||!row.data.item.type)) throw new Error('Catalogue metadata batch failed');
  const secondWikiSearch=await call('search_wiki',{query:'Grand Exchange',limit:1});
  const secondWikiTitle=secondWikiSearch.structuredContent?.results?.[0]?.title;
  if(!secondWikiTitle) throw new Error('Second wiki title not resolved');

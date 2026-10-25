@@ -19,9 +19,9 @@ import {
 export const itemTools: Tool[] = [
     {
         name: 'lookup_item',
-        title: 'Lookup Item',
+        title: 'Resolve Item Names to GE IDs',
         description:
-            "Find tradeable RS3 items by name, returning matches with ID, name, wiki URL and available price, volume and sample timestamp.\n" +
+            "Resolve item names or prefixes to tradeable RS3 GE identities. This discovery step can return several candidates; get_item_price reads a selected catalogue record. Matches include Wiki links and available price samples.\n" +
             "- query is a literal item name or prefix: \"Abyssal whip\" tries an exact match; \"abyssal\" discovers alternatives. limit defaults to 5, maximum 10. An exact match stops the search even with a larger limit; otherwise wiki opensearch candidates are filtered to GE items.\n" +
             "- Choose a returned ID for get_item_price detail, summarize_price_history statistics or get_item_graph daily samples. No matches returns a tool error; optional price fields can be absent and samples lag live offers.\n" +
             "- No auth or local cache. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
@@ -51,10 +51,10 @@ export const itemTools: Tool[] = [
         name: 'get_item_graph',
         title: 'Get Item Price Time Series',
         description:
-            "Retrieve dated price observations for charts or custom calculations. For a ready-made min/max/mean/change answer, use summarize_price_history; get_item_price provides catalogue details and predefined Jagex trends.\n" +
-            "- Choose source: jagex (default) returns about 180 days as daily/average maps; weirdgloop returns about 90 days as chronological samples with price and available volume. Both use Unix milliseconds and coins, and lag live offers. This tool computes no summary statistics or images.\n" +
-            "- Pass itemId or name, never both. IDs skip name lookup; ambiguous names fail with candidates. from/to are inclusive UTC YYYY-MM-DD bounds on either source. Omitted bounds are open; from=to includes the whole day. Reversed bounds fail.\n" +
-            "- Filtering does not backfill missing history: unavailable ranges return empty maps/samples. The selected provider never falls back to another. No auth or local cache; upstream failures are errors. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
+            "Retrieve raw dated prices for charts or custom calculations. Use summarize_price_history for a ready-made trend answer and get_item_price for catalogue details and predefined trends.\n" +
+            "Choose Jagex (default) for its longer, roughly 180-day window and provider averages. Choose Weirdgloop for roughly 90 days of daily prices with reported volume. Neither is a live offer feed.\n" +
+            "An itemId avoids name lookup; ambiguous names return candidates. from/to constrain the selected provider, never extend its retention. Bounds cover inclusive UTC days: from=to includes that whole day. Unavailable dates return empty data. Invalid bounds fail before name lookup.\n" +
+            "Each call reads one history endpoint after optional name resolution. Providers never fall back to each other. Authentication is unnecessary and responses are not cached. Upstream failures are errors. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -80,7 +80,7 @@ export const itemTools: Tool[] = [
             properties: { ...graphOutputSchema.properties,
                 itemId: itemIdProperty,
                 source: { const: 'weirdgloop', description: 'Present for the Weirdgloop sample-array variant' },
-                samples: { type: 'array', items: { type: 'object', properties: {
+                samples: { type: 'array', description: 'Chronological usable observations; malformed timestamp/price rows are discarded, unreported volume omitted, and an entirely malformed nonempty feed is an error', items: { type: 'object', properties: {
                     timestamp: { type: 'integer', minimum: 0, description: 'UTC Unix timestamp in milliseconds, not seconds' },
                     price: { type: 'number', minimum: 0, description: 'Observed guide price in coins' },
                     volume: { type: 'number', minimum: 0, description: 'Provider-reported daily volume, when available' },

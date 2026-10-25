@@ -37,10 +37,10 @@ export const historyTools: Tool[] = [
         name: 'summarize_price_history',
         title: 'Summarize Daily Price Statistics',
         description:
-            "Compute one min/max/mean/change aggregate for a chosen daily-sample window, not timestamped observations. Use get_item_graph with source weirdgloop for the underlying series or UTC date bounds. get_item_price provides catalogue details and Jagex's predefined trend fields.\n" +
-            "- Choose itemId to skip name resolution, or name to resolve first. days selects trailing usable samples from a fixed 90-day fetch; it does not change fetch size. Fewer available samples reduce windowDays.\n" +
-            "- Return one aggregate: sample min/max, unweighted mean, newest-minus-oldest change and percentage relative to oldest. Volume averages exclude unreported values. There are no forecasts; no usable history is an error.\n" +
-            "- Daily history lags live offers. No auth or local cache. Shared HTTP budget: 60 requests/IP/minute; retry 429 after Retry-After.",
+            "Answer a recent RS3 item trend question with computed min/max/mean/change statistics. For individual dated observations use get_item_graph with source weirdgloop; for catalogue details and predefined Jagex trends use get_item_price.\n" +
+            "Choose itemId to skip name lookup, or name to resolve first. days selects trailing usable observations from one fixed 90-day fetch. It changes the calculation window, not the request size.\n" +
+            "Missing days are not backfilled. windowDays and sampleCount report observations used, not elapsed calendar days; fewer available observations shrink both. The mean is unweighted and change compares newest with oldest. Unreported volume is excluded from its average. No usable history returns an error.\n" +
+            "This computes historical statistics, not forecasts. Authentication is unnecessary and responses are not cached. Prices lag live offers. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

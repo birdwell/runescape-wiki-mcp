@@ -29,6 +29,11 @@ describe('Price Tools', () => {
             const result = await handlePriceTool('get_item_price', { itemId: 4151 });
             expect(result.content[0].text).toContain('Item Detail for 4151');
             expect(result.content[0].text).toContain('Abyssal whip');
+            const link = new URL((result.structuredContent?.item as { wikiUrl: string }).wikiUrl);
+            expect(link.hostname).toBe('runescape.wiki');
+            expect(link.pathname).toBe('/w/Special:Lookup');
+            expect(link.searchParams.get('type')).toBe('item');
+            expect(link.searchParams.get('id')).toBe('4151');
         });
 
         it('should resolve name to id then fetch detail', async () => {
@@ -47,6 +52,11 @@ describe('Price Tools', () => {
 
             const result = await handlePriceTool('get_item_price', { name: 'Abyssal whip' });
             expect(result.content[0].text).toContain('Abyssal whip');
+        });
+
+        it('rejects a provider error payload instead of manufacturing an item link', async () => {
+            nock(RS3_GE_API).get('/catalogue/detail.json?item=4151').reply(200, { error: 'missing' });
+            await expect(handlePriceTool('get_item_price', { itemId: 4151 })).rejects.toThrow('no catalogue item');
         });
 
         it('should reject category above maximum', async () => {
