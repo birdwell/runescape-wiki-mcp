@@ -77,6 +77,7 @@ describe('discovery documents', () => {
         expect(allTools.length).toBeGreaterThan(0);
         for (const tool of allTools) {
             expect(tool.annotations).toMatchObject({
+                title: tool.title,
                 readOnlyHint: true,
                 destructiveHint: false,
                 idempotentHint: true,
