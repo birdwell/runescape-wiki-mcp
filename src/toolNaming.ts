@@ -49,9 +49,9 @@ export function discoveryTool(tool: Tool): Tool {
     if (tool.name === 'get_item_graph') {
         published.title = 'Read Item Price History';
         input.properties.view = { type: 'string', enum: ['observations', 'statistics'], default: 'observations', description: 'Raw observations (original default) or computed Weirdgloop statistics' };
-        input.properties.days = { type: 'integer', minimum: 7, maximum: 90, description: 'Defaults to 30 trailing usable daily samples for statistics only; not a calendar-date range' };
+        input.properties.days = { type: 'integer', minimum: 7, maximum: 90, description: 'Sample window for the statistics view' };
         delete input.properties.source.default;
-        input.properties.source.description = 'Observations: jagex by default or weirdgloop. Statistics: weirdgloop only, also the default for that view.';
+        input.properties.source.description = 'History data provider; allowed values and defaults depend on view';
         input.oneOf = [
             { properties: { view: { const: 'observations' }, source: { default: 'jagex' } }, not: { required: ['days'] } },
             { properties: { view: { const: 'statistics' }, source: { const: 'weirdgloop', default: 'weirdgloop' }, days: { default: 30 } }, required: ['view'], not: { anyOf: [{ required: ['from'] }, { required: ['to'] }] } },
