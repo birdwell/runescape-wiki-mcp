@@ -46,7 +46,7 @@ export function homepageHtml(): string {
   <h1>Ask what it's worth, whether the flip clears tax, and what to train next.</h1>
   <p>Connect Claude or Cursor to RuneScape 3 Grand Exchange guide prices, 30-day history, flip math after the 2% tax, public RS3 hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.</p>
   <p>An independent <a href="https://birdwellabs.com">Birdwell Labs</a> project. No Jagex or Weird Gloop approval is claimed. <a href="mailto:support@birdwellabs.com">Support and rights concerns</a>.</p>
-  <p>Prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Live high and low prices are a separate feed at <a href="https://prices.runescape.wiki/rs">prices.runescape.wiki</a>.</p>
+  <p>Default prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. You can also request last-reported instant-buy/sell transactions from <a href="https://prices.runescape.wiki/rs">prices.runescape.wiki</a>. Reported transactions are not active orders or guaranteed fill prices.</p>
   <h2>Questions to ask</h2>
   <ul>
     <li>What's the guide price of a Noxious scythe, and how did it move over 30 days?</li>

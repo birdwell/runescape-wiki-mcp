@@ -4,6 +4,7 @@ import type { Tool } from '@modelcontextprotocol/server';
 import { ITEM_CATEGORIES } from '../categories.js';
 import { RS3_GE_API } from '../constants.js';
 import { batchOutputSchema, MAX_BATCH_ITEMS, parseBatch, runBatch } from '../batch.js';
+import { fetchLiveItemData } from '../livePrices.js';
 import { fetchGeInfo } from '../geInfo.js';
 import { resolveItemId } from '../itemResolve.js';
 import {
@@ -43,21 +44,25 @@ const itemBatchOutput = batchOutputSchema(itemIdProperty, itemDetailOutputSchema
 export const priceTools: Tool[] = [
     {
         name: 'get_item_price',
-        title: 'Get Item Metadata and Guide Prices',
+        title: 'Get Item Details and Reported Trades',
         description:
-            "Read full Jagex GE records for selected RS3 items, including guide prices, predefined trends and direct Wiki item-ID links. Use browse_items for category listings or get_ge_info for catalogue configuration status.\n\n" +
-            "For numeric price/volume comparisons use compare_items; for dated observations get_item_graph; for calculated statistics summarize_price_history.\n\n" +
-            "Choose exactly one input form, using IDs from lookup_item:\n\n| Input example | Behavior |\n| --- | --- |\n| {\"itemId\":4151} | Fetch directly; return item. |\n| {\"name\":\"Abyssal whip\"} | Resolve first; return item or ambiguous-name candidates. |\n| {\"itemIds\":[4151]} | Return ordered batch rows, even for one ID; each item is in results[].data.item. |\n\n" +
+            "Read full Jagex GE records for selected RS3 items: metadata, guide prices, predefined trends and Wiki item-ID links. Use browse_items for category listings or get_ge_info for catalogue configuration status.\n\n" +
+            "For daily guide-price/volume comparisons use compare_items; for dated observations get_item_graph; for calculated statistics summarize_price_history.\n\n" +
+            "Choose exactly one input form, using IDs from lookup_item:\n\n| Input example | Behavior |\n| --- | --- |\n| {\"itemId\":4151} | Fetch directly; return item. |\n| {\"name\":\"Abyssal whip\"} | Resolve first; return item or an error with ambiguity candidates. |\n| {\"itemIds\":[4151]} | Return ordered batch rows, even for one ID; each item is in results[].data.item. |\n\n" +
             "Batch inputs are validated before fetching. An unavailable valid ID fails only its row; all rows failing makes the call an error. At most two reads run concurrently. A 429 stops queued IDs; honor Retry-After.\n\n" +
-            "Guide prices lag live offers and may use k/m abbreviations. No credentials or server cache are used. The shared HTTP budget defaults to 60 requests/IP/minute.",
+            "includeLiveData adds item.liveTrades and numeric item.wikiFacts without replacing Jagex guide fields. These high/low prices are reported instant-buy/sell transactions, not active orders or guaranteed fills. Published buy limits do not reveal remaining player quota.\n\n" +
+            "Trades cache 30 seconds and the numeric mapping 10 minutes per process; fetchedAt retains the original retrieval time. Guide records remain uncached and lag market activity. No credentials are required. The shared HTTP budget defaults to 60 requests/IP/minute.",
+
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
             properties: { ...nameOrIdProperties,
+                includeLiveData: { type: 'boolean', default: false,
+                    description: 'Add RS3 API v2 last-reported trade high/low prices and numeric buy-limit/alchemy facts; preserves Jagex guide-price fields' },
                 itemIds: { type: 'array', minItems: 1, maxItems: MAX_BATCH_ITEMS, uniqueItems: true,
                     items: itemIdProperty, description: 'Known GE IDs for a catalogue metadata batch; exclusive with itemId/name' },
             },
-            examples: [{ itemId: 4151 }, { name: 'Abyssal whip' }, { itemIds: [4151, 536] }],
+            examples: [{ itemId: 4151 }, { name: 'Abyssal whip' }, { itemIds: [4151, 536] }, { itemId: 4151, includeLiveData: true }],
             oneOf: [{ required: ['itemId'] }, { required: ['name'] }, { required: ['itemIds'] }],
             additionalProperties: false,
         },
@@ -205,8 +210,12 @@ export const priceTools: Tool[] = [
 export async function handlePriceTool(name: string, args: ToolArguments): Promise<ToolResponse> {
     switch (name) {
         case 'get_item_price': {
-            const unexpected = rejectUnknownKeys(args, ['itemId', 'name', 'itemIds']);
+            const unexpected = rejectUnknownKeys(args, ['itemId', 'name', 'itemIds', 'includeLiveData']);
             if (unexpected) return unexpected;
+            if (args?.includeLiveData !== undefined && typeof args.includeLiveData !== 'boolean') {
+                return validationError('includeLiveData must be a boolean');
+            }
+            const includeLiveData = args?.includeLiveData === true;
             if (args?.itemIds !== undefined) {
                 if (args?.itemId !== undefined || args?.name !== undefined) {
                     return validationError('Provide exactly one of itemId, name or itemIds');
@@ -214,9 +223,9 @@ export async function handlePriceTool(name: string, args: ToolArguments): Promis
                 const ids = parseBatch(args.itemIds, 'itemIds', (value, label) =>
                     requireInteger(value, label, { minimum: 0 }), true);
                 if (isToolResponse(ids)) return ids;
-                return runBatch('Item catalogue details', ids, itemId => handlePriceTool(name, { itemId }));
+                return runBatch('Item catalogue details', ids, itemId => handlePriceTool(name, { itemId, includeLiveData }));
             }
-            const itemId = await resolveItemId(args, ['itemId', 'name']);
+            const itemId = await resolveItemId(args, ['itemId', 'name', 'includeLiveData']);
             if (isToolResponse(itemId)) {
                 return itemId;
             }
@@ -227,7 +236,8 @@ export async function handlePriceTool(name: string, args: ToolArguments): Promis
             if (!data?.item || typeof data.item !== 'object' || Array.isArray(data.item)) {
                 throw new Error(`Jagex returned no catalogue item for ${itemId}`);
             }
-            const detail = { ...data, item: { ...data.item,
+            const enrichment = includeLiveData ? await fetchLiveItemData(itemId) : {};
+            const detail = { ...data, item: { ...data.item, ...enrichment,
                 wikiUrl: `https://runescape.wiki/w/Special:Lookup?type=item&id=${itemId}` } };
             return createSuccessResponse(`Item Detail for ${itemId}`, detail);
         }

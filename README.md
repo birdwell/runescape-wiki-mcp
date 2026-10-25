@@ -12,7 +12,7 @@ Connect Claude, ChatGPT, Cursor, and other assistants to RuneScape 3 Grand Excha
 
 An independent [Birdwell Labs](https://birdwellabs.com) project. No Jagex or Weird Gloop approval is claimed. [Support and rights concerns](mailto:support@birdwellabs.com) · [Permissions and source review](docs/permissions.md).
 
-Prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Live high and low prices are a separate feed at [prices.runescape.wiki](https://prices.runescape.wiki/rs).
+Default prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Live high and low prices are a separate feed at [prices.runescape.wiki](https://prices.runescape.wiki/rs).
 
 [![Claude setup](https://img.shields.io/badge/Claude-Setup-D97757?style=for-the-badge)](#claude-setup)
 [![ChatGPT setup](https://img.shields.io/badge/ChatGPT-Setup-087F5B?style=for-the-badge)](#chatgpt-setup)
@@ -236,3 +236,11 @@ Raw history: `get_item_graph` defaults to Jagex daily/average maps. Set `source:
 Wiki search defaults to articles. Query prefixes such as `prefix:Category:Weapons` select other Wiki namespaces. Search returns references only; page text remains subject to the existing exact revision/content review policy.
 
 Catalogue records include `item.wikiUrl`, an official Wiki item-ID lookup link that redirects to the article. This does not fetch or reproduce article text.
+
+### Reported trades and numeric item facts
+
+`get_item_price { "itemId": 4151, "includeLiveData": true }` adds `item.liveTrades` (last reported instant-buy/high and instant-sell/low transactions) and `item.wikiFacts` (published buy-limit cap, alchemy values and base value). The flag also works with `itemIds` batches. Default Jagex guide-price fields stay unchanged.
+
+This uses the [RS3 API v2](https://runescape.wiki/w/RuneScape:Real-time_Prices), not the OSRS API or the obsolete RS3 v1 path. Trade timestamps are Unix seconds. Missing sides remain null; recorded trades are not an order book or guaranteed executable offers. A published buy limit does not reveal a player's remaining quota.
+
+Public trade snapshots cache for 30 seconds and the shared numeric mapping for 10 minutes per server process, with concurrent requests coalesced and at most 512 cached item snapshots. `fetchedAt` records the original retrieval time on cache hits. Only numeric mapping facts are exposed; mapping examine text, names and media are discarded. Wiki article text still requires the existing per-revision/content review.

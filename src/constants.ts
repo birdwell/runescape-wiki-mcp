@@ -89,3 +89,6 @@ export const RESOURCE_URIS = {
     GE_INFO: 'runescape://ge/info',
     GE_CATEGORIES: 'runescape://ge/categories',
 } as const;
+
+/** RS3 transaction stream; OSRS uses a different API namespace. */
+export const RS3_LIVE_PRICE_API = 'https://prices.runescape.wiki/api/v2/rs';

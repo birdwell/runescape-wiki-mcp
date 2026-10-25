@@ -77,6 +77,13 @@ try {
  if(execution.quantityWithinBuyLimit!==1||execution.quantityOverBuyLimit!==1||execution.netProfitWithinBuyLimit!==176||execution.assumedNetProfitPerHour!==704) throw new Error('Execution scenario math failed');
  const categories = checks.find(check=>check.tool==='get_all_categories');
  if (!categories?.structuredKeys.includes('categories')) throw new Error('Missing structured categories');
+ const enriched=await call('get_item_price',{itemId,includeLiveData:true});
+ const live=enriched.structuredContent.item.liveTrades;
+ const facts=enriched.structuredContent.item.wikiFacts;
+ if(!live||(!Number.isFinite(live.high)&&!Number.isFinite(live.low))||!Number.isFinite(Date.parse(live.fetchedAt))||!live.sourceUrl.startsWith('https://prices.runescape.wiki/rs/item/')||!facts||!Number.isInteger(facts.buyLimit)||!Number.isInteger(facts.highAlchemy)||!enriched.structuredContent.item.current) throw new Error('RS3 live enrichment failed');
+ for(const field of ['highTime','lowTime']) if(live[field]!==null&&(!Number.isSafeInteger(live[field])||live[field]<1e9||live[field]>1e11)) throw new Error('Trade timestamps must use Unix seconds');
+ const enrichedBatch=await call('get_item_price',{itemIds:[itemId,secondId],includeLiveData:true});
+ if(enrichedBatch.structuredContent.succeeded!==2||enrichedBatch.structuredContent.results.some(row=>!row.data.item.liveTrades||!row.data.item.wikiFacts||new URL(row.data.item.liveTrades.sourceUrl).pathname!==`/rs/item/${row.query}`)) throw new Error('RS3 enriched batch failed');
  const invalidTitle=await call('get_wiki_page_content',{page:'https://runescape.wiki/w/Abyssal_whip'},true);
  if(!invalidTitle.content?.some(part=>part.text?.includes('wiki title'))) throw new Error('Invalid URL title did not return actionable validation');
  const card=await fetch(endpoint+'/server-card').then(r=>r.json());
