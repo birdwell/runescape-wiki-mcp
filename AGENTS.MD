@@ -33,10 +33,10 @@ runescape-wiki-mcp/
 |------|------|-------|
 | `lookup_item` | `query`, optional `limit` | **Start here for names.** Returns id, price, volume. |
 | `get_item_price` | `itemId` **or** `name` | GE detail + trends |
-| `get_item_graph` | `itemId` **or** `name` | 180-day graph |
+| `get_item_graph` | `itemId` **or** `name`, optional `from`/`to` | 180-day graph; inclusive UTC date filters |
 | `summarize_price_history` | `itemId` or `name`, optional `days` | Compact 7–90d trend summary |
 | `compare_items` | `names` **or** `itemIds` (1–10) | Bulk compare |
-| `estimate_flip` | `itemId` or `name`, optional prices/qty | Flip profit after 2% tax |
+| `estimate_flip` | `itemId` or `name`, optional prices/qty, `buyLimitRemaining`, `fillTimeMinutes` | Tax-adjusted profit and caller-supplied execution scenarios |
 | `browse_items` | `category`, optional `alpha`/`page` | Catalogue browse — **not** name search |
 | `get_all_categories` | — | Category IDs 0–43 |
 | `get_category_info` | `category` | Letter counts |

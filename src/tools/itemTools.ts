@@ -1,6 +1,7 @@
 // Item lookup and graph tools for RuneScape Wiki MCP Server
 
 import type { Tool } from '@modelcontextprotocol/server';
+import { dateProperty, filterPriceMap, parseDateRange } from '../dateRange.js';
 import { RS3_GE_API } from '../constants.js';
 import { lookupItems, resolveItemId } from '../itemResolve.js';
 import { ITEM_SELECTOR, itemIdProperty, JSON_SCHEMA_2020_12, lookupOutputSchema, graphOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
@@ -49,14 +50,10 @@ export const itemTools: Tool[] = [
         name: 'get_item_graph',
         title: 'Get Item Price Graph',
         description:
-            "Fetch raw RS3 Jagex daily and averaged price series, roughly 180 days, for charts or custom calculations. " +
-            "Use summarize_price_history for ready-made statistics, get_item_price for guide-price detail, and " +
-            "lookup_item to discover IDs. Pass exactly one of itemId or name; itemId from lookup_item skips name " +
-            "lookup, while name \"Abyssal whip\" resolves first and ambiguous names return an error listing candidates. " +
-            "There are no date-range arguments; trim the returned maps yourself. Returns timestamp-keyed daily and " +
-            "average maps, not a rendered chart; upstream availability determines the window.\n\n" +
-            "No auth or local result cache; upstream errors propagate and historical guide prices are not live offers. " +
-            "HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
+            "Fetch RS3 Jagex daily and averaged guide-price maps for charts or custom calculations, covering roughly 180 available days. Use summarize_price_history for statistics, get_item_price for catalogue detail or lookup_item for ID discovery.\n" +
+            "- Pass exactly one of itemId or name; an ID skips name lookup and ambiguous names return candidate errors. Optional from/to are inclusive UTC dates, YYYY-MM-DD, applied to both maps. Supply either bound or both; from must not exceed to.\n" +
+            "- Omit dates for the full upstream window. Filtering cannot recover older samples; unavailable ranges return empty maps, without extrapolation. Keys are Unix milliseconds, values coins; this is data, not a rendered chart or live offers.\n" +
+            "- No auth or local cache; upstream failures return tool errors. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -70,6 +67,8 @@ export const itemTools: Tool[] = [
                     minLength: 1,
                     description: 'Item name (provide itemId or name)',
                 },
+                from: { ...dateProperty, description: 'First UTC date to include; omitted means start of available history' },
+                to: { ...dateProperty, description: 'Last UTC date to include; omitted means end of available history' },
             },
             ...ITEM_SELECTOR,
             additionalProperties: false,
@@ -106,13 +105,20 @@ export async function handleItemTool(name: string, args: ToolArguments): Promise
         }
 
         case 'get_item_graph': {
-            const itemId = await resolveItemId(args, ['itemId', 'name']);
+            const range = parseDateRange(args?.from, args?.to);
+            if (isToolResponse(range)) return range;
+            const itemId = await resolveItemId(args, ['itemId', 'name', 'from', 'to']);
             if (isToolResponse(itemId)) {
                 return itemId;
             }
 
             const data = await makeApiRequest(`${RS3_GE_API}/graph/${itemId}.json`);
-            return createSuccessResponse(`Price Graph for Item ${itemId}`, data);
+            const filtered = args?.from === undefined && args?.to === undefined ? data : {
+                ...data,
+                daily: filterPriceMap(data.daily ?? {}, range),
+                average: filterPriceMap(data.average ?? {}, range),
+            };
+            return createSuccessResponse(`Price Graph for Item ${itemId}`, filtered);
         }
 
         default:

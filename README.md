@@ -120,10 +120,10 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 
 - `lookup_item` — Resolve an item name to a Grand Exchange ID and the latest guide or Weirdgloop price. Start here when you only know the name.
 - `get_item_price` — Jagex guide price, trend, and examine text for one item, by `itemId` or `name`. Guide prices lag the live market.
-- `get_item_graph` — About 180 days of daily prices, by `itemId` or `name`.
+- `get_item_graph` — About 180 days of daily and averaged prices, by `itemId` or `name`; optional inclusive UTC `from`/`to` dates.
 - `summarize_price_history` — Min, max, average, change, and volume over 7–90 days (default 30). History lags the live market.
 - `compare_items` — Compare up to 10 items by `names` or `itemIds`.
-- `estimate_flip` — Estimated flip profit after the RS3 2% Grand Exchange sales tax. Default prices lag the live market.
+- `estimate_flip` — Tax-adjusted flip profit, with optional remaining-quota and assumed-duration scenarios. Default prices lag the live market.
 - `browse_items` — Browse one Grand Exchange category by starting letter. This is not a name search.
 - `get_all_categories` — Category IDs 0–43 and their names.
 - `get_category_info` — How many items sit under each letter in one category.
@@ -148,6 +148,10 @@ get_item_price { itemId: 4151 }   # or { name: "Abyssal whip" }
 summarize_price_history { name: "Abyssal whip", days: 30 }
 search_wiki { query: "abyssal whip special attack" }
 ```
+
+Optional history bounds use UTC calendar dates, for example `get_item_graph { "name": "Abyssal whip", "from": "2026-10-01", "to": "2026-10-07" }`. Bounds filter available samples; they do not extend Jagex history.
+
+For flip scenarios, `buyLimitRemaining` is your remaining quota in the current window. The result separates quantity/profit within that quota from the full requested quantity. `fillTimeMinutes` is your assumed round-trip time for the full request, including any quota waits; it yields an assumed profit per hour. These inputs are assumptions, not observed limits or predicted fills.
 
 ## Resources
 

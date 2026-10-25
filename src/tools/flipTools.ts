@@ -26,7 +26,7 @@ const SALES_TAX_RATE = 0.02;
 const TAX_EXEMPT_MAX_PRICE = 50;
 const BOND_ITEM_ID = 29492;
 
-const FLIP_ARG_KEYS = ['itemId', 'name', 'buyPrice', 'sellPrice', 'quantity'] as const;
+const FLIP_ARG_KEYS = ['itemId', 'name', 'buyPrice', 'sellPrice', 'quantity', 'buyLimitRemaining', 'fillTimeMinutes'] as const;
 
 export const flipTools: Tool[] = [
     {
@@ -36,7 +36,7 @@ export const flipTools: Tool[] = [
             "Estimate RS3 resale profit after seller tax. ESTIMATE ONLY; never places an order. Use get_item_price for price detail, compare_items for snapshots or lookup_item for uncertain names.\n" +
             "- Choose itemId to skip name resolution, or name to resolve first. buyPrice and sellPrice are per-unit offers; quantity scales total investment, tax and profit, not the per-unit margin.\n" +
             "- An omitted price uses Weirdgloop, falling back to Jagex guide price. Omit both and both sides use the same price, usually producing a tax loss. Supply itemId and both offers for a calculation without network access.\n" +
-            "- Tax is 2% per unit rounded down; bonds and sales at 50 coins or less are exempt. Buy limits and fill times are not modelled; samples lag live offers.\n" +
+            "- Tax is 2% per unit rounded down; bonds and sales at 50 coins or less are exempt.\n- Optional buyLimitRemaining caps the currently executable quantity; fillTimeMinutes models whole-request round-trip duration and profit per hour. These are caller assumptions, not observed quotas or fill predictions; samples lag live offers.\n" +
             "- No auth or local cache. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
@@ -60,6 +60,14 @@ export const flipTools: Tool[] = [
                     type: 'integer',
                     minimum: 0,
                     description: 'Sell price per item in coins. Defaults to the latest Weirdgloop sample, then Jagex guide price.',
+                },
+                buyLimitRemaining: {
+                    type: 'integer', minimum: 0,
+                    description: 'Caller-supplied remaining purchase quota in the current buy-limit window; 0 means none available',
+                },
+                fillTimeMinutes: {
+                    type: 'number', exclusiveMinimum: 0,
+                    description: 'Caller-assumed minutes to buy and resell the full requested quantity, including any quota waits',
                 },
                 quantity: {
                     type: 'integer',
@@ -89,6 +97,19 @@ export const flipTools: Tool[] = [
                 marginPct: { type: ['number', 'null'] },
                 breakEvenSellPrice: { type: 'number' },
                 assumptions: { type: 'array', items: { type: 'string' } },
+                executionScenario: {
+                    type: 'object',
+                    description: 'Present only for caller-supplied capacity or duration scenarios; not a market prediction',
+                    properties: {
+                        buyLimitRemaining: { type: 'integer' },
+                        quantityWithinBuyLimit: { type: 'integer' },
+                        quantityOverBuyLimit: { type: 'integer' },
+                        netProfitWithinBuyLimit: { type: 'number', description: 'Tax-adjusted profit on the quantity executable within the supplied quota' },
+                        assumedFillTimeMinutes: { type: 'number' },
+                        assumedNetProfitPerHour: { type: 'number', description: 'Full requested profit divided by caller-assumed round-trip hours' },
+                    },
+                    additionalProperties: false,
+                },
             },
             required: ['itemId', 'quantity', 'buyPrice', 'sellPrice', 'netProfit'],
             additionalProperties: true,
@@ -176,6 +197,13 @@ export async function handleFlipTool(name: string, args: ToolArguments): Promise
                 return quantityResult;
             }
             const quantity = quantityResult ?? 1;
+            const remaining = optionalInteger(args?.buyLimitRemaining, 'buyLimitRemaining', { minimum: 0 });
+            if (isToolResponse(remaining)) return remaining;
+            const duration = args?.fillTimeMinutes;
+            if (duration !== undefined && (typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0)) {
+                return validationError('fillTimeMinutes must be a finite number greater than 0');
+            }
+
 
             const itemId = await resolveItemId(args, FLIP_ARG_KEYS);
             if (isToolResponse(itemId)) {
@@ -204,6 +232,9 @@ export async function handleFlipTool(name: string, args: ToolArguments): Promise
             const totalTax = taxPerUnit * quantity;
             const netProfit = grossProfit - totalTax;
             const investment = buyPrice * quantity;
+            const executionScenario = modelExecution(quantity, netProfit / quantity, remaining, duration as number | undefined);
+            if (isToolResponse(executionScenario)) return executionScenario;
+
 
             const priceSource = {
                 buyPrice: buyOverride !== undefined ? 'override' : sourceLabel(market),
@@ -231,8 +262,12 @@ export async function handleFlipTool(name: string, args: ToolArguments): Promise
                 marginPct: investment > 0 ? round2((netProfit / investment) * 100) : null,
                 breakEvenSellPrice: breakEvenSellPrice(buyPrice, itemId),
                 assumptions: buildAssumptions(itemId, sellPrice, buyOverride, sellOverride),
+                ...(executionScenario ? { executionScenario } : {}),
             };
 
+            if (executionScenario) {
+                payload.assumptions.push('Execution scenario uses caller-supplied remaining quota and/or full-request duration; no actual quota or fill time was inferred. Duration must include any waits needed for quantities above the current quota.');
+            }
             const label = market.itemName ? `${market.itemName} (${itemId})` : `item ${itemId}`;
             return createSuccessResponse(`Flip estimate for ${label} x${quantity}`, payload);
         }
@@ -273,7 +308,7 @@ function buildAssumptions(
         'RS3 charges the seller a 2% Grand Exchange sales tax per item, rounded down (live since 9 January 2023).',
         'The buyer pays the full price, so no buy-side tax is applied.',
         'RS3 has no documented per-item tax cap; the 5,000,000 coin cap is an Old School RuneScape rule.',
-        'Estimate only: guide prices lag the live market, and buy limits, fill times, and price movement are not modelled.',
+        'Estimate only: guide prices lag the live market. Buy-limit and fill-time scenarios require caller inputs; price movement and actual liquidity are not predicted.',
     ];
 
     if (itemId === BOND_ITEM_ID) {
@@ -291,4 +326,31 @@ function buildAssumptions(
     }
 
     return assumptions;
+}
+
+/** Scenario arithmetic only. Quota and duration come from the caller, not market data. */
+function modelExecution(
+    quantity: number,
+    unitProfit: number,
+    remaining: number | undefined,
+    minutes: number | undefined
+): Record<string, number> | ToolResponse | undefined {
+    if (remaining === undefined && minutes === undefined) return undefined;
+    const within = remaining === undefined ? undefined : Math.min(quantity, remaining);
+    const scenario = {
+        ...(remaining !== undefined && within !== undefined ? {
+            buyLimitRemaining: remaining,
+            quantityWithinBuyLimit: within,
+            quantityOverBuyLimit: quantity - within,
+            netProfitWithinBuyLimit: within === 0 ? 0 : unitProfit * within,
+        } : {}),
+        ...(minutes !== undefined ? {
+            assumedFillTimeMinutes: minutes,
+            assumedNetProfitPerHour: round2(unitProfit * quantity * 60 / minutes),
+        } : {}),
+    };
+    if (!Object.values(scenario).every(Number.isFinite)) {
+        return validationError('Execution scenario exceeds numeric range; use smaller amounts or a longer duration');
+    }
+    return scenario;
 }

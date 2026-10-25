@@ -32,13 +32,25 @@ try {
  const lookup = await call('lookup_item',{query:'Abyssal whip',limit:3});
  const itemId = lookup.structuredContent?.matches?.[0]?.id;
  if(!Number.isInteger(itemId) || itemId < 0) throw new Error('Item lookup did not resolve an ID');
+ let graphResult;
  for (const [name,args] of [
   ['get_item_price',{itemId}], ['get_item_graph',{itemId}], ['summarize_price_history',{itemId,days:7}],
   ['compare_items',{itemIds:[itemId]}], ['estimate_flip',{itemId,buyPrice:1000,sellPrice:1200,quantity:2}],
   ['get_all_categories',{}], ['get_category_info',{category:24}], ['browse_items',{category:24,alpha:'a',page:1}],
   ['get_ge_info',{}], ['get_player_stats',{username:'Zezima',gameMode:'normal'}],
   ['get_player_stats',{username:'Gecu',gameMode:'ironman'}], ['get_player_stats',{username:'J oris',gameMode:'hardcore'}]
- ]) await call(name,args);
+ ]) {
+  const result = await call(name,args);
+  if(name === 'get_item_graph') graphResult=result;
+ }
+ const firstTimestamp=Object.keys(graphResult.structuredContent.daily).map(Number).sort((a,b)=>a-b)[0];
+ const day=new Date(firstTimestamp).toISOString().slice(0,10);
+ const filtered=await call('get_item_graph',{itemId,from:day,to:day});
+ const keys=Object.keys(filtered.structuredContent.daily);
+ if(!keys.length||keys.some(key=>new Date(Number(key)).toISOString().slice(0,10)!==day)) throw new Error('UTC date filter failed');
+ const scenario=await call('estimate_flip',{itemId,buyPrice:1000,sellPrice:1200,quantity:2,buyLimitRemaining:1,fillTimeMinutes:30});
+ const execution=scenario.structuredContent.executionScenario;
+ if(execution.quantityWithinBuyLimit!==1||execution.quantityOverBuyLimit!==1||execution.netProfitWithinBuyLimit!==176||execution.assumedNetProfitPerHour!==704) throw new Error('Execution scenario math failed');
  const categories = checks.find(check=>check.tool==='get_all_categories');
  if (!categories?.structuredKeys.includes('categories')) throw new Error('Missing structured categories');
  const card=await fetch(endpoint+'/server-card').then(r=>r.json());
