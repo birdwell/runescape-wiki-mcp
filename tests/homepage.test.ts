@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from '@jest/globals';
-import { SERVER_CONFIG } from '../src/constants.js';
+import { SERVER_CONFIG, JAGEX_CONTENT_NOTICE, PRIVACY_POLICY_URL } from '../src/constants.js';
 import { homepageHtml } from '../src/homepage.js';
 
 describe('public copy', () => {
@@ -30,7 +30,8 @@ describe('public copy', () => {
             expect(text).toContain('https://creativecommons.org/licenses/by-nc-sa/3.0/');
             expect(text).toContain('https://meta.weirdgloop.org/w/Licensing');
             expect(text).toContain('https://legal.jagex.com/docs/policies/fan-content-policy');
-            expect(text).toContain('not endorsed by or affiliated with Jagex');
+            expect(text).toContain(JAGEX_CONTENT_NOTICE);
+            expect(text).toContain(PRIVACY_POLICY_URL);
             expect(text).toContain('third-party');
         }
     });

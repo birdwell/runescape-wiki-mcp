@@ -11,6 +11,10 @@ export const RS3_HISCORES_ORIGIN = 'https://secure.runescape.com';
 export const RUNESCAPE_WIKI_API = 'https://runescape.wiki/api.php';
 export const WIKI_LICENSE_URL = 'https://creativecommons.org/licenses/by-nc-sa/3.0/';
 export const WIKI_LICENSING_URL = 'https://meta.weirdgloop.org/w/Licensing';
+export const PRIVACY_POLICY_URL = 'https://birdwellabs.com/privacy';
+// Notice prescribed by section 8.1; attribution is not a grant of permission.
+export const JAGEX_CONTENT_NOTICE =
+    "Created using intellectual property belonging to Jagex Limited under the terms of Jagex's Fan Content Policy. This content is not endorsed by or affiliated with Jagex.";
 export const WEIRDGLOOP_EXCHANGE_API = 'https://api.weirdgloop.org/exchange/history/rs';
 
 // Full hiscores lite paths. Ironman/hardcore are documented by Jagex but currently
@@ -44,7 +48,7 @@ export const SERVER_CONFIG = {
 
 /** Shown to MCP clients before they pick a tool. */
 export const SERVER_INSTRUCTIONS =
-    'RS3 only. Prices are Jagex guide prices and Weirdgloop daily history, and they lag the live high/low market at prices.runescape.wiki. Do not call them real-time. Do not rank the whole Grand Exchange. Resolve names with lookup_item. get_player_stats works for normal mode; ironman and hardcore currently return HTTP 404 from Jagex. estimate_flip is an estimate after the 2% seller tax. Unofficial, not affiliated with Jagex or the RuneScape Wiki.';
+    'RS3 only. Prices are Jagex guide prices and Weirdgloop daily history, and they lag the live high/low market at prices.runescape.wiki. Do not call them real-time. Do not rank the whole Grand Exchange. Resolve names with lookup_item. get_player_stats works for normal mode; ironman and hardcore currently return HTTP 404 from Jagex. estimate_flip is an estimate after the 2% seller tax. For wiki link_only results, explain that article text was not returned; do not invent a summary from the title. Preserve source, contributor, copyright and license notices when reproducing reviewed extracts or making adaptations. Unofficial, not affiliated with Jagex or the RuneScape Wiki.';
 
 // RuneScape 3 skills in order (30 skills total)
 export const RS3_SKILLS = [
