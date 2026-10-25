@@ -1,6 +1,7 @@
 import { JevSession, MAX_JEV_REQUEST_CHARS, recommendationConfiguration, type ChoiceQuestion } from './jev.js';
 import { fetchPlayerQuests, fetchQuestCatalogue, fetchQuestGuide, questKey, type JournalQuest } from './questData.js';
 import { wikiText, type QuestMetadata } from './questParsing.js';
+import { attributedWikiSource } from './wikiAttribution.js';
 import type { RecommendationInput } from './tools/recommendationTools.js';
 
 export const MAX_QUEST_ROUNDS = 24;
@@ -132,7 +133,7 @@ export async function recommendQuests(
         status, goal: input.goal, recommendation: recommendations[0] ?? null,
         alternatives: recommendations.slice(1, 3), blockedAlternatives,
         missingContext, warnings, account, questCoverage: coverage, questDecision,
-        sources: recommendations.map(row => row.source), usage: usage(),
+        sources: [...recommendations, ...blockedAlternatives].map(row => row.source), usage: usage(),
     });
     if (!input.context.username) {
         missingContext.push('Username for a public RuneMetrics quest journal; incomplete completed-quest lists cannot establish every unfinished quest.');
@@ -239,7 +240,15 @@ export async function recommendQuests(
                 : metadata?.guide.start ?? 'Check the linked quest guide.',
             guideSummary: includeGuide && metadata ? await guideSummary(metadata, signal) : metadata?.guide,
             requirementChecks: 'Jagex eligibility plus parsed base skill and prerequisite quest checks; items, boosts, combat readiness and miscellaneous conditions are not fully verified.',
-            source: { title: candidate.title, url: metadata?.url, revisionId: metadata?.revisionId, fetchedAt: metadata?.fetchedAt },
+            source: metadata ? {
+                ...attributedWikiSource(candidate.title, metadata.url,
+                    'Quest template fields parsed into requirements, rewards and an overview; formatting removed.', metadata.revisionId),
+                fetchedAt: metadata.fetchedAt,
+                prerequisites: attributedWikiSource('Module:Questreq/data',
+                    'https://runescape.wiki/w/Module:Questreq/data', 'Prerequisite table parsed without executing Lua.'),
+                ...(includeGuide ? { quickGuide: attributedWikiSource(`${metadata.title}/Quick guide`,
+                    `${metadata.url}/Quick_guide`, 'Opening checklist steps extracted, formatting removed and long steps shortened.') } : {}),
+            } : undefined,
         };
     };
     const nextChoice = finalists.find(candidate => candidate.id === decision.next.choice && winners.has(candidate.id));

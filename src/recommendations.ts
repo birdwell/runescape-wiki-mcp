@@ -3,6 +3,7 @@ import { JevSession, MAX_JEV_REQUEST_CHARS, recommendationConfiguration, type Ch
 import { handlePlayerTool } from './tools/playerTools.js';
 import { handleWikiTool } from './tools/wikiTools.js';
 import { recommendQuests } from './questRecommendations.js';
+import { attributedWikiSource } from './wikiAttribution.js';
 import type { RecommendationInput } from './tools/recommendationTools.js';
 import type { ToolArguments, ToolResponse } from './types.js';
 
@@ -103,7 +104,10 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         recommendation: ranked[0] ?? null,
         alternatives: ranked.slice(1, 3),
         missingContext, warnings, account,
-        sources: pages.map(({ title, url, evidence, fetchedAt }) => ({ title, url, excerpt: evidence, fetchedAt })),
+        sources: pages.map(({ title, url, evidence, fetchedAt }) => ({
+            ...attributedWikiSource(title, url, 'Plain-text extract shortened for recommendation evidence.'),
+            excerpt: evidence, fetchedAt,
+        })),
         usage: { ...session.usage, maxRounds: 3 },
     });
     // The goal and external text are data, never instructions for executing arbitrary tools.

@@ -194,6 +194,10 @@ describe('quest recommendation pipeline', () => {
         expect(calls[1].questions.next.criteria).not.toHaveProperty(comparison.find((quest: any) => quest.title === 'Locked Mining Quest').id);
         expect(calls.at(-1)?.state.account.skills.Mining).toBe(64);
         expect((result.structuredContent?.recommendation as any).guideSummary.steps[0]).toBe('Talk to Doric.');
+        expect((result.structuredContent?.recommendation as any).source).toMatchObject({
+            contributors: 'RuneScape Wiki contributors', license: 'CC BY-NC-SA 3.0',
+            quickGuide: { contributors: 'RuneScape Wiki contributors', license: 'CC BY-NC-SA 3.0' },
+        });
         expect((result.structuredContent?.blockedAlternatives as any[])[0]).toMatchObject({
             title: 'Locked Mining Quest', eligibility: 'blocked',
         });
