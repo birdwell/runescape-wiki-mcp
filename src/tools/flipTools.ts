@@ -3,7 +3,7 @@
 import type { Tool } from '@modelcontextprotocol/server';
 import { RS3_GE_API } from '../constants.js';
 import { lookupByItemId, resolveItemId } from '../itemResolve.js';
-import { itemIdProperty, JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
+import { ITEM_SELECTOR, itemIdProperty, JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
 import { createSuccessResponse, makeApiRequest } from '../utils.js';
 import { isToolResponse, optionalInteger, validationError } from '../validation.js';
@@ -33,9 +33,12 @@ export const flipTools: Tool[] = [
         name: 'estimate_flip',
         title: 'Estimate Flip Profit',
         description:
-            'Estimate Grand Exchange flip profit after the 2% RS3 sales tax for an item, by itemId or name. ' +
-            'This is an ESTIMATE ONLY: guide prices lag the live market, buy limits and fill times are not modelled, ' +
-            'and actual profit will differ. Pass buyPrice/sellPrice to model your own offers.',
+            'Estimate hypothetical RS3 resale profit after seller tax. ESTIMATE ONLY; never places an order. ' +
+            'Pass exactly one of itemId or name and your buyPrice/sellPrice per unit; quantity scales totals. ' +
+            'An omitted price uses the latest Weirdgloop sample, falling back to Jagex guide price; omitting both uses the same price on both sides, usually showing a tax loss. ' +
+            'Tax is 2% per item rounded down, with bonds and sales at 50 coins or less exempt; buy limits and fill times are not modelled. ' +
+            'With itemId and both prices, no upstream request is needed; otherwise public APIs require no auth and lag live offers. ' +
+            'Use get_item_price for price detail, compare_items for price comparisons, or lookup_item for uncertain names. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -52,12 +55,12 @@ export const flipTools: Tool[] = [
                 buyPrice: {
                     type: 'integer',
                     minimum: 0,
-                    description: 'Buy price per item in coins. Defaults to the current market price.',
+                    description: 'Buy price per item in coins. Defaults to the latest Weirdgloop sample, then Jagex guide price.',
                 },
                 sellPrice: {
                     type: 'integer',
                     minimum: 0,
-                    description: 'Sell price per item in coins. Defaults to the current market price.',
+                    description: 'Sell price per item in coins. Defaults to the latest Weirdgloop sample, then Jagex guide price.',
                 },
                 quantity: {
                     type: 'integer',
@@ -65,6 +68,7 @@ export const flipTools: Tool[] = [
                     description: 'Number of items to flip (default 1)',
                 },
             },
+            ...ITEM_SELECTOR,
             additionalProperties: false,
         },
         outputSchema: {

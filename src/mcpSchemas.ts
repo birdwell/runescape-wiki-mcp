@@ -8,8 +8,7 @@ export const EMPTY_OBJECT_SCHEMA = {
     additionalProperties: false,
 };
 
-// Every tool reads public game data. openWorldHint is true because each call
-// reaches Jagex, Weirdgloop, or the RuneScape Wiki.
+// Default for public API calls. Built-in reference tools override openWorldHint.
 export const READ_ONLY_TOOL = {
     annotations: {
         readOnlyHint: true,
@@ -59,6 +58,61 @@ export const lookupOutputSchema = {
     },
     required: ['matches'],
     additionalProperties: false,
+};
+
+/** Exactly one selector, matching resolveItemId's runtime validation. */
+export const ITEM_SELECTOR = {
+    oneOf: [{ required: ['itemId'] }, { required: ['name'] }],
+};
+
+export const itemDetailOutputSchema = {
+    $schema: JSON_SCHEMA_2020_12,
+    type: 'object' as const,
+    properties: {
+        item: {
+            type: 'object' as const,
+            description: 'Jagex catalogue item detail; prices are guide values, not executable offers',
+            properties: {
+                id: itemIdProperty,
+                name: { type: 'string' as const },
+                description: { type: 'string' as const, description: 'In-game examine text' },
+                current: {
+                    type: 'object' as const,
+                    properties: {
+                        price: { type: ['number', 'string'], description: 'Coins, possibly abbreviated with k or m' },
+                        trend: { type: 'string' as const },
+                    },
+                    additionalProperties: true,
+                },
+                today: { type: 'object' as const, additionalProperties: true },
+                day30: { type: 'object' as const, additionalProperties: true },
+                day90: { type: 'object' as const, additionalProperties: true },
+                day180: { type: 'object' as const, additionalProperties: true },
+            },
+            additionalProperties: true,
+        },
+    },
+    required: ['item'],
+    additionalProperties: true,
+};
+
+export const graphOutputSchema = {
+    $schema: JSON_SCHEMA_2020_12,
+    type: 'object' as const,
+    properties: {
+        daily: {
+            type: 'object' as const,
+            description: 'Daily guide prices in coins, keyed by Unix timestamp in milliseconds',
+            additionalProperties: { type: 'number' as const },
+        },
+        average: {
+            type: 'object' as const,
+            description: 'Jagex averaged guide prices in coins, keyed by Unix timestamp in milliseconds',
+            additionalProperties: { type: 'number' as const },
+        },
+    },
+    required: ['daily', 'average'],
+    additionalProperties: true,
 };
 
 /** Jagex catalogue and graph payloads mix numbers with compact strings such as "80k". */

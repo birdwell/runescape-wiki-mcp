@@ -56,6 +56,18 @@ describe('Price Tools', () => {
         });
     });
 
+    describe('get_all_categories', () => {
+        it('returns a structured category reference without making an API call', async () => {
+            const result = await handlePriceTool('get_all_categories', {});
+            const categories = result.structuredContent?.categories as Array<{ id: number; name: string }>;
+            expect(categories).toHaveLength(44);
+            expect(categories.map(category => category.id)).toEqual(Array.from({ length: 44 }, (_, id) => id));
+            expect(categories[24]).toEqual({ id: 24, name: 'Melee weapons - high level' });
+            expect(result.content[0].text).toContain('All Item Categories');
+            expect(result.isError).toBeFalsy();
+        });
+    });
+
     describe('get_ge_info', () => {
         it('should get Grand Exchange database information', async () => {
             nock(RS3_GE_API)

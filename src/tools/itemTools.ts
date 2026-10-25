@@ -3,7 +3,7 @@
 import type { Tool } from '@modelcontextprotocol/server';
 import { RS3_GE_API } from '../constants.js';
 import { lookupItems, resolveItemId } from '../itemResolve.js';
-import { itemIdProperty, JSON_SCHEMA_2020_12, lookupOutputSchema, jagexObjectOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
+import { ITEM_SELECTOR, itemIdProperty, JSON_SCHEMA_2020_12, lookupOutputSchema, graphOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
 import { makeApiRequest, createSuccessResponse } from '../utils.js';
 import {
@@ -19,7 +19,15 @@ export const itemTools: Tool[] = [
         name: 'lookup_item',
         title: 'Lookup Item',
         description:
-            'Resolve an item name to a Grand Exchange ID and the latest guide or Weirdgloop price. Uses exact name match first, then wiki opensearch. Prefer this before get_item_price when you only know the name. This is not the live high/low feed.',
+            "Find tradeable RS3 items by name or partial name and return matching IDs with available Weirdgloop price " +
+            "samples. Use this for name discovery; choose a returned ID before calling get_item_price for Jagex " +
+            "detail, summarize_price_history for statistics, or get_item_graph for daily samples. Exact names are " +
+            "tried first, then wiki opensearch; query \"abyssal\" discovers candidates while \"Abyssal whip\" tries that " +
+            "exact item first; limit 10 still returns just the exact hit when one exists; use a partial query to " +
+            "discover alternatives, not a larger history window. Non-GE pages are filtered out; no matches returns a " +
+            "tool error.\n\n" +
+            "No local result cache or auth; upstream failures may prevent discovery. HTTP shares a default 60 " +
+            "requests/IP/minute budget; retry a 429 after Retry-After. Prices lag live offers.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -46,7 +54,14 @@ export const itemTools: Tool[] = [
         name: 'get_item_graph',
         title: 'Get Item Price Graph',
         description:
-            'Read the public Jagex Grand Exchange daily price series for one item, about the last 180 days. Pass exactly one of itemId or name. No auth and no side effects. Use summarize_price_history for min, max, and average instead of the raw series.',
+            "Fetch raw RS3 Jagex daily and averaged price series, roughly 180 days, for charts or custom calculations. " +
+            "Use summarize_price_history for ready-made statistics, get_item_price for guide-price detail, and " +
+            "lookup_item to discover IDs. Pass exactly one of itemId or name; itemId from lookup_item skips name " +
+            "lookup, while name \"Abyssal whip\" resolves first and ambiguous names return an error listing candidates. " +
+            "There are no date-range arguments; trim the returned maps yourself. Returns timestamp-keyed daily and " +
+            "average maps, not a rendered chart; upstream availability determines the window.\n\n" +
+            "No auth or local result cache; upstream errors propagate and historical guide prices are not live offers. " +
+            "HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -61,9 +76,10 @@ export const itemTools: Tool[] = [
                     description: 'Item name (provide itemId or name)',
                 },
             },
+            ...ITEM_SELECTOR,
             additionalProperties: false,
         },
-        outputSchema: jagexObjectOutputSchema,
+        outputSchema: graphOutputSchema,
         ...READ_ONLY_TOOL,
     },
 ];

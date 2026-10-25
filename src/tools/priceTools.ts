@@ -6,10 +6,11 @@ import { RS3_GE_API } from '../constants.js';
 import { resolveItemId } from '../itemResolve.js';
 import {
     EMPTY_OBJECT_SCHEMA,
+    ITEM_SELECTOR,
+    itemDetailOutputSchema,
     READ_ONLY_TOOL,
     categoryProperty,
     itemIdProperty,
-    jagexObjectOutputSchema,
     JSON_SCHEMA_2020_12,
 } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
@@ -39,30 +40,58 @@ export const priceTools: Tool[] = [
         name: 'get_item_price',
         title: 'Get Item Price',
         description:
-            'Get the Jagex Grand Exchange guide price, trend, and examine text for an item. Guide prices lag the live market. Pass exactly one of itemId or name.',
+            "Read one RS3 item's Jagex Grand Exchange guide-price detail, including current price, trend periods and " +
+            "examine text. Use lookup_item to discover an uncertain name, compare_items for multiple price snapshots, " +
+            "summarize_price_history for statistics, or get_item_graph for daily samples. Pass exactly one of itemId " +
+            "or name; itemId from lookup_item skips name lookup; name \"Abyssal whip\" resolves first and ambiguous " +
+            "names return an error listing candidates. Prices can be compact strings such as \"80k\" and lag live " +
+            "offers.\n\n" +
+            "No auth or local result cache; unavailable items and upstream failures return errors. HTTP shares a " +
+            "default 60 requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
             properties: nameOrIdProperties,
+            ...ITEM_SELECTOR,
             additionalProperties: false,
         },
-        outputSchema: jagexObjectOutputSchema,
+        outputSchema: itemDetailOutputSchema,
         ...READ_ONLY_TOOL,
     },
     {
         name: 'get_ge_info',
         title: 'Grand Exchange Info',
         description:
-            'Read Grand Exchange database metadata, including lastConfigUpdateRuneday. This is not item prices; use get_item_price or lookup_item for those. Takes no arguments. Public Jagex endpoint, no auth.',
+            "Read RS3 Grand Exchange database metadata to check the catalogue configuration update, not individual " +
+            "item prices. Takes no arguments or filters and returns lastConfigUpdateRuneday, Jagex's RuneScape day " +
+            "counter, not a Unix timestamp or a guarantee of price freshness. Use get_all_categories for category IDs, " +
+            "get_item_price for item guide-price detail, or lookup_item for name discovery.\n\n" +
+            "No auth or local result cache; upstream failures return errors. HTTP shares a default 60 " +
+            "requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: EMPTY_OBJECT_SCHEMA,
-        outputSchema: jagexObjectOutputSchema,
+        outputSchema: {
+            $schema: JSON_SCHEMA_2020_12,
+            type: 'object',
+            properties: {
+                lastConfigUpdateRuneday: { type: 'integer', description: 'RuneScape day counter for catalogue configuration update' },
+            },
+            required: ['lastConfigUpdateRuneday'],
+            additionalProperties: true,
+        },
         ...READ_ONLY_TOOL,
     },
     {
         name: 'get_category_info',
         title: 'Category Info',
         description:
-            'Get letter counts for a Grand Exchange category. Use get_all_categories for IDs.',
+            "Count catalogue items by starting letter within one RS3 Grand Exchange category so you can choose " +
+            "nonempty letter groups before browsing. Obtain category from get_all_categories; it is a catalogue ID, " +
+            "not an item ID: category 24 selects high-level melee weapons, and 0 selects one Miscellaneous group " +
+            "rather than all categories. Returns Jagex types and alpha entries with letter and items counts; it does " +
+            "not return the items themselves. Pass a returned letter to browse_items, using # for numeric names. For " +
+            "name search use lookup_item.\n\n" +
+            "No auth or local result cache; upstream failures return errors. HTTP shares a default 60 " +
+            "requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -72,20 +101,71 @@ export const priceTools: Tool[] = [
             required: ['category'],
             additionalProperties: false,
         },
+        outputSchema: {
+            $schema: JSON_SCHEMA_2020_12,
+            type: 'object',
+            properties: {
+                types: { type: 'array', items: {} },
+                alpha: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            letter: { type: 'string', description: 'Starting letter, or # for numbers' },
+                            items: { type: 'integer', description: 'Number of catalogue items in this letter group' },
+                        },
+                        required: ['letter', 'items'],
+                    },
+                },
+            },
+            required: ['types', 'alpha'],
+            additionalProperties: true,
+        },
         ...READ_ONLY_TOOL,
     },
     {
         name: 'get_all_categories',
         title: 'All Categories',
-        description: 'List all RS3 Grand Exchange category IDs and names (0-43).',
+        description:
+            'List all 44 RS3 Grand Exchange category IDs and names to choose a catalogue group. ' +
+            'Call with {} and no filters; returns categories sorted by ID from a built-in list, without network access or auth.\n\n' +
+            'Use a returned ID with get_category_info for letter counts, then browse_items for entries. ' +
+            'For item-name search use lookup_item. Category IDs identify groups, not items; duplicate category names have distinct IDs.',
         inputSchema: EMPTY_OBJECT_SCHEMA,
+        outputSchema: {
+            $schema: JSON_SCHEMA_2020_12,
+            type: 'object',
+            properties: {
+                categories: {
+                    type: 'array',
+                    description: 'All 44 category references, sorted by ID',
+                    items: {
+                        type: 'object',
+                        properties: { id: categoryProperty, name: { type: 'string' } },
+                        required: ['id', 'name'],
+                        additionalProperties: false,
+                    },
+                },
+            },
+            required: ['categories'],
+            additionalProperties: false,
+        },
         ...READ_ONLY_TOOL,
+        annotations: { ...READ_ONLY_TOOL.annotations, openWorldHint: false },
     },
     {
         name: 'browse_items',
         title: 'Browse Catalogue Items',
         description:
-            'Browse the Grand Exchange catalogue by category and starting letter. This is NOT a name search — use lookup_item for that. Use # for numeric names.',
+            "Browse a paginated RS3 Grand Exchange catalogue group when exploring items, rather than searching a name. " +
+            "Get category IDs from get_all_categories and nonempty starting letters from get_category_info; use " +
+            "lookup_item for name discovery or get_item_price for one item's detail. category selects a group, alpha " +
+            "selects its first letter, and page advances only within that group and letter; defaults are a and 1, with " +
+            "# for numeric names. Returns Jagex total and items; increment page by 1 until items is empty, resetting " +
+            "page to 1 whenever category or alpha changes. Errors set isError with text; do not treat them as an empty " +
+            "page.\n\n" +
+            "No auth or local result cache; upstream errors propagate and guide prices lag live offers. HTTP shares a " +
+            "default 60 requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -105,6 +185,16 @@ export const priceTools: Tool[] = [
             },
             required: ['category'],
             additionalProperties: false,
+        },
+        outputSchema: {
+            $schema: JSON_SCHEMA_2020_12,
+            type: 'object',
+            properties: {
+                total: { type: 'integer', description: 'Jagex catalogue total' },
+                items: { type: 'array', items: { type: 'object', additionalProperties: true } },
+            },
+            required: ['items'],
+            additionalProperties: true,
         },
         ...READ_ONLY_TOOL,
     },
@@ -154,7 +244,7 @@ export async function handlePriceTool(name: string, args: ToolArguments): Promis
             if (unexpected) {
                 return unexpected;
             }
-            return createSuccessResponse('All Item Categories', ITEM_CATEGORIES);
+            return createSuccessResponse('All Item Categories', ITEM_CATEGORIES, { categories: ITEM_CATEGORIES });
         }
 
         case 'browse_items': {

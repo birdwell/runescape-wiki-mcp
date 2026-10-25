@@ -80,7 +80,7 @@ export const wikiTools: Tool[] = [
         name: 'search_wiki',
         title: 'Search Wiki',
         description:
-            'Search RuneScape Wiki titles and source links without copying article snippets. Read-only. Use when the page title is unknown. For Grand Exchange prices, use lookup_item instead.',
+            'Discover RS3 RuneScape Wiki page titles and source links when the title is unknown. query is search text, not a URL: "abyssal whip special attack" finds related articles. limit returns the top 1-10 hits, default 5; no pagination cursor is exposed, so refine query for other results. Search is limited to article namespace 0; snippets are deliberately empty and contentStatus is link_only. Pass a result title to get_wiki_page_content for revision and reuse status; use lookup_item for item IDs or get_item_price for guide prices.\n\nNo auth or local result cache; no hits returns an empty array and upstream failures return tool errors. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -108,7 +108,7 @@ export const wikiTools: Tool[] = [
         name: 'get_wiki_page_content',
         title: 'Get Wiki Page Content',
         description:
-            'Get a RuneScape Wiki reference, following redirects. Returns text only for a reviewed revision with matching content; otherwise returns a source link with unverified reuse terms. Use search_wiki for unknown titles.',
+            'Inspect a known RS3 RuneScape Wiki page reference, resolving redirects to its canonical title and current revision. Pass page "Abyssal whip" as a literal title, not a URL or URL-encoded string; the server encodes it. Use search_wiki to discover titles, lookup_item for item IDs, or get_item_price for guide prices. Only content-specific reviewed article revisions with a matching extract hash return reviewed_extract text and license attribution. Otherwise success is link_only with text null, reason and source URL; explain that no article text was returned and do not infer a summary from its title. Missing pages return a tool error.\n\nNo auth, wiki edits or local result cache. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.',
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',

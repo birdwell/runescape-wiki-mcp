@@ -38,7 +38,13 @@ export const compareTools: Tool[] = [
         name: 'compare_items',
         title: 'Compare Items',
         description:
-            'Compare Grand Exchange guide or Weirdgloop prices for up to 10 items in one call. Provide either names or itemIds. Returns one row per entry with id, name, price, volume and timestamp; entries that cannot be resolved come back as error rows instead of failing the call. These prices lag the live market.',
+            "Compare latest available Weirdgloop price snapshots for a chosen RS3 item set in one call. Supply exactly " +
+            "one of names or itemIds, with 1-10 entries; IDs avoid name lookup, while each name selects its first " +
+            "matching item. Resolve uncertain names with lookup_item first; use get_item_price for one item's detailed " +
+            "Jagex trends or estimate_flip for tax-adjusted profit. Rows preserve input order; unresolved entries " +
+            "become error rows and available volume/timestamps can be absent.\n\n" +
+            "No auth or local result cache; snapshots lag live offers and are not historical comparisons. HTTP shares " +
+            "a default 60 requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -58,6 +64,7 @@ export const compareTools: Tool[] = [
                     description: `Grand Exchange item IDs to compare (1-${MAX_COMPARE_ITEMS}). Provide names or itemIds, not both.`,
                 },
             },
+            oneOf: [{ required: ['names'] }, { required: ['itemIds'] }],
             additionalProperties: false,
         },
         outputSchema: {

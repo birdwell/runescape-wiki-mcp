@@ -3,7 +3,7 @@
 import type { Tool } from '@modelcontextprotocol/server';
 import { WEIRDGLOOP_EXCHANGE_API } from '../constants.js';
 import { resolveItemId } from '../itemResolve.js';
-import { itemIdProperty, JSON_SCHEMA_2020_12, priceSummaryOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
+import { ITEM_SELECTOR, itemIdProperty, JSON_SCHEMA_2020_12, priceSummaryOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
 import { createSuccessResponse, makeApiRequest } from '../utils.js';
 import { isToolResponse, optionalInteger, validationError } from '../validation.js';
@@ -37,7 +37,15 @@ export const historyTools: Tool[] = [
         name: 'summarize_price_history',
         title: 'Summarize Price History',
         description:
-            'Summarize one item\'s recent Grand Exchange history: min, max, average, change, and average daily volume. Pass exactly one of itemId or name, and optional days from 7 to 90 (default 30). History lags the live market. Use get_item_graph for the full daily series.',
+            "Compute min, max, average and change over one RS3 item's recent Weirdgloop daily price samples, plus " +
+            "average volume when available. Use this for a compact trend summary; use get_item_graph for raw daily " +
+            "series, get_item_price for Jagex detail, or lookup_item for name discovery. Pass exactly one of itemId or " +
+            "name; days selects the last 7-90 daily samples, default 30: days 7 computes one weekly aggregate, not " +
+            "seven output rows or a forecast. itemId from lookup_item avoids name resolution. Fewer samples shorten " +
+            "windowDays; no usable history returns an error. Averages round to whole coins; changePct rounds to two " +
+            "decimals.\n\n" +
+            "No auth or local result cache; upstream errors propagate and history lags live offers. HTTP shares a " +
+            "default 60 requests/IP/minute budget; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -58,6 +66,7 @@ export const historyTools: Tool[] = [
                     description: `Size of the trailing window in days (${MIN_DAYS}-${MAX_DAYS}, default ${DEFAULT_DAYS})`,
                 },
             },
+            ...ITEM_SELECTOR,
             additionalProperties: false,
         },
         outputSchema: priceSummaryOutputSchema,
