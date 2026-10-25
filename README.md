@@ -153,6 +153,10 @@ Optional history bounds use UTC calendar dates, for example `get_item_graph { "n
 
 For flip scenarios, `buyLimitRemaining` is your remaining quota in the current window. The result separates quantity/profit within that quota from the full requested quantity. `fillTimeMinutes` is your assumed round-trip time for the full request, including any quota waits; it yields an assumed profit per hour. These inputs are assumptions, not observed limits or predicted fills.
 
+Batch catalogue metadata with the `get_item_price` argument `itemIds` (GE IDs returned by `lookup_item`), or batch wiki references with `get_wiki_page_content { "pages": ["Abyssal whip", "Grand Exchange"] }`. Each accepts 1–10 entries, preserves order and returns per-row `data` or `error`, plus success/failure counts. At most two upstream requests run concurrently; a wholly failed batch is a tool error. An upstream 429 stops queued requests and preserves Retry-After guidance. Single-item/page calls keep their existing response shape. Wiki reviews apply separately to every page.
+
+`get_ge_info` reports the catalogue configuration RuneDay, its derived UTC date and age, retrieval time and canonical category count. These describe catalogue configuration, not item-price freshness; `priceFreshness` is `not_reported`. RuneDate conversion uses the [documented UTC epoch](https://runescape.wiki/w/Runedate).
+
 ## Resources
 
 | URI | Contents |

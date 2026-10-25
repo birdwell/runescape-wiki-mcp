@@ -2,6 +2,7 @@
 
 import type { Tool } from '@modelcontextprotocol/server';
 import { createHash } from 'node:crypto';
+import { batchOutputSchema, MAX_BATCH_ITEMS, parseBatch, runBatch } from '../batch.js';
 import { RUNESCAPE_WIKI_API, WIKI_LICENSING_URL } from '../constants.js';
 import { findWikiContentReview, type WikiContentReview } from '../wikiContentPolicy.js';
 import { JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
@@ -75,6 +76,8 @@ const wikiPageOutputSchema = {
     additionalProperties: false,
 };
 
+const wikiBatchOutput = batchOutputSchema({ type: 'string' }, wikiPageOutputSchema);
+
 export const wikiTools: Tool[] = [
     {
         name: 'search_wiki',
@@ -112,9 +115,8 @@ export const wikiTools: Tool[] = [
         name: 'get_wiki_page_content',
         title: 'Get Wiki Page Content',
         description:
-            "Fetch an RS3 Wiki page reference. Use search_wiki for discovery and get_item_price for prices.\n" +
-            "page takes a literal title, e.g. \"Abyssal whip\", not a URL. Redirects resolve; non-article namespaces return links only.\n" +
-            "reviewed_extract returns text and attribution when a local review matches the canonical title, revision and SHA-256 of the untrimmed extract. Otherwise link_only succeeds with null text, reason and URL. Missing pages error.\n" +
+            "Fetch RS3 Wiki references by known title. Use search_wiki for discovery; get_item_price for GE prices. Supply page for one reference or pages for a batch, never both. Titles are literal; redirects resolve. Batches preserve title order with per-row data/errors, at most two concurrent requests; upstream 429 stops queued work. All failed rows make the call an error.\n" +
+            "reviewed_extract returns text and attribution only when a local review matches the canonical article title, revision and untrimmed-extract SHA-256. Otherwise link_only succeeds with null text, reason and URL. Non-article namespaces return links only; missing pages error.\n" +
             "No auth, edits, cache or review override. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
@@ -125,11 +127,16 @@ export const wikiTools: Tool[] = [
                     minLength: 1,
                     description: 'Wiki page title (spaces allowed; redirects are followed)',
                 },
+                pages: { type: 'array', minItems: 1, maxItems: MAX_BATCH_ITEMS,
+                    items: { type: 'string', minLength: 1 },
+                    description: 'Wiki titles for a reference batch; exclusive with page' },
             },
-            required: ['page'],
+            oneOf: [{ required: ['page'] }, { required: ['pages'] }],
             additionalProperties: false,
         },
-        outputSchema: wikiPageOutputSchema,
+        outputSchema: { ...wikiPageOutputSchema,
+            properties: { ...wikiPageOutputSchema.properties, ...wikiBatchOutput.properties },
+            required: [], oneOf: [{ required: wikiPageOutputSchema.required }, { required: wikiBatchOutput.required }] },
         ...READ_ONLY_TOOL,
     },
 ];
@@ -207,9 +214,17 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
         }
 
         case 'get_wiki_page_content': {
-            const unexpected = rejectUnknownKeys(args, ['page']);
+            const unexpected = rejectUnknownKeys(args, ['page', 'pages']);
             if (unexpected) {
                 return unexpected;
+            }
+
+            if (args?.pages !== undefined) {
+                if (args?.page !== undefined) return validationError('Provide page or pages, not both');
+                const pages = parseBatch(args.pages, 'pages', (value, label) =>
+                    requireString(value, label, { minLength: 1 }));
+                if (isToolResponse(pages)) return pages;
+                return runBatch('Wiki page references', pages, page => handleWikiTool(name, { page }));
             }
 
             const page = requireString(args?.page, 'page', { minLength: 1 });

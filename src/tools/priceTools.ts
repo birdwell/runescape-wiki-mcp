@@ -3,10 +3,11 @@
 import type { Tool } from '@modelcontextprotocol/server';
 import { ITEM_CATEGORIES } from '../categories.js';
 import { RS3_GE_API } from '../constants.js';
+import { batchOutputSchema, MAX_BATCH_ITEMS, parseBatch, runBatch } from '../batch.js';
+import { fetchGeInfo } from '../geInfo.js';
 import { resolveItemId } from '../itemResolve.js';
 import {
     EMPTY_OBJECT_SCHEMA,
-    ITEM_SELECTOR,
     itemDetailOutputSchema,
     READ_ONLY_TOOL,
     categoryProperty,
@@ -21,6 +22,8 @@ import {
     rejectUnknownKeys,
     requireAlpha,
     requireCategory,
+    requireInteger,
+    validationError,
 } from '../validation.js';
 
 const nameOrIdProperties = {
@@ -35,40 +38,52 @@ const nameOrIdProperties = {
     },
 };
 
+const itemBatchOutput = batchOutputSchema(itemIdProperty, itemDetailOutputSchema);
+
 export const priceTools: Tool[] = [
     {
         name: 'get_item_price',
-        title: 'Get Item Price and Details',
+        title: 'Get Item Metadata and Guide Prices',
         description:
-            "Read one RS3 item's Jagex guide price and catalogue metadata: trends, examine text, type, membership requirement and icon URLs.\n" +
-            "- Supply itemId as a GE ID from lookup_item, not a wiki page ID. Alternatively supply name as a literal, unencoded item name such as \"Abyssal whip\". An ID skips name resolution; ambiguous names fail with candidates. Supply exactly one selector.\n" +
-            "- Use this for general GE item metadata or price detail. Use lookup_item for discovery, compare_items for multiple snapshots, summarize_price_history for statistics or get_item_graph for dated samples.\n" +
-            "- Prices may use compact strings such as \"80k\" and lag live offers. Public Jagex calls need no auth and are not cached here; unavailable items and upstream failures return tool errors. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
+            "Fetch Jagex catalogue details: examine text, type, membership, icons, guide price and trends. Use itemId or name for one item; itemIds returns a selected-item metadata list in one batch.\n" +
+            "IDs are GE IDs from lookup_item. Choose exactly one selector; name resolves first and ambiguous names fail with candidates. Batches preserve ID order with per-row data/errors; all failed rows make the call an error. At most two upstream requests run concurrently; upstream 429 stops queued work.\n" +
+            "Use compare_items for numeric Weirdgloop snapshot comparisons, not catalogue metadata; get_item_graph for dated observations; summarize_price_history for aggregate statistics.\n" +
+            "Jagex prices can be compact strings and lag live offers. No auth or local cache. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
-            properties: nameOrIdProperties,
-            ...ITEM_SELECTOR,
+            properties: { ...nameOrIdProperties,
+                itemIds: { type: 'array', minItems: 1, maxItems: MAX_BATCH_ITEMS, uniqueItems: true,
+                    items: itemIdProperty, description: 'Known GE IDs for a catalogue metadata batch; exclusive with itemId/name' },
+            },
+            oneOf: [{ required: ['itemId'] }, { required: ['name'] }, { required: ['itemIds'] }],
             additionalProperties: false,
         },
-        outputSchema: itemDetailOutputSchema,
+        outputSchema: { ...itemDetailOutputSchema,
+            properties: { ...itemDetailOutputSchema.properties, ...itemBatchOutput.properties },
+            required: [], oneOf: [{ required: itemDetailOutputSchema.required }, { required: itemBatchOutput.required }] },
         ...READ_ONLY_TOOL,
     },
     {
         name: 'get_ge_info',
-        title: 'Grand Exchange Info',
+        title: 'GE Catalogue Refresh Status',
         description:
-            "Read RS3 Grand Exchange catalogue-update metadata. Returns {lastConfigUpdateRuneday: number}, a RuneScape day counter, not a Unix timestamp or item-price freshness guarantee.\n" +
-            "- Call with {}. No item, date or category filter exists: use get_item_price for item detail, lookup_item for name discovery or get_all_categories for category IDs.\n" +
-            "- Every call reads the public Jagex endpoint without auth or a local cache; upstream failures return tool errors. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
+            "Inspect GE catalogue configuration freshness, not item-price freshness. Returns the upstream RuneDay plus its UTC date, age in UTC days, fetch time and canonical category count. priceFreshness is not_reported: a recent configuration update says nothing about current offers.\n" +
+            "Call with {} for catalogue diagnostics. Use get_item_price for item metadata/prices, get_all_categories for category IDs, or get_item_graph for dated price observations.\n" +
+            "Reads Jagex once without auth or cache. Upstream failures are errors. Shared HTTP limit: 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: EMPTY_OBJECT_SCHEMA,
         outputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
             properties: {
-                lastConfigUpdateRuneday: { type: 'integer', description: 'RuneScape day counter for catalogue configuration update' },
+                lastConfigUpdateRuneday: { type: 'integer', description: 'Upstream RuneDay counter for catalogue configuration update' },
+                lastConfigUpdateDate: { type: 'string', format: 'date', description: 'Configuration UTC date derived from RuneDay' },
+                configurationAgeDays: { type: 'integer', description: 'UTC calendar days since configuration update; negative for a future upstream date' },
+                fetchedAt: { type: 'string', format: 'date-time', description: 'Server retrieval time, not a price update timestamp' },
+                categoryCount: { type: 'integer', description: 'Number of canonical GE categories' },
+                priceFreshness: { const: 'not_reported', description: 'Configuration metadata does not report item-price freshness' },
             },
-            required: ['lastConfigUpdateRuneday'],
+            required: ['lastConfigUpdateRuneday', 'lastConfigUpdateDate', 'configurationAgeDays', 'fetchedAt', 'categoryCount', 'priceFreshness'],
             additionalProperties: true,
         },
         ...READ_ONLY_TOOL,
@@ -188,6 +203,17 @@ export const priceTools: Tool[] = [
 export async function handlePriceTool(name: string, args: ToolArguments): Promise<ToolResponse> {
     switch (name) {
         case 'get_item_price': {
+            const unexpected = rejectUnknownKeys(args, ['itemId', 'name', 'itemIds']);
+            if (unexpected) return unexpected;
+            if (args?.itemIds !== undefined) {
+                if (args?.itemId !== undefined || args?.name !== undefined) {
+                    return validationError('Provide exactly one of itemId, name or itemIds');
+                }
+                const ids = parseBatch(args.itemIds, 'itemIds', (value, label) =>
+                    requireInteger(value, label, { minimum: 0 }), true);
+                if (isToolResponse(ids)) return ids;
+                return runBatch('Item catalogue details', ids, itemId => handlePriceTool(name, { itemId }));
+            }
             const itemId = await resolveItemId(args, ['itemId', 'name']);
             if (isToolResponse(itemId)) {
                 return itemId;
@@ -204,7 +230,7 @@ export async function handlePriceTool(name: string, args: ToolArguments): Promis
             if (unexpected) {
                 return unexpected;
             }
-            const data = await makeApiRequest(`${RS3_GE_API}/info.json`);
+            const data = await fetchGeInfo();
             return createSuccessResponse('Grand Exchange Database Information', data);
         }
 

@@ -32,18 +32,18 @@ runescape-wiki-mcp/
 | Tool | Args | Notes |
 |------|------|-------|
 | `lookup_item` | `query`, optional `limit` | **Start here for names.** Returns id, price, volume. |
-| `get_item_price` | `itemId` **or** `name` | GE detail + trends |
-| `get_item_graph` | `itemId` **or** `name`, optional `from`/`to` | 180-day graph; inclusive UTC date filters |
+| `get_item_price` | `itemId`, `name`, **or** `itemIds` (1–10) | GE catalogue metadata + guide prices/trends; optional batch |
+| `get_item_graph` | `itemId` **or** `name`, optional `from`/`to` | About 180 days of Jagex observations; inclusive UTC date bounds |
 | `summarize_price_history` | `itemId` or `name`, optional `days` | Compact 7–90d trend summary |
 | `compare_items` | `names` **or** `itemIds` (1–10) | Bulk compare |
-| `estimate_flip` | `itemId` or `name`, optional prices/qty, `buyLimitRemaining`, `fillTimeMinutes` | Tax-adjusted profit and caller-supplied execution scenarios |
+| `estimate_flip` | `itemId` or `name`, optional prices/qty/quota/duration | Profit after 2% tax; caller-supplied `buyLimitRemaining`/`fillTimeMinutes` scenarios |
 | `browse_items` | `category`, optional `alpha`/`page` | Catalogue browse — **not** name search |
 | `get_all_categories` | — | Category IDs 0–43 |
 | `get_category_info` | `category` | Letter counts |
-| `get_ge_info` | — | `lastConfigUpdateRuneday` |
+| `get_ge_info` | — | Catalogue configuration RuneDay, derived UTC date/age, fetch time, category count; not price freshness |
 | `get_player_stats` | `username`, optional `gameMode` | Normal, ironman and hardcore boards; 404 is player/board-specific |
 | `search_wiki` | `query`, optional `limit` | Wiki title search. Not a price search. |
-| `get_wiki_page_content` | `page` | Source link by default; reviewed revision/hash required for text; follows redirects |
+| `get_wiki_page_content` | `page` **or** `pages` (1–10) | Single/batch references; text only for a reviewed revision and extract hash |
 
 Prompts: `check_item_price`, `compare_ge_items`, `estimate_item_flip`, `player_overview`.
 

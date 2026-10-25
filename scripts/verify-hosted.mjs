@@ -32,7 +32,7 @@ try {
  const lookup = await call('lookup_item',{query:'Abyssal whip',limit:3});
  const itemId = lookup.structuredContent?.matches?.[0]?.id;
  if(!Number.isInteger(itemId) || itemId < 0) throw new Error('Item lookup did not resolve an ID');
- let graphResult;
+ let graphResult, geInfoResult;
  for (const [name,args] of [
   ['get_item_price',{itemId}], ['get_item_graph',{itemId}], ['summarize_price_history',{itemId,days:7}],
   ['compare_items',{itemIds:[itemId]}], ['estimate_flip',{itemId,buyPrice:1000,sellPrice:1200,quantity:2}],
@@ -42,7 +42,23 @@ try {
  ]) {
   const result = await call(name,args);
   if(name === 'get_item_graph') graphResult=result;
+  if(name === 'get_ge_info') geInfoResult=result;
  }
+ const secondLookup=await call('lookup_item',{query:'Dragon bones',limit:1});
+ const secondId=secondLookup.structuredContent?.matches?.[0]?.id;
+ if(!Number.isInteger(secondId)||secondId<0) throw new Error('Second metadata ID not resolved');
+ const metadataBatch=await call('get_item_price',{itemIds:[itemId,secondId]});
+ if(metadataBatch.structuredContent.succeeded!==2||metadataBatch.structuredContent.failed!==0||
+    metadataBatch.structuredContent.results.some((row,i)=>row.query!==[itemId,secondId][i]||row.data.item.id!==row.query||!row.data.item.description||!row.data.item.type)) throw new Error('Catalogue metadata batch failed');
+ const secondWikiSearch=await call('search_wiki',{query:'Grand Exchange',limit:1});
+ const secondWikiTitle=secondWikiSearch.structuredContent?.results?.[0]?.title;
+ if(!secondWikiTitle) throw new Error('Second wiki title not resolved');
+ const pages=[hits[0].title,secondWikiTitle];
+ const wikiBatch=await call('get_wiki_page_content',{pages});
+ if(wikiBatch.structuredContent.succeeded!==2||wikiBatch.structuredContent.failed!==0||
+    wikiBatch.structuredContent.results.some((row,i)=>row.query!==pages[i]||row.data.contentStatus!=='link_only'||row.data.text!==null)) throw new Error('Guarded wiki batch failed');
+ const info=geInfoResult.structuredContent;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(info.lastConfigUpdateDate)||!Number.isInteger(info.configurationAgeDays)||info.categoryCount!==44||info.priceFreshness!=='not_reported'||!Number.isFinite(Date.parse(info.fetchedAt))) throw new Error('GE configuration interpretation failed');
  const firstTimestamp=Object.keys(graphResult.structuredContent.daily).map(Number).sort((a,b)=>a-b)[0];
  const day=new Date(firstTimestamp).toISOString().slice(0,10);
  const filtered=await call('get_item_graph',{itemId,from:day,to:day});

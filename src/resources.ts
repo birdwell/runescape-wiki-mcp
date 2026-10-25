@@ -2,8 +2,8 @@
 
 import type { Resource, ReadResourceRequest } from '@modelcontextprotocol/server';
 import { ITEM_CATEGORIES } from './categories.js';
-import { RS3_GE_API, RESOURCE_URIS } from './constants.js';
-import { makeApiRequest } from './utils.js';
+import { RESOURCE_URIS } from './constants.js';
+import { fetchGeInfo } from './geInfo.js';
 import { resourceNotFoundError } from './errors.js';
 
 export const resources: Resource[] = [
@@ -11,7 +11,7 @@ export const resources: Resource[] = [
         uri: RESOURCE_URIS.GE_INFO,
         name: 'Grand Exchange Database Info',
         description:
-            'Grand Exchange database metadata from Jagex (lastConfigUpdateRuneday). Not item prices — use get_item_price or lookup_item for prices.',
+            'Jagex catalogue configuration freshness with derived UTC date and age. Not item prices — use get_item_price or lookup_item for prices.',
         mimeType: 'application/json',
     },
     {
@@ -27,7 +27,7 @@ export async function handleResource(request: ReadResourceRequest) {
 
     switch (uri) {
         case RESOURCE_URIS.GE_INFO: {
-            const data = await makeApiRequest(`${RS3_GE_API}/info.json`);
+            const data = await fetchGeInfo();
             return {
                 contents: [
                     {
