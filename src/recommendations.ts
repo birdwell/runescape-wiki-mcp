@@ -35,7 +35,7 @@ export function trainingLevelFromGoal(goal: string, skill: string): number | und
     for (const match of matches) {
         const level = Number(match[1]);
         const suffix = goal.slice(match.index! + match[0].length);
-        if (level < 1 || level > 120 || /^(?:[.,]\d|\s*(?:[kmb]\b|gp\b|coins?\b|gold\b|xp\b|experience\b|minutes?\b|hours?\b|ores?\b|logs?\b|runes?\b))/i.test(suffix)) continue;
+        if (level < 1 || level > 120 || /^(?:[.,]\d|\s*(?:%|(?:[kmb]|hundreds?|thousands?|millions?|billions?|trillions?|mil|mn|bn|gp|coins?|gold|xp|experience|minutes?|hours?|ores?|logs?|runes?|percent)\b))/i.test(suffix)) continue;
         return level;
     }
     return undefined;

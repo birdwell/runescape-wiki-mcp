@@ -170,14 +170,21 @@ export function parseTrainingMethods(guide: Guide, skill: string, membership: Tr
             const mentionsMethod = (text: string) => phrases.some(phrase => ` ${normalized(text)} `.includes(` ${phrase} `));
             const band = (title: string) => /levels?\s+(\d+)(?:\s*[–—-]\s*(\d+))?/i.exec(title);
             const matchingBand = (section: GuideSection) => {
-                const band = /levels?\s+(\d+)(?:\s*[–—-]\s*(\d+))?/i.exec(section.title);
-                return band && Number(band[1]) === range.minimum && (!band[2] || Number(band[2]) === range.maximum);
+                const bounds = band(section.title);
+                return bounds && Number(bounds[1]) === range.minimum && (!bounds[2] || Number(bounds[2]) === range.maximum);
+            };
+            const coversStart = (section: GuideSection) => {
+                const bounds = band(section.title);
+                return bounds && Number(bounds[1]) <= range.minimum && (!bounds[2] || Number(bounds[2]) >= range.minimum);
             };
             const named = sections.filter(section => mentionsMethod(section.title) &&
-                (!band(section.title) || matchingBand(section)));
-            // Prefer the exact level band when a method is discussed more than once.
-            const section = named.find(matchingBand) ?? named[0] ?? sections.find(section =>
-                matchingBand(section) && mentionsMethod(section.text));
+                (!band(section.title) || coversStart(section)));
+            // A table's 60 or 60+ means an entry level, not a source heading
+            // ending at 120. Keep prose covering that entry level, preferring
+            // exact bands and then the same starting level when available.
+            const sameStart = (section: GuideSection) => Number(band(section.title)?.[1]) === range.minimum;
+            const section = named.find(matchingBand) ?? named.find(sameStart) ?? named[0] ?? sections.find(section =>
+                sameStart(section) && coversStart(section) && mentionsMethod(section.text));
             const requirementsColumn = headers.findIndex(header => /requirements?/i.test(header));
             const evidence = [section?.text, ...headers.map((header, i) => `${header}: ${row[i]?.text ?? ''}`)].filter(Boolean).join('\n').slice(0, 1800);
             if (result.some(method => method.name === name && method.minimumLevel === range.minimum)) continue;

@@ -66,6 +66,18 @@ describe('guide extraction and deterministic progression facts', () => {
         expect(method.evidence).not.toContain('pickaxes');
         expect(method.source.url).not.toContain('#');
     });
+    it.each(['60', '60+', '60–120'])('keeps entry-level guide requirements for a %s table row', levels => {
+        const html = '<h2 id="too-high">Levels 80–90: Orichalcite</h2><p>Wrong higher-level prose.</p>' +
+            '<h2 id="broad">Levels 50–70: Orichalcite</h2><p>Less specific prose.</p>' +
+            '<h2 id="entry">Levels 60–70: Orichalcite</h2><p>Requires completion of Plague\'s End.</p>' +
+            '<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th></tr>' +
+            `<tr><td>${levels}</td><td>Orichalcite</td><td>70,000</td></tr></table>`;
+        const method = parseTrainingMethods(guide('Mining training', html), 'Mining', 'members')[0];
+        expect(method.evidence).toContain("Requires completion of Plague's End");
+        expect(method.evidence).not.toContain('higher-level');
+        expect(method.evidence).not.toContain('Less specific');
+        expect(method.source.url).toContain('#entry');
+    });
     it('keeps nested table cells out of the parent table grid', () => {
         const tables = guideTables(guide('Nested', '<table><tr><td>A<table><tr><td>B</td></tr></table></td><td>C</td></tr></table>'));
         expect(tables[0]).toHaveLength(1);
@@ -100,6 +112,13 @@ describe('training goal level targets', () => {
         ['Train Mining to 100k XP', undefined],
         ['Train Mining to 100 k XP', undefined],
         ['Train Mining to 100 XP', undefined],
+        ['Train Mining to 20 million XP', undefined],
+        ['Train Mining to 100 thousand experience', undefined],
+        ['Train Mining to 1 hundred XP', undefined],
+        ['Train Mining to 20 billion coins', undefined],
+        ['Train Mining to 20 mil XP', undefined],
+        ['Train Mining to 20% XP', undefined],
+        ['Train Mining to 20 million XP, then reach level 99', 99],
         ['Get 100 Mining XP', undefined],
         ['Train Mining to 10 hours', undefined],
         ['Reach level 121 Mining', undefined],
