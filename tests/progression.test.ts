@@ -159,7 +159,7 @@ describe('bounded training decisions', () => {
         expect(plan.steps[0].method.source).toHaveProperty('revisionId', 123);
     });
     it('supports training past a recommended band and does not use it as an eligibility maximum', async () => {
-        mockWiki('Free-to-play Mining training', miningHtml.replace('<tr><td>60–70', '<tr><td>60–70'));
+        mockWiki('Free-to-play Mining training', miningHtml);
         const calls: any[] = [];
         mockJev((_id, question) => Object.entries(question.criteria).find(([, label]) => label.startsWith('Runite'))![0], calls);
         const plan = await planTraining('Mining to 105', { members: false, skills: { Mining: 100 }, skillExperience: {}, budgetGp: 0, gear: [] },
@@ -172,6 +172,18 @@ describe('bounded training decisions', () => {
         expect((await planTraining('Mining to 60', { skills: { Mining: 64 }, skillExperience: {} }, 'Mining', 60, session, AbortSignal.timeout(1000))).status).toBe('goal_met');
         expect((await planTraining('Mining to 60', { skills: {}, skillExperience: {} }, 'Mining', 60, session, AbortSignal.timeout(1000))).missingContext).toContain('Current Mining level');
         expect(session.usage.rounds).toBe(0);
+    });
+    it('passes fresh relevant quest statuses without copying unrelated completions into model context', async () => {
+        mockWiki('Pay-to-play Smithing training', '<h2>Forging bars</h2><p>Requires completion of Plague\'s End.</p>' +
+            '<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th></tr><tr><td>70–80</td><td>Forging bars</td><td>100,000</td></tr></table>');
+        nock('https://apps.runescape.com').get('/runemetrics/quests').query({ user: 'Fixture' }).reply(200,
+            { quests: [journal("Plague's End"), journal("Cook's Assistant", 'COMPLETED')] });
+        const calls: any[] = [];
+        mockJev(() => 'none', calls);
+        await planTraining('Smithing to 80', { username: 'Fixture', members: true, skills: { Smithing: 71 }, skillExperience: {},
+            completedQuests: ["Plague's End"] }, 'Smithing', 80, new JevSession({ apiKey: 'test', model: 'jev-test' }), AbortSignal.timeout(5000));
+        expect(calls[0].state.questJournal).toMatchObject({ total: 2, completed: [], unfinished: ["Plague's End"] });
+        expect(JSON.stringify(calls[0].state.questJournal)).not.toContain("Cook's Assistant");
     });
     it('routes an Invention goal into all three requirements and a concrete ordinary Divination method', async () => {
         const enabled = process.env.RUNESCAPE_RECOMMENDATIONS_ENABLED, key = process.env.TYPESAFE_API_KEY;

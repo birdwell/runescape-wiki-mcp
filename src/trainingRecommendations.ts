@@ -1,7 +1,7 @@
 import { JevSession, MAX_JEV_REQUEST_CHARS, type ChoiceQuestion } from './jev.js';
 import { fetchGuide, parseTrainingMethods, type TrainingMethod } from './wikiGuides.js';
 import type { RecommendationInput } from './tools/recommendationTools.js';
-import { fetchPlayerQuests } from './questData.js';
+import { fetchPlayerQuests, questKey } from './questData.js';
 
 export type PlanningAccount = RecommendationInput['context'] & {
     skills: Record<string, number>;
@@ -30,7 +30,7 @@ export interface TrainingPlan {
     missingContext: string[]; warnings: string[];
     coverage: { guides: string[]; parsedMethods: number; comparedMethods: number; scope: string };
     sources: TrainingMethod['source'][];
-    questJournal?: { source: string; fetchedAt: string; total: number; completed: string[]; started: string[] };
+    questJournal?: { source: string; fetchedAt: string; total: number; completed: string[]; unfinished: string[]; scope: string };
 }
 
 export async function planTraining(goal: string, account: PlanningAccount, skill: string, targetLevel: number,
@@ -67,14 +67,17 @@ export async function planTraining(goal: string, account: PlanningAccount, skill
         methods.push(...parseTrainingMethods(guide, skill, membership));
     }
     plan.coverage.parsedMethods = methods.length;
-    // A complete fresh completion set lets Jev reject quest-locked methods such as
-    // corrupted ore or Gate of Elidinis without treating a partial caller list as exhaustive.
+    // Fetch the complete journal, but send only titles mentioned in the method
+    // evidence. Endgame accounts can have hundreds of completed quests.
     if (account.username) {
         try {
             const journal = await fetchPlayerQuests(account.username, signal);
+            const evidence = questKey(methods.map(method => method.evidence).join('\n'));
+            const relevantQuests = journal.quests.filter(quest => evidence.includes(questKey(quest.title)));
             plan.questJournal = { source: journal.source, fetchedAt: journal.fetchedAt, total: journal.quests.length,
-                completed: journal.quests.filter(quest => quest.status === 'COMPLETED').map(quest => quest.title),
-                started: journal.quests.filter(quest => quest.status === 'STARTED').map(quest => quest.title) };
+                completed: relevantQuests.filter(quest => quest.status === 'COMPLETED').map(quest => quest.title),
+                unfinished: relevantQuests.filter(quest => quest.status !== 'COMPLETED').map(quest => quest.title),
+                scope: 'Fresh status for titles mentioned in method evidence only. Other quest statuses remain unknown to this comparison.' };
         } catch { plan.warnings.push('Fresh quest status was unavailable; quest-locked training methods remain conditional.'); }
     }
     const relevant = methods.filter(method => method.minimumLevel < targetLevel &&
@@ -100,7 +103,7 @@ export async function planTraining(goal: string, account: PlanningAccount, skill
             questions[`step_${index}`] = { type: 'choice',
                 instructions: `Choose a concrete ${skill} training method for levels ${interval.fromLevel} to ${interval.toLevel}, toward the stated goal. ` +
                     'Use only supplied evidence. Respect membership, budget, account mode and AFK preference. ' +
-                    'When questJournal is present, completed is its COMPLETE fresh completion set; a quest outside it is not completed. It overrides a stale partial caller list. Never select a method whose required quest is known unfinished. ' +
+                    'questJournal gives authoritative fresh status for its listed completed/unfinished titles and overrides a stale caller list. Unlisted titles remain unknown. Never select a method whose required quest is known unfinished. ' +
                     'Do not assume quest unlocks, bank items, optional boosts or equipment ownership. Prefer an ordinary low-requirement method when special unlocks are unknown. ' +
                     'Unknown membership permits a conditional members option; known non-members may only use free methods. ' +
                     'Select a useful conditional ordinary method when equipment, budget or membership is unknown; those unknowns alone are not a reason to refuse. Never treat guide rates or full-guide total costs as account-specific.',
