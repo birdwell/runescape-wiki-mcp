@@ -192,9 +192,16 @@ export function parseTrainingMethods(guide: Guide, skill: string, membership: Tr
             if (!rates.length && !headers.some(header => /^afk$/i.test(header))) continue;
             const section = trainingSection(sections, name, range);
             const requirementsColumn = headers.findIndex(header => /requirements?/i.test(header));
+            const membershipColumn = headers.findIndex(header => /^(?:members(?:hip)?|free.to.play)$/i.test(header.trim()));
+            const membershipValue = membershipColumn < 0 ? '' : (row[membershipColumn]?.text ?? '').trim();
+            const freeColumn = membershipColumn >= 0 && /^free.to.play$/i.test(headers[membershipColumn].trim());
+            const yes = /^(?:yes|true)$/i.test(membershipValue);
+            const no = /^(?:no|false)$/i.test(membershipValue);
+            const rowMembership = /^(?:free(?:.to.play)?|f2p)$/i.test(membershipValue) || (freeColumn ? yes : no) ? 'free'
+                : /^(?:members(?:.only)?|pay.to.play|p2p)$/i.test(membershipValue) || (freeColumn ? no : yes) ? 'members' : membership;
             const evidence = [section?.text, ...headers.map((header, i) => `${header}: ${row[i]?.text ?? ''}`)].filter(Boolean).join('\n').slice(0, 1800);
             if (result.some(method => method.name === name && method.minimumLevel === range.minimum)) continue;
-            result.push({ id: '', name, minimumLevel: range.minimum, recommendedUntil: range.maximum, membership,
+            result.push({ id: '', name, minimumLevel: range.minimum, recommendedUntil: range.maximum, membership: rowMembership,
                 rates, costs, requirementsText: requirementsColumn < 0 ? '' : row[requirementsColumn]?.text ?? '',
                 evidence, mentionedPages: [...new Set(row.flatMap(cell => cell?.links ?? []))],
                 source: { ...guide.source, url: `${guide.source.url}${section?.anchor ? `#${section.anchor}` : ''}` },

@@ -6,7 +6,7 @@ import { buildUnlockPath, rewardDirectlyUnlocks, type UnlockDefinition } from '.
 import { parseQuestPage } from '../src/questParsing.js';
 import { attributedWikiSource } from '../src/wikiAttribution.js';
 import { JevSession, type ChoiceQuestion } from '../src/jev.js';
-import { handleRecommendationTool } from '../src/tools/recommendationTools.js';
+import { handleRecommendationTool, recommendationInput } from '../src/tools/recommendationTools.js';
 import type { JournalQuest } from '../src/questData.js';
 import { trainingLevelFromGoal } from '../src/recommendations.js';
 
@@ -240,7 +240,91 @@ function mockJev(pick: (id: string, question: ChoiceQuestion, state: any) => str
         return [200, { model: 'jev-test', answers, usage: { input_tokens: 100, output_tokens: 10 } }];
     });
 }
+describe('combined training-guide membership facts', () => {
+    it.each([['Membership', 'F2P', 'P2P'], ['Free-to-play', 'Yes', 'No']])(
+        'interprets explicit %s facts without marking member methods as free', (column, free, members) => {
+            const html = `<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th><th>${column}</th></tr>` +
+                `<tr><td>1–20</td><td>Free method</td><td>10000</td><td>${free}</td></tr>` +
+                `<tr><td>1–20</td><td>Members method</td><td>20000</td><td>${members}</td></tr></table>`;
+            expect(parseTrainingMethods(guide('Combined training', html), 'Mining', 'unspecified')
+                .map(method => method.membership)).toEqual(['free', 'members']);
+        });
+});
+
 describe('bounded training decisions', () => {
+    it.each([['Cooking', 0], ['Woodcutting', 1700]] as const)(
+        'retains early milestones when %s methods exceed count or request-size limits', async (skill, padding) => {
+            const rows = Array.from({ length: 40 }, (_, i) =>
+                `<tr><td>${i + 1}–120</td><td>Method ${i + 1}</td><td>10000</td><td>${'x'.repeat(padding)}</td></tr>`).join('');
+            mockWiki(`Pay-to-play ${skill} training`, '<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th><th>Requirements</th></tr>' + rows + '</table>');
+            const calls: any[] = [];
+            mockJev((_id, question, state) => {
+                expect(JSON.stringify({ model: 'jev-test', state, questions: calls[0].questions }).length).toBeLessThanOrEqual(40000);
+                const eligible = state.methods.filter((method: any) => Object.hasOwn(question.criteria, method.id));
+                expect(eligible.length).toBeGreaterThan(0);
+                return eligible.sort((a: any, b: any) => b.minimumLevel - a.minimumLevel)[0].id;
+            }, calls);
+            const plan = await planTraining(`${skill} to 120`, { members: true, skills: { [skill]: 1 }, skillExperience: {}, budgetGp: 0, gear: [] },
+                skill, 120, new JevSession({ apiKey: 'test', model: 'jev-test' }), AbortSignal.timeout(5000));
+            expect(plan.steps.map(step => step.method.minimumLevel)).toEqual([1, 2, 3, 4, 5, 6]);
+            expect(plan.coverage.parsedMethods).toBe(40);
+            expect(plan.coverage.comparedMethods).toBeLessThanOrEqual(30);
+            if (padding) expect(plan.coverage.comparedMethods).toBeLessThan(30);
+            expect(calls).toHaveLength(1);
+        });
+
+    it('requests less context without a paid call if the reserved milestone evidence cannot fit', async () => {
+        const account = { members: true, skills: { Fletching: 1 }, skillExperience: {}, budgetGp: 0,
+            completedQuests: Array(100).fill('Quest'.padEnd(100, 'q')), gear: Array(100).fill('Gear'.padEnd(80, 'g')),
+            notes: 'x'.repeat(1000) };
+        const input = { goal: 'Fletching to 120', context: account };
+        expect(recommendationInput.safeParse(input).success).toBe(true);
+        expect(JSON.stringify(input).length).toBeLessThan(20000);
+        const rows = Array.from({ length: 40 }, (_, i) =>
+            `<tr><td>${i + 1}–120</td><td>Method ${i + 1}</td><td>10000</td><td>${'x'.repeat(1700)}</td></tr>`).join('');
+        mockWiki('Pay-to-play Fletching training', '<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th><th>Requirements</th></tr>' + rows + '</table>');
+        const session = new JevSession({ apiKey: 'test', model: 'jev-test' });
+        const plan = await planTraining(input.goal, account, 'Fletching', 120, session, AbortSignal.timeout(5000));
+        expect(plan.status).toBe('needs_context');
+        expect(plan.missingContext).toContainEqual(expect.stringContaining('milestone evidence exceeds the request limit'));
+        expect(plan.coverage.comparedMethods).toBe(0);
+        expect(session.usage.rounds).toBe(0);
+    });
+
+    it('keeps combined-guide methods conditional for non-members when the free guide is missing', async () => {
+        nock('https://runescape.wiki').get('/api.php').query(q => q.page === 'Free-to-play Fishing training')
+            .reply(200, { error: { code: 'missingtitle' } });
+        mockWiki('Fishing training', '<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th></tr>' +
+            '<tr><td>1–20</td><td>Net fishing</td><td>10000</td></tr></table>');
+        const calls: any[] = [];
+        mockJev((_id, question) => Object.entries(question.criteria).find(([, label]) => label.startsWith('Net fishing'))![0], calls);
+        const plan = await planTraining('Fishing to 20', { members: false, skills: { Fishing: 1 }, skillExperience: {}, budgetGp: 0, gear: [] },
+            'Fishing', 20, new JevSession({ apiKey: 'test', model: 'jev-test' }), AbortSignal.timeout(5000));
+        expect(plan.status).toBe('needs_context');
+        expect(plan.steps[0]).toMatchObject({ conditional: true, method: { name: 'Net fishing', membership: 'unspecified' } });
+        expect(plan.missingContext).toContainEqual(expect.stringContaining('Verify free-to-play access'));
+        expect(calls).toHaveLength(1);
+        expect(nock.isDone()).toBe(true);
+    });
+
+    it('uses explicit row membership in a combined guide and excludes members-only methods for F2P', async () => {
+        nock('https://runescape.wiki').get('/api.php').query(q => q.page === 'Free-to-play Firemaking training')
+            .reply(200, { error: { code: 'missingtitle' } });
+        mockWiki('Firemaking training', '<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th><th>Members</th></tr>' +
+            '<tr><td>1–20</td><td>Logs</td><td>10000</td><td>No</td></tr>' +
+            '<tr><td>1–20</td><td>Members logs</td><td>20000</td><td>Yes</td></tr></table>');
+        const calls: any[] = [];
+        mockJev((_id, question, state) => {
+            expect(state.methods.map((method: any) => method.name)).toEqual(['Logs']);
+            return Object.entries(question.criteria).find(([, label]) => label === 'Logs (free)')![0];
+        }, calls);
+        const plan = await planTraining('Firemaking to 20', { members: false, skills: { Firemaking: 1 }, skillExperience: {}, budgetGp: 0, gear: [] },
+            'Firemaking', 20, new JevSession({ apiKey: 'test', model: 'jev-test' }), AbortSignal.timeout(5000));
+        expect(plan.status).toBe('recommended');
+        expect(plan.steps[0]).toMatchObject({ conditional: false, method: { name: 'Logs', membership: 'free' } });
+        expect(nock.isDone()).toBe(true);
+    });
+
     it('excludes future-level methods from the immediate choice and returns a concrete conditional method', async () => {
         mockWiki('Pay-to-play Mining training', miningHtml);
         const calls: any[] = [];

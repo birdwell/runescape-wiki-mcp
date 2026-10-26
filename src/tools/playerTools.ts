@@ -94,7 +94,8 @@ export async function handlePlayerTool(name: string, args: ToolArguments, signal
         case 'get_player_quests': {
             const unexpected = rejectUnknownKeys(args, ['username']);
             if (unexpected) return unexpected;
-            const username = requireString(args?.username, 'username', { minLength: 1, maxLength: 12 });
+            const username = requireString(typeof args?.username === 'string' ? args.username.trim() : args?.username,
+                'username', { minLength: 1, maxLength: 12 });
             if (isToolResponse(username)) return username;
             return createSuccessResponse(`Quest journal for ${username}`, await fetchPlayerQuests(username,
                 signal ?? AbortSignal.timeout(12_000)));

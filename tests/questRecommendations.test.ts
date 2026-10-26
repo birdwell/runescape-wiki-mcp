@@ -173,6 +173,22 @@ describe('quest facts and account eligibility', () => {
         expect(result.dependencies.has('Unknown Prerequisite Example')).toBe(false);
     });
 
+    it.each(['TestPlayer', 'Bob Smith'])('trims %s before fetching and echoes the trimmed literal name', async username => {
+        const request = nock('https://apps.runescape.com').get('/runemetrics/quests').query({ user: username })
+            .reply(200, { quests: journal });
+        const result = await handleTool('get_player_quests', { username: ` ${username} ` });
+        expect(result.isError).toBeFalsy();
+        expect(result.structuredContent).toMatchObject({ username,
+            source: `https://apps.runescape.com/runemetrics/quests?user=${encodeURIComponent(username)}` });
+        expect(request.isDone()).toBe(true);
+    });
+
+    it('rejects a whitespace-only quest username without making a request', async () => {
+        const result = await handleTool('get_player_quests', { username: '   ' });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('username is required');
+    });
+
     it('fetches the complete journal without requiring a Jev key', async () => {
         delete process.env.TYPESAFE_API_KEY;
         mockAccount();
