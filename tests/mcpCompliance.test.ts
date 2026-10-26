@@ -118,6 +118,39 @@ describe('MCP specification compliance', () => {
         expect(result.content[0].text).toBe('itemId must be an integer');
     });
 
+    it.each([true, false])('returns the documented complete quest journal over the wire with legacy=%s', async legacy => {
+        const quests = [
+            { title: 'First quest', status: 'COMPLETED', members: false, userEligible: true, questPoints: 1 },
+            { title: 'Next quest', status: 'STARTED', members: true, userEligible: false, questPoints: 2 },
+            { title: 'Later quest', status: 'NOT_STARTED', members: true, userEligible: false, questPoints: 3 },
+        ];
+        const upstream = nock('https://apps.runescape.com').get('/runemetrics/quests')
+            .query({ user: 'A B' }).reply(200, { quests });
+        const { status, message } = await mcpFetch(handler, 'tools/call', { legacy, name: 'get_player_quests',
+            params: { name: 'get_player_quests', arguments: { username: 'A B' } } });
+        expect(status).toBe(200);
+        expect(message.error).toBeUndefined();
+        const result = message.result as { isError?: boolean; structuredContent: Record<string, unknown> };
+        expect(result.isError).toBeFalsy();
+        expect(result.structuredContent).toEqual({ username: 'A B',
+            source: 'https://apps.runescape.com/runemetrics/quests?user=A%20B', fetchedAt: expect.any(String),
+            quests, counts: { total: 3, completed: 1, started: 1, notStarted: 1 } });
+        expect(upstream.isDone()).toBe(true);
+    });
+
+    it('returns a private journal as an execution error rather than a successful empty journal', async () => {
+        nock('https://apps.runescape.com').get('/runemetrics/quests').query({ user: 'TestPlayer' })
+            .reply(200, { error: 'PROFILE_PRIVATE' });
+        const { status, message } = await mcpFetch(handler, 'tools/call', { name: 'get_player_quests',
+            params: { name: 'get_player_quests', arguments: { username: 'TestPlayer' } } });
+        expect(status).toBe(200);
+        expect(message.error).toBeUndefined();
+        const result = message.result as { isError?: boolean; content: { text: string }[]; structuredContent?: unknown };
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toContain('unavailable or private');
+        expect(result.structuredContent).toBeUndefined();
+    });
+
     it.each([
         [true, 'get_item_details', 'get_item_price'], [false, 'get_item_details', 'get_item_price'],
         [true, 'get_price_series', 'get_item_graph'], [false, 'get_price_series', 'get_item_graph'],

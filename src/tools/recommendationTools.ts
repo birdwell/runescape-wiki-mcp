@@ -10,13 +10,13 @@ const names = z.array(z.string().trim().min(1).max(100)).max(100);
 export const recommendationInput = z.strictObject({
     goal: z.string().trim().min(1).max(300).describe('Desired RS3 outcome in plain language, e.g. best Mining quest or train Mining to level 70; not instructions to execute arbitrary tools.'),
     goalType: z.enum(['activity', 'quests', 'skill_training', 'unlock_progression']).optional()
-        .describe('Planner family; omission allows inference from the goal.'),
+        .describe('activity forces a general Wiki shortlist; quests compares unfinished journal quests; skill_training selects training milestones; unlock_progression builds unlock prerequisites. Omit to infer from goal. An unlock value overrides this selector.'),
     targetSkill: z.enum(RS3_SKILLS.filter(skill => skill !== 'Overall')).optional()
-        .describe('Skill focus for quest rewards or training; use an enumerated RS3 skill name.'),
+        .describe('Exact RS3 skill focus, overriding inferred focus for rewards or training. This does not select a planner; set goalType to force training or quest comparisons.'),
     targetLevel: z.number().int().min(1).max(120).optional()
-        .describe('Desired skill_training destination level, not the current level or an XP amount.'),
+        .describe('Destination level for skill_training only, not current level or XP. Overrides a level in goal; otherwise the next multiple of five above the current level is used, capped at 120. Other planners ignore this field.'),
     unlock: z.string().trim().min(1).max(100).optional()
-        .describe('Named unlock to plan, e.g. Invention.'),
+        .describe('Named unlock such as Invention or Prifddinas. Providing it forces unlock_progression even when goalType says otherwise. Supported evidence covers Invention and bounded PvM/quest-reward targets, not every game unlock.'),
     context: z.strictObject({
         username: z.string().trim().min(1).max(12).regex(/^[a-zA-Z0-9 _-]+$/).optional()
             .describe('RS3 display name for public hiscores and, for quest planning, the fresh RuneMetrics journal. Private journals cannot establish quest completion.'),
@@ -24,7 +24,7 @@ export const recommendationInput = z.strictObject({
             .describe('Account mode; public hiscores lookup uses normal when omitted, while the account mode remains listed as missing context.'),
         skills: z.partialRecord(z.enum(RS3_SKILLS.filter(skill => skill !== 'Overall')),
             z.number().int().min(1).max(120)).optional()
-            .describe('Current skill levels keyed by exact RS3 skill names; not target levels.'),
+            .describe('Current skill levels keyed by exact RS3 skill names; not targets. Caller levels override hiscores. Missing ranked levels may be fetched; unranked/missing skills remain unknown, not level one.'),
         skillExperience: z.partialRecord(z.enum(RS3_SKILLS.filter(skill => skill !== 'Overall')),
             z.number().int().min(0).max(200_000_000)).optional()
             .describe('Current total XP per skill, not XP to earn. Consistent exact XP supports training estimates; omitted XP can be filled from compatible public hiscores.'),
@@ -37,7 +37,7 @@ export const recommendationInput = z.strictObject({
         members: z.boolean().optional()
             .describe('Whether the player has membership. Omitted membership stays unknown, rather than assuming free-to-play or members.'),
         completedQuests: names.optional()
-            .describe('Relevant completed quest titles reported by the caller; a partial list is allowed.'),
+            .describe('Known completed quest titles; a partial list is allowed and absence does not mean unfinished. Fresh RuneMetrics status overrides conflicting caller claims. This list cannot replace the public journal required by quest comparisons.'),
         gear: names.optional()
             .describe('Relevant equipment the player owns; this is caller context, not a fetched inventory or bank.'),
         notes: z.string().trim().max(1000).optional()
@@ -51,7 +51,15 @@ export type RecommendationInput = z.infer<typeof recommendationInput>;
 export const recommendationTools: Tool[] = [{
     name: 'recommend_next_activity',
     title: 'Recommend Next RS3 Activity',
-    description: "Recommend RS3 activities, training plans or unlock paths. Use get_player_quests for journals, get_player_stats for levels, or search_wiki for references.\n\n- Planner: unlock overrides goalType, otherwise goalType overrides inference. targetSkill overrides inferred focus.\n- Training example: context.skills.Mining=52 defaults to 55; a goal-specified level overrides 55; targetLevel=70 overrides both. Quest-mode Mining instead compares quest rewards.\n- Context: caller levels override hiscores. Quests require a public username; its journal replaces completion claims. Other activities use shortlists; unknown eligibility remains conditional.\n- Setup: operator RUNESCAPE_RECOMMENDATIONS_ENABLED=true and TYPESAFE_API_KEY. Goal/account context is sent to TypeSafe.\n- Cost: up to 24 paid Jev calls for quests, three otherwise, including routing. No automatic retries, account changes or decision storage.\n- Timing: 55 seconds for routing/non-quest work, plus five minutes after quest routing. Invalid input/configuration or Jev failures return isError/text.\n- Outcomes: recommended=candidate, needs_context=missing facts, no_match=no supported option, goal_met=already satisfied. Check warnings and sources.",
+    description: 'Plan the next RS3 activity, training milestone or unlock prerequisite. Use get_player_quests for progress, get_player_stats for levels, get_wiki_entity_facts for one quest\'s facts, or search_wiki for references.\n' +
+        '- Routing: unlock overrides goalType, otherwise goalType overrides inference. targetSkill sets focus, not the planner.\n' +
+        '- Example: {"goal":"Train Mining","goalType":"skill_training","targetSkill":"Mining","targetLevel":70,"context":{"skills":{"Mining":52}}}. Without a target or goal-specified level, 52 defaults to 55.\n' +
+        '- Account: caller levels override hiscores; fresh journals override completion claims. Quest comparison needs a public context.username. Membership, gear and bank balances are not fetched.\n' +
+        '- Setup/privacy: operator RUNESCAPE_RECOMMENDATIONS_ENABLED=true and TYPESAFE_API_KEY. Goal/account context goes to TypeSafe; display-name lookups go to Jagex.\n' +
+        '- Cost: at most 24 paid Jev calls for quests, three otherwise, including routing. Repeated calls incur fresh charges. No automatic paid retries; rounds completed before an error may already be billed.\n' +
+        '- Timing/errors: 55 seconds for routing/non-quest work, plus five minutes for quest comparison. Invalid input/configuration or provider failures return isError/text. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.\n' +
+        '- Freshness: public Wiki reads cache five minutes or six hours by planner. Player journals and decisions are not cached; no game account changes.\n' +
+        '- Outcomes: needs_context may still include a conditional recommendation; use missingContext to clarify it. no_match means no supported option; goal_met refers to the selected target. Communicate warnings and source conditions.',
     inputSchema: z.toJSONSchema(recommendationInput, { target: 'draft-2020-12', io: 'input' }) as Tool['inputSchema'],
     outputSchema: {
         $schema: JSON_SCHEMA_2020_12,

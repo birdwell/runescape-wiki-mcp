@@ -23,7 +23,7 @@ export const playerTools: Tool[] = [
     {
         name: 'get_player_quests',
         title: 'Get Player Quest Journal',
-        description: "Read a public RS3 character's complete RuneMetrics quest journal. Use recommend_next_activity for paid advice or get_player_stats for skill levels.\n\n- username is the character's display name, not a Jagex login, account ID or quest name. There is no signed-in-player default: ask which character when the name is unknown.\n- Send {\"username\":\"A B\"}, not {\"username\":\"A%20B\"}. The server trims outer whitespace, preserves the supplied name and encodes it once. The server performs no alias or canonical-identity lookup; username in the result echoes that input.\n- No gameMode or quest/status selector applies. Filter the complete returned journal locally; there is no pagination.\n- Invalid names, private/unavailable or malformed journals return isError/text, not guessed completion. One fresh uncached RuneMetrics read has a 12-second default deadline. No Jev, key, login, account changes or journal storage.",
+        description: "Read a public RS3 character's complete RuneMetrics quest journal. Use recommend_next_activity for paid advice, get_player_stats for levels, or get_wiki_entity_facts for one quest's requirements/rewards.\n\n- username is the character's display name, not a Jagex login, account ID or quest name. No signed-in-player default exists; ask which character when unknown.\n- Send {\"username\":\"A B\"}, not {\"username\":\"A%20B\"}. The server trims outer whitespace and encodes the name once. The returned username echoes that input; no alias or canonical-identity lookup is performed.\n- No gameMode or quest/status selector applies. Filter the complete returned journal locally; there is no pagination. A quest's members flag does not establish current account membership.\n- Invalid names, private/unavailable or malformed journals return isError/text, not an empty journal or guessed progress.\n- Sends the display name to Jagex RuneMetrics for one fresh uncached read, with a 12-second default deadline and no automatic retry. No Jev, API key, login or game changes. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12, type: 'object',
             properties: { username: { type: 'string', minLength: 1, maxLength: 12, description: 'Exact RS3 player display name' } },
@@ -45,7 +45,7 @@ export const playerTools: Tool[] = [
                         questPoints: { type: 'integer', minimum: 0, description: 'Quest-point value reported by RuneMetrics' },
                     }, required: ['title', 'status', 'members', 'userEligible', 'questPoints'], additionalProperties: false },
                 },
-                counts: { type: 'object', properties: {
+                counts: { type: 'object', description: 'Counts over the returned journal: completed + started + notStarted equals total.', properties: {
                     total: { type: 'integer', minimum: 1, description: 'Number of returned journal entries' },
                     completed: { type: 'integer', minimum: 0, description: 'Entries with COMPLETED status' },
                     started: { type: 'integer', minimum: 0, description: 'Entries with STARTED status' },
