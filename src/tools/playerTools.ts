@@ -23,7 +23,7 @@ export const playerTools: Tool[] = [
     {
         name: 'get_player_quests',
         title: 'Get Player Quest Journal',
-        description: "Read the complete public RS3 RuneMetrics quest journal. Use recommend_next_activity for paid advice or get_player_stats for levels.\n\n- username selects one player's progress, not a quest filter. Unlike hiscores, no gameMode is selected: use the display name directly. Filter returned entries locally for one quest/status.\n- Pass A B with its literal space, not A%20B; pre-encoding changes the submitted name. Only outer whitespace is trimmed. Invalid lengths error before fetching rather than being shortened.\n- All entries return without pagination. Private, unavailable or malformed journals return isError/text, never guessed progress or an empty completion list.\n- One uncached RuneMetrics read has a 12-second default deadline. No Jev, key or login is needed; no account changes or journal storage occur.",
+        description: "Read a public RS3 character's complete RuneMetrics quest journal. Use recommend_next_activity for paid advice or get_player_stats for skill levels.\n\n- username is the character's display name, not a Jagex login, account ID or quest name. There is no signed-in-player default: ask which character when the name is unknown.\n- Send {\"username\":\"A B\"}, not {\"username\":\"A%20B\"}. The server trims outer whitespace, preserves the supplied name and encodes it once. The server performs no alias or canonical-identity lookup; username in the result echoes that input.\n- No gameMode or quest/status selector applies. Filter the complete returned journal locally; there is no pagination.\n- Invalid names, private/unavailable or malformed journals return isError/text, not guessed completion. One fresh uncached RuneMetrics read has a 12-second default deadline. No Jev, key, login, account changes or journal storage.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12, type: 'object',
             properties: { username: { type: 'string', minLength: 1, maxLength: 12, description: 'Exact RS3 player display name' } },
@@ -32,7 +32,7 @@ export const playerTools: Tool[] = [
         outputSchema: {
             $schema: JSON_SCHEMA_2020_12, type: 'object',
             properties: {
-                username: { type: 'string', description: 'Normalized caller display name' },
+                username: { type: 'string', description: 'Trimmed input echoed back; not a separate canonical-identity lookup' },
                 source: { type: 'string', format: 'uri', description: 'RuneMetrics journal request URL' },
                 fetchedAt: { type: 'string', format: 'date-time', description: 'UTC retrieval time for this uncached journal' },
                 quests: { type: 'array', minItems: 1, maxItems: 600,
