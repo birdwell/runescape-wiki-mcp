@@ -1,9 +1,12 @@
 // Item lookup and graph tools for RuneScape Wiki MCP Server
 
 import type { Tool } from '@modelcontextprotocol/server';
+import { dateProperty, filterPriceMap, parseDateRange } from '../dateRange.js';
 import { RS3_GE_API } from '../constants.js';
+import { fetchWeirdgloopSeries } from '../priceSeries.js';
+import { handleHistoryTool } from './historyTools.js';
 import { lookupItems, resolveItemId } from '../itemResolve.js';
-import { itemIdProperty, JSON_SCHEMA_2020_12, lookupOutputSchema, jagexObjectOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
+import { ITEM_SELECTOR, itemIdProperty, JSON_SCHEMA_2020_12, lookupOutputSchema, graphOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
 import { makeApiRequest, createSuccessResponse } from '../utils.js';
 import {
@@ -18,8 +21,7 @@ export const itemTools: Tool[] = [
     {
         name: 'lookup_item',
         title: 'Lookup Item',
-        description:
-            'Resolve an item name to a Grand Exchange ID and the latest guide or Weirdgloop price. Uses exact name match first, then wiki opensearch. Prefer this before get_item_price when you only know the name. This is not the live high/low feed.',
+        description: "Resolve tradeable RS3 names to GE IDs. Use search_wiki for quests, NPCs or guides; non-GE items cannot match here.\n\n- query=\"Abyssal whip\" tries an exact match; \"abyssal\" discovers alternatives. An exact match ends the search regardless of limit.\n- limit also bounds Wiki candidates checked against Weirdgloop. Non-GE candidates are discarded, so results can be fewer; increasing limit widens that screening. Values outside 1\u201310 error before fetching rather than being clamped.\n- Pass a chosen ID to get_item_price for current records, get_item_graph for history, or estimate_flip for profit math. No matches is a tool error; optional price/volume fields may be absent and samples lag activity.\n- Reads are uncached and need no credentials. HTTP defaults to 60 requests/IP/minute; wait for Retry-After after 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -44,9 +46,8 @@ export const itemTools: Tool[] = [
     },
     {
         name: 'get_item_graph',
-        title: 'Get Item Price Graph',
-        description:
-            'Read the public Jagex Grand Exchange daily price series for one item, about the last 180 days. Pass exactly one of itemId or name. No auth and no side effects. Use summarize_price_history for min, max, and average instead of the raw series.',
+        title: 'Get Item Price Time Series',
+        description: "Read dated RS3 price history for one known GE item. Resolve names with lookup_item; use get_item_price for current records or candidate comparisons.\n\n- itemId=4151 means Abyssal whip, not a quantity. For observations, choose Jagex for provider averages over roughly 180 days or Weirdgloop for daily samples with reported volume over roughly 90 days.\n- from/to include whole UTC days. Equal bounds cover that day; omitted bounds retain all available history. Requested dates cannot extend retention.\n- statistics computes min/max, unweighted mean and start-to-end change from a fixed 90-day Weirdgloop fetch. For example, days=7 takes the last seven usable samples even if missing dates make them span more than a week.\n- Each call returns its full retained series or statistics in one bounded response; there is no cursor or next page. Unavailable observation dates return empty data; unusable statistics history returns an error. Invalid bounds fail before fetching.\n- Reads are uncached and require no credentials. Provider errors surface without switching sources or retrying automatically. HTTP defaults to 60 requests/IP/minute; wait for Retry-After after 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -60,10 +61,25 @@ export const itemTools: Tool[] = [
                     minLength: 1,
                     description: 'Item name (provide itemId or name)',
                 },
+                source: { type: 'string', enum: ['jagex', 'weirdgloop'], default: 'jagex',
+                    description: 'Provider/shape: Jagex daily+average maps (default), or raw Weirdgloop daily samples' },
+                from: { ...dateProperty, description: 'First UTC date to include; omitted means start of available history' },
+                to: { ...dateProperty, description: 'Last UTC date to include; omitted means end of available history' },
             },
+            ...ITEM_SELECTOR,
             additionalProperties: false,
         },
-        outputSchema: jagexObjectOutputSchema,
+        outputSchema: { ...graphOutputSchema,
+            properties: { ...graphOutputSchema.properties,
+                itemId: itemIdProperty,
+                source: { const: 'weirdgloop', description: 'Present for the Weirdgloop sample-array variant' },
+                samples: { type: 'array', description: 'Chronological usable observations; malformed timestamp/price rows are discarded, unreported volume omitted, and an entirely malformed nonempty feed is an error', items: { type: 'object', properties: {
+                    timestamp: { type: 'integer', minimum: 0, description: 'UTC Unix timestamp in milliseconds, not seconds' },
+                    price: { type: 'number', minimum: 0, description: 'Observed guide price in coins' },
+                    volume: { type: 'number', minimum: 0, description: 'Provider-reported daily volume, when available' },
+                }, required: ['timestamp', 'price'], additionalProperties: false } },
+            }, required: [], oneOf: [{ required: ['daily', 'average'] }, { required: ['itemId', 'source', 'samples'] }],
+        },
         ...READ_ONLY_TOOL,
     },
 ];
@@ -95,13 +111,35 @@ export async function handleItemTool(name: string, args: ToolArguments): Promise
         }
 
         case 'get_item_graph': {
-            const itemId = await resolveItemId(args, ['itemId', 'name']);
+            const view = args.view === undefined ? 'observations' : args.view;
+            if (view === 'statistics') {
+                const extra = rejectUnknownKeys(args, ['itemId', 'name', 'view', 'source', 'days']);
+                if (extra) return extra;
+                if (args.source !== undefined && args.source !== 'weirdgloop') return validationError('statistics uses Weirdgloop only');
+                return handleHistoryTool('summarize_price_history', { itemId: args.itemId, name: args.name, days: args.days });
+            }
+            if (view !== 'observations') return validationError('view must be observations or statistics');
+            if (args.days !== undefined) return validationError('days is valid only with view=statistics; use from/to for observations');
+            const source = args?.source === undefined ? 'jagex' : args.source;
+            if (source !== 'jagex' && source !== 'weirdgloop') return validationError('source must be jagex or weirdgloop');
+            const range = parseDateRange(args?.from, args?.to);
+            if (isToolResponse(range)) return range;
+            const itemId = await resolveItemId(args, ['itemId', 'name', 'from', 'to', 'source', 'view']);
             if (isToolResponse(itemId)) {
                 return itemId;
             }
 
+            if (source === 'weirdgloop') {
+                return createSuccessResponse(`Daily Weirdgloop observations for item ${itemId}`,
+                    await fetchWeirdgloopSeries(itemId, range));
+            }
             const data = await makeApiRequest(`${RS3_GE_API}/graph/${itemId}.json`);
-            return createSuccessResponse(`Price Graph for Item ${itemId}`, data);
+            const filtered = args?.from === undefined && args?.to === undefined ? data : {
+                ...data,
+                daily: filterPriceMap(data.daily ?? {}, range),
+                average: filterPriceMap(data.average ?? {}, range),
+            };
+            return createSuccessResponse(`Price Graph for Item ${itemId}`, filtered);
         }
 
         default:

@@ -1,15 +1,19 @@
 // Price / catalogue tools for RuneScape Wiki MCP Server
 
 import type { Tool } from '@modelcontextprotocol/server';
+import { handleCompareTool } from './compareTools.js';
 import { ITEM_CATEGORIES } from '../categories.js';
 import { RS3_GE_API } from '../constants.js';
+import { batchOutputSchema, MAX_BATCH_ITEMS, parseBatch, runBatch } from '../batch.js';
+import { fetchLiveItemData } from '../livePrices.js';
+import { fetchGeInfo } from '../geInfo.js';
 import { resolveItemId } from '../itemResolve.js';
 import {
     EMPTY_OBJECT_SCHEMA,
+    itemDetailOutputSchema,
     READ_ONLY_TOOL,
     categoryProperty,
     itemIdProperty,
-    jagexObjectOutputSchema,
     JSON_SCHEMA_2020_12,
 } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
@@ -20,6 +24,8 @@ import {
     rejectUnknownKeys,
     requireAlpha,
     requireCategory,
+    requireInteger,
+    validationError,
 } from '../validation.js';
 
 const nameOrIdProperties = {
@@ -34,35 +40,108 @@ const nameOrIdProperties = {
     },
 };
 
+const itemBatchOutput = batchOutputSchema(itemIdProperty, itemDetailOutputSchema);
+
+const geStatusSchema = {
+            $schema: JSON_SCHEMA_2020_12,
+            type: 'object',
+            properties: {
+                lastConfigUpdateRuneday: { type: 'integer', description: 'Upstream RuneDay counter for catalogue configuration update' },
+                lastConfigUpdateDate: { type: 'string', format: 'date', description: 'Configuration UTC date derived from RuneDay' },
+                configurationAgeDays: { type: 'integer', description: 'UTC calendar days since configuration update; negative for a future upstream date' },
+                fetchedAt: { type: 'string', format: 'date-time', description: 'Server retrieval time, not a price update timestamp' },
+                categoryCount: { type: 'integer', description: 'Number of canonical GE categories' },
+                priceFreshness: { const: 'not_reported', description: 'Configuration metadata does not report item-price freshness' },
+            },
+            required: ['lastConfigUpdateRuneday', 'lastConfigUpdateDate', 'configurationAgeDays', 'fetchedAt', 'categoryCount', 'priceFreshness'],
+            additionalProperties: true,
+        };
+
+const geCategoryCountsSchema = {
+            $schema: JSON_SCHEMA_2020_12,
+            type: 'object',
+            properties: {
+                types: { type: 'array', items: {} },
+                alpha: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            letter: { type: 'string', description: 'Starting letter, or # for numbers' },
+                            items: { type: 'integer', description: 'Number of catalogue items in this letter group' },
+                        },
+                        required: ['letter', 'items'],
+                    },
+                },
+            },
+            required: ['types', 'alpha'],
+            additionalProperties: true,
+        };
+
+const geCategoriesSchema = {
+            $schema: JSON_SCHEMA_2020_12,
+            type: 'object',
+            properties: {
+                categories: {
+                    type: 'array',
+                    description: 'All 44 category references, sorted by ID',
+                    items: {
+                        type: 'object',
+                        properties: { id: categoryProperty, name: { type: 'string' } },
+                        required: ['id', 'name'],
+                        additionalProperties: false,
+                    },
+                },
+            },
+            required: ['categories'],
+            additionalProperties: false,
+        };
+
 export const priceTools: Tool[] = [
     {
         name: 'get_item_price',
-        title: 'Get Item Price',
-        description:
-            'Get the Jagex Grand Exchange guide price, trend, and examine text for an item. Guide prices lag the live market. Pass exactly one of itemId or name.',
+        title: 'Get Item Details and Reported Trades',
+        description: "Read current RS3 catalogue records or compare candidate snapshots. Resolve names with lookup_item; use get_item_graph for dated history and estimate_flip for profit calculations.\n\n- records reads Jagex identity, examine/type/membership, icon URLs and guide prices. itemId=4151 means Abyssal whip. Arrays always return results[] in caller order, including errors at failed IDs, even for one entry.\n- includeLiveData adds reported trades and numeric Wiki facts without replacing guide fields. Trades are not executable offers; buy limits are not remaining quota.\n- comparison reads compact Weirdgloop daily price/volume snapshots for itemIds in caller order. Missing metrics remain absent and unresolved IDs become error rows. It does not rank the whole GE.\n- Record batches retain successful rows and error if all fail. At most two reads run concurrently; 429 stops queued reads. Invalid selectors fail before fetching.\n- Guide/comparison reads are uncached and lag activity. Trades cache for 30 seconds and facts for 10 minutes; cache hits preserve fetchedAt. No credentials are required. HTTP defaults to 60 requests/IP/minute; wait for Retry-After after 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
-            properties: nameOrIdProperties,
+            properties: { ...nameOrIdProperties,
+                includeLiveData: { type: 'boolean', default: false,
+                    description: 'Add RS3 API v2 last-reported trade high/low prices and numeric buy-limit/alchemy facts; preserves Jagex guide-price fields' },
+                itemIds: { type: 'array', minItems: 1, maxItems: MAX_BATCH_ITEMS, uniqueItems: true,
+                    items: itemIdProperty, description: 'Known GE IDs for a catalogue metadata batch; exclusive with itemId/name' },
+            },
+            examples: [{ itemId: 4151 }, { name: 'Abyssal whip' }, { itemIds: [4151, 536] }, { itemId: 4151, includeLiveData: true }],
+            oneOf: [{ required: ['itemId'] }, { required: ['name'] }, { required: ['itemIds'] }],
             additionalProperties: false,
         },
-        outputSchema: jagexObjectOutputSchema,
+        outputSchema: { ...itemDetailOutputSchema,
+            properties: { ...itemDetailOutputSchema.properties, ...itemBatchOutput.properties },
+            required: [], oneOf: [{ required: itemDetailOutputSchema.required }, { required: itemBatchOutput.required }] },
         ...READ_ONLY_TOOL,
     },
     {
         name: 'get_ge_info',
-        title: 'Grand Exchange Info',
-        description:
-            'Read Grand Exchange database metadata, including lastConfigUpdateRuneday. This is not item prices; use get_item_price or lookup_item for those. Takes no arguments. Public Jagex endpoint, no auth.',
-        inputSchema: EMPTY_OBJECT_SCHEMA,
-        outputSchema: jagexObjectOutputSchema,
+        title: 'Read GE Catalogue Metadata',
+        description: "Read RS3 GE catalogue metadata. Do not use this for item prices: use get_item_price. For entries use browse_items; for Wiki categories use list_wiki_category_members.\n\n- view=status reports configuration date/age, not price freshness.\n- view=categories lists all 44 built-in IDs; duplicate names identify separate groups.\n- view=category_counts requires category 0-43, e.g. 24 for high-level melee weapons. Category 0 is one Miscellaneous group, not an all-groups sentinel. The response counts entries by starting letter (# means numbers), not stock or offers.\n\ncategory is rejected outside category_counts; it cannot filter the full list. categories needs no network; other views make one uncached Jagex read. No credentials required. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
+        inputSchema: { $schema: JSON_SCHEMA_2020_12, type: 'object', properties: {
+            view: { type: 'string', enum: ['status', 'categories', 'category_counts'], default: 'status', description: 'Metadata view; omit for the original configuration status result' },
+            category: categoryProperty,
+        }, oneOf: [
+            { properties: { view: { enum: ['status', 'categories'] } }, not: { required: ['category'] } },
+            { properties: { view: { const: 'category_counts' } }, required: ['view', 'category'] },
+        ], additionalProperties: false },
+        outputSchema: { $schema: JSON_SCHEMA_2020_12, anyOf: [geStatusSchema, geCategoriesSchema, geCategoryCountsSchema] },
         ...READ_ONLY_TOOL,
     },
     {
         name: 'get_category_info',
         title: 'Category Info',
         description:
-            'Get letter counts for a Grand Exchange category. Use get_all_categories for IDs.',
+            "Count entries under every starting letter of one RS3 catalogue category, to choose nonempty groups before browse_items. Use lookup_item for name search.\n" +
+            "- Get category from get_all_categories. It selects one catalogue group, not an item or starting letter: 24 means high-level melee weapons, and 0 is one Miscellaneous group. There is no all-categories sentinel; query each desired ID separately.\n" +
+            "- One call returns all alpha letters with item counts; no per-letter argument is needed. # denotes numeric names. These count distinct catalogue entries, not stock or available offers.\n" +
+            "- Each call makes one public Jagex request without auth or a local cache. Jagex controls snapshot freshness; upstream failures return tool errors. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -72,20 +151,26 @@ export const priceTools: Tool[] = [
             required: ['category'],
             additionalProperties: false,
         },
+        outputSchema: geCategoryCountsSchema,
         ...READ_ONLY_TOOL,
     },
     {
         name: 'get_all_categories',
         title: 'All Categories',
-        description: 'List all RS3 Grand Exchange category IDs and names (0-43).',
+        description:
+            'List all 44 RS3 Grand Exchange category IDs and names to choose a catalogue group. ' +
+            'Call with {} and no filters; returns categories sorted by ID from a built-in list, without network access or auth.\n\n' +
+            'Use a returned ID with get_category_info for letter counts, then browse_items for entries. ' +
+            'For item-name search use lookup_item. Category IDs identify groups, not items; duplicate category names have distinct IDs.',
         inputSchema: EMPTY_OBJECT_SCHEMA,
+        outputSchema: geCategoriesSchema,
         ...READ_ONLY_TOOL,
+        annotations: { ...READ_ONLY_TOOL.annotations, openWorldHint: false },
     },
     {
         name: 'browse_items',
         title: 'Browse Catalogue Items',
-        description:
-            'Browse the Grand Exchange catalogue by category and starting letter. This is NOT a name search — use lookup_item for that. Use # for numeric names.',
+        description: "List GE items within one numeric category. Use list_wiki_category_members for Wiki Category: titles, lookup_item for names, or get_item_price for individual records.\n\n- Discover IDs with get_ge_info view=categories and nonempty letters with view=category_counts. IDs 0 and 42 both say Miscellaneous but identify separate groups.\n- {\"category\":24,\"alpha\":\"#\",\"page\":2} selects the second numeric-name page of high-level melee weapons. Pass literal #, not %23; the server encodes it.\n- Restart page at 1 when category or alpha changes. Stop on empty items; isError signals failure rather than completion.\n- Jagex total counts the category, not the letter. Guide prices lag activity.\n- Each call makes one uncached Jagex read without credentials. HTTP defaults to 60 requests/IP/minute; wait for Retry-After after 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -106,6 +191,16 @@ export const priceTools: Tool[] = [
             required: ['category'],
             additionalProperties: false,
         },
+        outputSchema: {
+            $schema: JSON_SCHEMA_2020_12,
+            type: 'object',
+            properties: {
+                total: { type: 'integer', description: 'Jagex catalogue total' },
+                items: { type: 'array', items: { type: 'object', additionalProperties: true } },
+            },
+            required: ['items'],
+            additionalProperties: true,
+        },
         ...READ_ONLY_TOOL,
     },
 ];
@@ -113,7 +208,30 @@ export const priceTools: Tool[] = [
 export async function handlePriceTool(name: string, args: ToolArguments): Promise<ToolResponse> {
     switch (name) {
         case 'get_item_price': {
-            const itemId = await resolveItemId(args, ['itemId', 'name']);
+            const view = args.view === undefined ? 'records' : args.view;
+            if (view === 'comparison') {
+                const extra = rejectUnknownKeys(args, ['view', 'itemIds', 'names', 'includeLiveData']);
+                if (extra) return extra;
+                if (args.includeLiveData !== undefined && args.includeLiveData !== false) return validationError('includeLiveData is available only for records');
+                return handleCompareTool('compare_items', { ...(args.itemIds === undefined ? {} : { itemIds: args.itemIds }), ...(args.names === undefined ? {} : { names: args.names }) });
+            }
+            if (view !== 'records') return validationError('view must be records or comparison');
+            const unexpected = rejectUnknownKeys(args, ['itemId', 'name', 'itemIds', 'includeLiveData', 'view']);
+            if (unexpected) return unexpected;
+            if (args?.includeLiveData !== undefined && typeof args.includeLiveData !== 'boolean') {
+                return validationError('includeLiveData must be a boolean');
+            }
+            const includeLiveData = args?.includeLiveData === true;
+            if (args?.itemIds !== undefined) {
+                if (args?.itemId !== undefined || args?.name !== undefined) {
+                    return validationError('Provide exactly one of itemId, name or itemIds');
+                }
+                const ids = parseBatch(args.itemIds, 'itemIds', (value, label) =>
+                    requireInteger(value, label, { minimum: 0 }), true);
+                if (isToolResponse(ids)) return ids;
+                return runBatch('Item catalogue details', ids, itemId => handlePriceTool(name, { itemId, includeLiveData }));
+            }
+            const itemId = await resolveItemId(args, ['itemId', 'name', 'includeLiveData', 'view']);
             if (isToolResponse(itemId)) {
                 return itemId;
             }
@@ -121,15 +239,26 @@ export async function handlePriceTool(name: string, args: ToolArguments): Promis
             const data = await makeApiRequest(
                 `${RS3_GE_API}/catalogue/detail.json?item=${itemId}`
             );
-            return createSuccessResponse(`Item Detail for ${itemId}`, data);
+            if (!data?.item || typeof data.item !== 'object' || Array.isArray(data.item)) {
+                throw new Error(`Jagex returned no catalogue item for ${itemId}`);
+            }
+            const enrichment = includeLiveData ? await fetchLiveItemData(itemId) : {};
+            const detail = { ...data, item: { ...data.item, ...enrichment,
+                wikiUrl: `https://runescape.wiki/w/Special:Lookup?type=item&id=${itemId}` } };
+            return createSuccessResponse(`Item Detail for ${itemId}`, detail);
         }
 
         case 'get_ge_info': {
-            const unexpected = rejectUnknownKeys(args, []);
+            const unexpected = rejectUnknownKeys(args, ['view', 'category']);
             if (unexpected) {
                 return unexpected;
             }
-            const data = await makeApiRequest(`${RS3_GE_API}/info.json`);
+            const view = args.view === undefined ? 'status' : args.view;
+            if (!['status', 'categories', 'category_counts'].includes(view as string)) return validationError('view must be status, categories or category_counts');
+            if (view === 'category_counts') return handlePriceTool('get_category_info', { category: args.category });
+            if (args.category !== undefined) return validationError('category is valid only with view=category_counts');
+            if (view === 'categories') return handlePriceTool('get_all_categories', {});
+            const data = await fetchGeInfo();
             return createSuccessResponse('Grand Exchange Database Information', data);
         }
 
@@ -154,7 +283,7 @@ export async function handlePriceTool(name: string, args: ToolArguments): Promis
             if (unexpected) {
                 return unexpected;
             }
-            return createSuccessResponse('All Item Categories', ITEM_CATEGORIES);
+            return createSuccessResponse('All Item Categories', ITEM_CATEGORIES, { categories: ITEM_CATEGORIES });
         }
 
         case 'browse_items': {

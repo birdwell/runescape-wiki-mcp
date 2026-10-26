@@ -8,11 +8,11 @@
 
 **Ask what it's worth, whether the flip clears tax, and what to train next.**
 
-Connect Claude, ChatGPT, Cursor, and other assistants to RuneScape 3 Grand Exchange guide prices, 7–90 day history, flip math after the 2% tax, normal-mode hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.
+Connect Claude, ChatGPT, Cursor, and other assistants to RuneScape 3 Grand Exchange guide prices, 7–90 day history, flip math after the 2% tax, public RS3 hiscores, and wiki pages. RS3 only. Unofficial, and not affiliated with Jagex or the RuneScape Wiki.
 
 An independent [Birdwell Labs](https://birdwellabs.com) project. No Jagex or Weird Gloop approval is claimed. [Support and rights concerns](mailto:support@birdwellabs.com) · [Permissions and source review](docs/permissions.md).
 
-Prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Live high and low prices are a separate feed at [prices.runescape.wiki](https://prices.runescape.wiki/rs).
+Default prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Ask for reported instant-buy/sell prices to include the separate RS3 trade feed at [prices.runescape.wiki](https://prices.runescape.wiki/rs).
 
 [![Claude setup](https://img.shields.io/badge/Claude-Setup-D97757?style=for-the-badge)](#claude-setup)
 [![ChatGPT setup](https://img.shields.io/badge/ChatGPT-Setup-087F5B?style=for-the-badge)](#chatgpt-setup)
@@ -27,7 +27,7 @@ Prices are Jagex guide prices and Weirdgloop history. They lag the in-game marke
 
 The server answers questions about items you name. It does not rank the whole Grand Exchange.
 
-Price questions use `lookup_item`, `get_item_price`, `compare_items`, `summarize_price_history`, and `estimate_flip`. Stats questions use `get_player_stats` on the normal hiscores; the assistant turns those levels into a training suggestion. Wiki questions use `search_wiki`, then `get_wiki_page_content`.
+Price questions use `lookup_item`, `get_item_details` current-data views, `get_price_series` history views, and `estimate_flip`. Stats questions use `get_player_stats` on the selected normal, ironman or hardcore board; the assistant turns those levels into a training suggestion. Wiki questions use `search_wiki`, then `get_wiki_page_content`.
 
 Wiki pages return source links by default. Article text is available only for reviewed revisions; the server does not supply an article summary when text is withheld.
 
@@ -119,20 +119,19 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 ## Tools
 
 - `lookup_item` — Resolve an item name to a Grand Exchange ID and the latest guide or Weirdgloop price. Start here when you only know the name.
-- `get_item_price` — Jagex guide price, trend, and examine text for one item, by `itemId` or `name`. Guide prices lag the live market.
-- `get_item_graph` — About 180 days of daily prices, by `itemId` or `name`.
-- `summarize_price_history` — Min, max, average, change, and volume over 7–90 days (default 30). History lags the live market.
-- `compare_items` — Compare up to 10 items by `names` or `itemIds`.
-- `estimate_flip` — Estimated flip profit after the RS3 2% Grand Exchange sales tax. Default prices lag the live market.
+- `get_item_details` — Single/batch Jagex catalogue records and guide prices, with optional recorded-trade and numeric-fact enrichment.
+- `get_price_series` — Explicit observations/statistics views over historical prices; ID-based preferred discovery.
+- `estimate_flip` — Tax-adjusted flip profit, with optional remaining-quota and assumed-duration scenarios. Default prices lag the live market.
 - `browse_items` — Browse one Grand Exchange category by starting letter. This is not a name search.
-- `get_all_categories` — Category IDs 0–43 and their names.
-- `get_category_info` — How many items sit under each letter in one category.
-- `get_ge_info` — Grand Exchange database metadata (`lastConfigUpdateRuneday`), not prices.
-- `get_player_quests` — Complete public RuneMetrics quest journal, including completed/started/not-started status and Jagex eligibility. No Jev key required.
-- `get_player_stats` — RS3 hiscores for a username. `gameMode: normal` works. Ironman and hardcore currently return HTTP 404 from Jagex.
+- `get_ge_info` — Catalogue metadata: default status, `view: "categories"` for IDs/names, or `view: "category_counts"` with `category` for letter counts.
+- `get_player_stats` — RS3 hiscores for a username. `gameMode` selects normal, ironman or hardcore. A 404 means the player was not found on that board; no other board is substituted.
 - `search_wiki` — Search RuneScape Wiki titles and source links when the page title is unknown.
 - `get_wiki_page_content` — Source reference following redirects; text only for a reviewed revision and matching content hash.
-- `recommend_next_activity` — Opt-in Jev prototype for goal-based suggestions with wiki evidence, account context, alternatives and unknowns. Requires server-side configuration below; adding the source does not enable it on the hosted endpoint.
+- `get_wiki_entity_facts` — Structured monster combat statistics and quest metadata.
+- `list_wiki_category_members` — Direct Wiki category members with category-bound continuation.
+- `get_wiki_drop_table` — Indexed drop references, quantities, rolls and listed rarities; notes are excluded.
+- `get_player_quests` — Complete public RuneMetrics journal with quest statuses and Jagex eligibility; no Jev key needed.
+- `recommend_next_activity` — Opt-in paid goal-based planning using account context and Wiki evidence; requires the server configuration below.
 
 ### Try the Jev recommendation tool locally
 
@@ -283,10 +282,18 @@ to consume the operator's paid Jev quota.
 ```
 lookup_item { query: "abyssal whip" }
   → id 4151, price …
-get_item_price { itemId: 4151 }   # or { name: "Abyssal whip" }
-summarize_price_history { name: "Abyssal whip", days: 30 }
+get_item_details { itemId: 4151 }
+get_price_series { itemId: 4151, view: "statistics", days: 30 }
 search_wiki { query: "abyssal whip special attack" }
 ```
+
+Optional history bounds use UTC calendar dates, for example `get_price_series { "itemId": 4151, "from": "2026-10-01", "to": "2026-10-07" }`. Bounds filter available samples; they do not extend Jagex history.
+
+For flip scenarios, `buyLimitRemaining` is your remaining quota in the current window. The result separates quantity/profit within that quota from the full requested quantity. `fillTimeMinutes` is your assumed round-trip time for the full request, including any quota waits; it yields an assumed profit per hour. These inputs are assumptions, not observed limits or predicted fills.
+
+Batch catalogue metadata with the `get_item_details` argument `itemIds` (GE IDs returned by `lookup_item`), or batch wiki references with `get_wiki_page_content { "pages": ["Abyssal whip", "Grand Exchange"] }`. Each accepts 1–10 entries, preserves order and returns per-row `data` or `error`, plus success/failure counts. At most two upstream requests run concurrently; a wholly failed batch is a tool error. An upstream 429 stops queued requests and preserves Retry-After guidance. Single-item/page calls keep their existing response shape. Wiki reviews apply separately to every page.
+
+`get_ge_info` reports the catalogue configuration RuneDay, its derived UTC date and age, retrieval time and canonical category count. These describe catalogue configuration, not item-price freshness; `priceFreshness` is `not_reported`. RuneDate conversion uses the [documented UTC epoch](https://runescape.wiki/w/Runedate).
 
 ## Resources
 
@@ -356,9 +363,63 @@ src/
 
 - **RS3 only**, not OSRS (different IDs and endpoints).
 - Guide prices and Weirdgloop history lag the live market. Pass your own buy and sell prices to `estimate_flip` when you have them.
-- Ironman/hardcore `index_lite` endpoints are documented by Jagex but currently return HTTP 404; the tool reports that instead of silently returning normal-mode data.
+- Normal, ironman and hardcore `index_lite` endpoints are supported. A player missing from the selected board returns a 404 tool error without falling back to another board.
 - Smithery hosts should rebuild the server card after tool changes so the published schema matches this README.
 
 ## License
 
 Original software: MIT. Third-party content retains its own licenses and rights; see [Attribution and third-party content](#attribution-and-third-party-content). Unofficial; not affiliated with Jagex or the RuneScape Wiki.
+
+Raw history: `get_price_series` defaults to Jagex daily/average maps. Set `source: "weirdgloop"` for chronological daily `samples` with Unix-millisecond timestamps, prices and available volume. Inclusive UTC `from`/`to` bounds apply to either provider. Use `view: "statistics"` for computed statistics.
+
+Wiki search defaults to articles. Query prefixes such as `prefix:Category:Weapons` select other Wiki namespaces. Search returns references only; page text remains subject to the existing exact revision/content review policy.
+
+Catalogue records include `item.wikiUrl`, an official Wiki item-ID lookup link that redirects to the article. This does not fetch or reproduce article text.
+
+### Reported trades and numeric item facts
+
+`get_item_details { "itemId": 4151, "includeLiveData": true }` adds `item.liveTrades` (last reported instant-buy/high and instant-sell/low transactions) and `item.wikiFacts` (published buy-limit cap, alchemy values and base value). The flag also works with `itemIds` batches. Default Jagex guide-price fields stay unchanged.
+
+This uses the [RS3 API v2](https://runescape.wiki/w/RuneScape:Real-time_Prices), not the OSRS API or the obsolete RS3 v1 path. Trade timestamps are Unix seconds. Missing sides remain null; recorded trades are not an order book or guaranteed executable offers. A published buy limit does not reveal a player's remaining quota.
+
+Public trade snapshots cache for 30 seconds and the shared numeric mapping for 10 minutes per server process, with concurrent requests coalesced and at most 512 cached item snapshots. `fetchedAt` records the original retrieval time on cache hits. Only numeric mapping facts are exposed; mapping examine text, names and media are discarded. Wiki article text still requires the existing per-revision/content review.
+
+### Structured monster and quest facts
+
+`get_wiki_entity_facts { "page": "Abyssal demon", "kind": "monster" }` returns indexed numeric combat statistics. `kind: "quest"` returns quest IDs, membership, controlled difficulty/type labels and normalized release dates. Discover titles with `search_wiki`. Redirects resolve before querying; `limit` (1–10, default 5) caps variants, and `truncated` signals additional indexed rows. A mismatched page/kind is an error. Entity IDs are not GE item IDs.
+
+This tool queries fixed, bounded datasets with title values kept inside data literals. It never fetches article prose, images or narrative summaries. Returned references identify the page/variant; attribution links identify the source without inferring an article-content license. The existing exact revision/hash policy still governs `get_wiki_page_content` text.
+
+### Discovery names and legacy calls
+
+Discovery groups current records and candidate comparisons under `get_item_details`, and dated observations and statistics under `get_price_series`. Existing calls to `get_item_price`, `get_item_graph`, `compare_item_prices`, `compare_items` and `summarize_price_history` remain accepted with the same arguments and results. Aliases are not duplicated in the 14-tool discovery list.
+
+Clients or gateways with tool-name allowlists may need the new discovery names enabled. The connector ID and hosted endpoint remain the same. No legacy call name is removed.
+
+### Wiki categories and indexed drops
+
+`list_wiki_category_members { "category": "Category:Weapons", "limit": 20 }` returns direct member titles/IDs/namespace links. Pass its opaque `nextCursor` with the same category to continue. This does not recursively expand subcategories or fetch article bodies/images. Empty/missing categories can both return an empty set; concurrent Wiki edits can move page boundaries.
+
+`get_wiki_drop_table { "page": "Abyssal demon", "limit": 20 }` returns indexed item references, quantity bounds, rolls and listed probabilities or controlled rarity labels. Unknown facts remain null. Use `nextOffset` to continue; optional `variant` must be an exact `sourceReference` from that article. Item references are not GE IDs: resolve them with `lookup_item`.
+
+Drop facts come from the RS3 `dropsline` structured index. Editorial notes and alternative-rate annotations are discarded; `hasOmittedAnnotations` flags their presence. Listed probabilities describe individual rows, not an unconditional combined loot model. Follow `sourceUrl` for conditions, nested tables and source context. The exact revision/hash review gate for article text remains unchanged.
+
+### Catalogue metadata views
+
+`get_ge_info {}` preserves the original configuration-status response. Use `{ "view": "categories" }` to list GE IDs/names, or `{ "view": "category_counts", "category": 24 }` to choose nonempty starting letters before `browse_items`. Category IDs identify groups, not items; their entry counts are not available stock. These views each return their corresponding existing result shape.
+
+Legacy `get_all_categories {}` and `get_category_info { "category": 24 }` calls remain accepted with unchanged results, alongside the pricing compatibility calls. The two catalogue helpers are no longer duplicated in discovery. All existing call names remain supported; the published surface has 14 tools.
+
+Wiki attribute discovery uses existing classification queries, e.g. `search_wiki { "query": "incategory:\"Novice quests\"" }`. To traverse a category subtree, call `list_wiki_category_members` again on returned namespace-14 member titles; keep each category's cursor separate.
+
+### Explicit history views and preferred ID inputs
+
+Fresh discovery uses `lookup_item` as the name-resolution step. Pass its chosen GE ID to records, history, comparison and flip tools. Legacy name selectors—including `compare_items`/`compare_item_prices` name arrays—remain accepted by the server with unchanged results, but are not duplicated in the preferred schemas.
+
+`get_price_series { "itemId": 4151 }` preserves the original observation response. `view: "observations"` supports Jagex (default) or Weirdgloop plus UTC `from`/`to` bounds. `view: "statistics"` uses Weirdgloop and optional `days` (default 30 trailing usable samples); it rejects Jagex and calendar-date bounds. Use one mode per call. The legacy `summarize_price_history` call remains accepted and returns exactly the same result as the statistics view.
+
+Strict gateways or clients validating against fresh discovery must use the preferred ID-based schemas and history views. Compatibility names/selectors remain callable on the server for older clients; this does not bypass a gateway's own schema or allowlist policy.
+
+### Current-data views
+
+`get_item_details { "itemId": 4151 }` preserves the original catalogue-record response. Use `view: "records"` for single/batch Jagex records and optional recorded-trade enrichment. Use `{ "view": "comparison", "itemIds": [4151,536] }` for compact Weirdgloop daily snapshots; this view rejects `itemId` and live enrichment. Legacy `compare_item_prices` and `compare_items` calls remain accepted with unchanged results, including their older name-array selectors. They are no longer duplicated in the 14-tool discovery list.

@@ -2,11 +2,12 @@
 
 import type { Tool } from '@modelcontextprotocol/server';
 import { createHash } from 'node:crypto';
+import { batchOutputSchema, MAX_BATCH_ITEMS, parseBatch, runBatch } from '../batch.js';
 import { RUNESCAPE_WIKI_API, WIKI_LICENSING_URL } from '../constants.js';
 import { findWikiContentReview, type WikiContentReview } from '../wikiContentPolicy.js';
 import { JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { ToolArguments, ToolResponse } from '../types.js';
-import { makeApiRequest, createSuccessResponse } from '../utils.js';
+import { ApiRequestError, makeApiRequest, createSuccessResponse } from '../utils.js';
 import {
     isToolResponse,
     optionalInteger,
@@ -75,12 +76,17 @@ const wikiPageOutputSchema = {
     additionalProperties: false,
 };
 
+const wikiBatchOutput = batchOutputSchema({ type: 'string' }, wikiPageOutputSchema);
+
 export const wikiTools: Tool[] = [
     {
         name: 'search_wiki',
-        title: 'Search Wiki',
+        title: 'Search Wiki Pages',
         description:
-            'Search RuneScape Wiki titles and source links without copying article snippets. Read-only. Use when the page title is unknown. For Grand Exchange prices, use lookup_item instead.',
+            "Find RS3 Wiki sources for items, NPCs/monsters, quests and guides. Use get_wiki_page_content for reviewed text/page references, lookup_item for GE identities or get_item_price for catalogue records.\n\n" +
+            "query accepts raw Wiki syntax; the server URL-encodes it. \"Abyssal demon\" \"drop\" requires both phrases; intitle:\"Cook's Assistant\" focuses titles. prefix:Category:Weapons selects Wiki categories instead of articles.\n\n" +
+            "limit caps one relevance-ranked set, not an offset. No continuation cursor exists: refine the query for different matches. No matches returns an empty set; invalid queries or API failures return errors.\n\n" +
+            "Public reads require no credentials and are uncached. The shared HTTP budget defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -106,9 +112,14 @@ export const wikiTools: Tool[] = [
     },
     {
         name: 'get_wiki_page_content',
-        title: 'Get Wiki Page Content',
+        title: 'Get Wiki Content or References',
         description:
-            'Get a RuneScape Wiki reference, following redirects. Returns text only for a reviewed revision with matching content; otherwise returns a source link with unverified reuse terms. Use search_wiki for unknown titles.',
+            "Get reviewed Wiki article text, or a source reference when text is unavailable. Use search_wiki for titles; get_item_price for prices.\n" +
+            "- page takes one unencoded title; pages takes 1-10, e.g. [\"Abyssal whip\"]. URLs, #fragments and |separators reject the call before fetching.\n" +
+            "- For page, read the flat response. For pages, even one title, check results[i].error before reading results[i].data. Rows preserve order and duplicates; redirects resolve.\n" +
+            "- The server sets output contentStatus: reviewed_extract includes approved, unchanged text and attribution; successful link_only has null text, url and reason. Inputs cannot approve content.\n" +
+            "- In valid batches, missing-page/API errors are per row; the call fails only if all rows fail. At most two requests run concurrently; 429 stops queued work.\n" +
+            "- No authentication is required and responses are not cached here. Shared HTTP budget: 60 requests/IP/minute. Honor Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -118,11 +129,16 @@ export const wikiTools: Tool[] = [
                     minLength: 1,
                     description: 'Wiki page title (spaces allowed; redirects are followed)',
                 },
+                pages: { type: 'array', minItems: 1, maxItems: MAX_BATCH_ITEMS,
+                    items: { type: 'string', minLength: 1 },
+                    description: 'Wiki titles for a reference batch; exclusive with page' },
             },
-            required: ['page'],
+            oneOf: [{ required: ['page'] }, { required: ['pages'] }],
             additionalProperties: false,
         },
-        outputSchema: wikiPageOutputSchema,
+        outputSchema: { ...wikiPageOutputSchema,
+            properties: { ...wikiPageOutputSchema.properties, ...wikiBatchOutput.properties },
+            required: [], oneOf: [{ required: wikiPageOutputSchema.required }, { required: wikiBatchOutput.required }] },
         ...READ_ONLY_TOOL,
     },
 ];
@@ -131,6 +147,7 @@ interface WikiPage {
     pageid?: number;
     title?: string;
     missing?: boolean | string;
+    invalid?: boolean | string;
     extract?: string;
     ns?: number;
     revisions?: Array<{ revid?: number }>;
@@ -139,6 +156,21 @@ interface WikiPage {
 interface WikiSearchHit {
     title?: string;
     snippet?: string;
+}
+
+function requireWikiTitle(value: unknown, label: string): string | ToolResponse {
+    const title = requireString(value, label, { minLength: 1 });
+    if (isToolResponse(title)) return title;
+    if (/^https?:\/\//i.test(title) || /[#|]/.test(title)) {
+        return validationError(`${label} must be a wiki title, without a URL, #fragment or |separator`);
+    }
+    return title;
+}
+
+function wikiApiFailure(data: { error?: { code?: string; info?: string } } | undefined): ToolResponse | undefined {
+    if (!data?.error) return undefined;
+    if (data.error.code === 'ratelimited') throw new ApiRequestError(429, 'Wiki rate limit');
+    return validationError(`Wiki API error: ${data.error.info ?? data.error.code ?? 'Unknown error'}`);
 }
 
 function wikiPageUrl(title: string): string {
@@ -187,6 +219,8 @@ export async function handleWikiTool(name: string, args: ToolArguments, signal?:
                 `${RUNESCAPE_WIKI_API}?action=query&list=search&format=json` +
                 `&srnamespace=0&srprop=&srlimit=${limit}&srsearch=${encodeURIComponent(query)}`;
             const data = await makeApiRequest(url, signal);
+            const apiFailure = wikiApiFailure(data);
+            if (apiFailure) return apiFailure;
             const hits = (data?.query?.search ?? []) as WikiSearchHit[];
             const results = hits.flatMap(hit => {
                 if (typeof hit.title !== 'string' || hit.title.length === 0) {
@@ -200,12 +234,20 @@ export async function handleWikiTool(name: string, args: ToolArguments, signal?:
         }
 
         case 'get_wiki_page_content': {
-            const unexpected = rejectUnknownKeys(args, ['page']);
+            const unexpected = rejectUnknownKeys(args, ['page', 'pages']);
             if (unexpected) {
                 return unexpected;
             }
 
-            const page = requireString(args?.page, 'page', { minLength: 1 });
+            if (args?.pages !== undefined) {
+                if (args?.page !== undefined) return validationError('Provide page or pages, not both');
+                const pages = parseBatch(args.pages, 'pages', (value, label) =>
+                    requireWikiTitle(value, label));
+                if (isToolResponse(pages)) return pages;
+                return runBatch('Wiki page references', pages, page => handleWikiTool(name, { page }, signal));
+            }
+
+            const page = requireWikiTitle(args?.page, 'page');
             if (isToolResponse(page)) {
                 return page;
             }
@@ -214,12 +256,14 @@ export async function handleWikiTool(name: string, args: ToolArguments, signal?:
                 `${RUNESCAPE_WIKI_API}?action=query&prop=info%7Crevisions&rvprop=ids&format=json` +
                 `&redirects=1&titles=${encodeURIComponent(page)}`;
             const data = await makeApiRequest(url, signal);
+            const apiFailure = wikiApiFailure(data);
+            if (apiFailure) return apiFailure;
             const pages = (data?.query?.pages ?? {}) as Record<string, WikiPage>;
             const firstPage = Object.values(pages)[0];
 
-            if (!firstPage || firstPage.missing !== undefined) {
+            if (!firstPage || firstPage.missing !== undefined || firstPage.invalid !== undefined) {
                 return validationError(
-                    `Wiki page "${page}" was not found. Try search_wiki or a different title.`
+                    `Wiki page "${page}" was not found or is invalid. Try search_wiki or a different title.`
                 );
             }
 
@@ -235,9 +279,11 @@ export async function handleWikiTool(name: string, args: ToolArguments, signal?:
             const reviewedData = await makeApiRequest(
                 `${RUNESCAPE_WIKI_API}?action=query&prop=extracts%7Crevisions&rvprop=ids&format=json` +
                 `&explaintext=1&redirects=1&titles=${encodeURIComponent(resolvedTitle)}`, signal);
+            const extractFailure = wikiApiFailure(reviewedData);
+            if (extractFailure) return extractFailure;
             const current = Object.values(reviewedData?.query?.pages ?? {})[0] as WikiPage | undefined;
             const extract = typeof current?.extract === 'string' ? current.extract : '';
-            if (!current || current.missing !== undefined || current.title !== resolvedTitle || current.ns !== 0 ||
+            if (!current || current.missing !== undefined || current.invalid !== undefined || current.title !== resolvedTitle || current.ns !== 0 ||
                 current.revisions?.[0]?.revid !== review.revisionId || !extract.trim() ||
                 createHash('sha256').update(extract).digest('hex') !== review.extractSha256) {
                 return linkOnlyPage(resolvedTitle, revisionId, 'Content changed or no longer matches the reviewed extract.');

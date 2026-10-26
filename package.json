@@ -1,7 +1,7 @@
 {
   "name": "runescape-wiki-mcp",
   "version": "1.2.0",
-  "description": "Ask an assistant for RS3 Grand Exchange guide prices, 7-90 day trends, flip profit after the 2% tax, normal-mode hiscores, and wiki pages. Prices lag the live market.",
+  "description": "Ask an assistant for RS3 Grand Exchange guide prices, 7-90 day trends, flip profit after the 2% tax, public RS3 hiscores, and wiki pages. Prices lag the live market.",
   "mcpName": "io.github.birdwell/runescape-wiki-mcp",
   "bin": {
     "runescape-wiki-mcp": "dist/index.js"

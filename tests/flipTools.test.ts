@@ -32,7 +32,9 @@ describe('Flip Tools', () => {
             expect(schema.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
             expect(schema.additionalProperties).toBe(false);
             expect(Object.keys(schema.properties).sort()).toEqual([
+                'buyLimitRemaining',
                 'buyPrice',
+                'fillTimeMinutes',
                 'itemId',
                 'name',
                 'quantity',
@@ -80,6 +82,50 @@ describe('Flip Tools', () => {
     });
 
     describe('estimate_flip', () => {
+        it('models current quota and caller-assumed duration without changing full-request profit', async () => {
+            const result = await handleFlipTool('estimate_flip', {
+                itemId: 4151, buyPrice: 1000, sellPrice: 1100, quantity: 10,
+                buyLimitRemaining: 4, fillTimeMinutes: 30,
+            });
+            expect(result.isError).toBeFalsy();
+            expect(result.structuredContent).toMatchObject({
+                quantity: 10, netProfit: 780,
+                executionScenario: {
+                    buyLimitRemaining: 4, quantityWithinBuyLimit: 4, quantityOverBuyLimit: 6,
+                    netProfitWithinBuyLimit: 312, assumedFillTimeMinutes: 30, assumedNetProfitPerHour: 1560,
+                },
+            });
+            expect((result.structuredContent?.assumptions as string[]).join(' ')).toContain('caller-supplied');
+        });
+
+        it('models zero remaining quota and a loss over a caller-assumed duration', async () => {
+            const result = await handleFlipTool('estimate_flip', {
+                itemId: 4151, buyPrice: 1000, sellPrice: 1000, quantity: 10,
+                buyLimitRemaining: 0, fillTimeMinutes: 120,
+            });
+            expect(result.structuredContent).toMatchObject({ netProfit: -200, executionScenario: {
+                quantityWithinBuyLimit: 0, quantityOverBuyLimit: 10, netProfitWithinBuyLimit: 0,
+                assumedNetProfitPerHour: -100,
+            } });
+        });
+
+        it.each([
+            { fillTimeMinutes: 0 }, { fillTimeMinutes: -1 }, { fillTimeMinutes: Number.NaN },
+            { fillTimeMinutes: Number.POSITIVE_INFINITY }, { fillTimeMinutes: '30' },
+            { buyLimitRemaining: -1 }, { buyLimitRemaining: 1.5 },
+        ])('rejects invalid scenario inputs before network access: %j', async scenario => {
+            const result = await handleFlipTool('estimate_flip', { itemId: 4151, ...scenario });
+            expect(result.isError).toBe(true);
+        });
+
+        it('rejects scenario arithmetic that would serialize nonfinite values', async () => {
+            const result = await handleFlipTool('estimate_flip', {
+                itemId: 4151, buyPrice: 1000, sellPrice: 1100, fillTimeMinutes: Number.MIN_VALUE,
+            });
+            expect(result.isError).toBe(true);
+            expect(result.content[0].text).toContain('numeric range');
+        });
+
         it('should use explicit buy/sell overrides without any network calls', async () => {
             const result = await handleFlipTool('estimate_flip', {
                 itemId: 4151,
@@ -94,6 +140,7 @@ describe('Flip Tools', () => {
             expect(payload.grossProfit).toBe(1000);
             expect(payload.totalTax).toBe(220);
             expect(payload.netProfit).toBe(780);
+            expect(payload.executionScenario).toBeUndefined();
             expect(payload.marginPct).toBe(7.8);
             expect(payload.priceSource.buyPrice).toBe('override');
             expect(payload.priceSource.sellPrice).toBe('override');

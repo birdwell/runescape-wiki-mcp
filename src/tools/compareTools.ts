@@ -36,9 +36,8 @@ const compareArrayProperty = {
 export const compareTools: Tool[] = [
     {
         name: 'compare_items',
-        title: 'Compare Items',
-        description:
-            'Compare Grand Exchange guide or Weirdgloop prices for up to 10 items in one call. Provide either names or itemIds. Returns one row per entry with id, name, price, volume and timestamp; entries that cannot be resolved come back as error rows instead of failing the call. These prices lag the live market.',
+        title: 'Compare Daily Price Snapshots',
+        description: "Compare Weirdgloop daily guide-price snapshots for known GE IDs. Resolve names with lookup_item; use get_item_price for records, estimate_flip for profit, or get_item_graph for history.\n\nFor example, itemIds=[4151,536] compares Abyssal whip with Dragon bones. These are GE IDs, not monster IDs or quantities. The array defines the candidate set, not a whole-GE ranking. Rows retain that order, including unresolved-item error rows even if all fail. Missing volume/timestamps stay absent; snapshot dates can differ by item.\n\nEach ID triggers a public provider read; results are uncached. These are guide prices, not live offers. No credentials required. HTTP defaults to 60 requests/IP/minute; honor 429 Retry-After.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12,
             type: 'object',
@@ -58,6 +57,7 @@ export const compareTools: Tool[] = [
                     description: `Grand Exchange item IDs to compare (1-${MAX_COMPARE_ITEMS}). Provide names or itemIds, not both.`,
                 },
             },
+            oneOf: [{ required: ['names'] }, { required: ['itemIds'] }],
             additionalProperties: false,
         },
         outputSchema: {
@@ -90,6 +90,8 @@ export const compareTools: Tool[] = [
     },
 ];
 
+export const comparisonOutputSchema = compareTools[0].outputSchema!;
+
 function requireCompareArray<T>(
     value: unknown,
     name: string,
@@ -113,6 +115,7 @@ function requireCompareArray<T>(
         }
         parsed.push(result as T);
     }
+    if (new Set(parsed).size !== parsed.length) return validationError(`${name} must contain unique entries`);
     return parsed;
 }
 

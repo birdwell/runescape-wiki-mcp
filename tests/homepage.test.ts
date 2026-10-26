@@ -18,7 +18,9 @@ describe('public copy', () => {
         const readme = readFileSync('README.md', 'utf8');
         expect(readme).toContain("Ask what it's worth, whether the flip clears tax, and what to train next.");
         expect(readme).toContain('They lag the in-game market.');
-        expect(readme.toLowerCase()).not.toContain('real-time');
+        expect(readme).toContain('Default prices are Jagex guide prices');
+        expect(readme).toContain('includeLiveData');
+        expect(readme).toContain('recorded trades are not an order book');
         expect(SERVER_CONFIG.description.length).toBeLessThanOrEqual(100);
         expect(SERVER_CONFIG.description).toContain('guide prices');
     });

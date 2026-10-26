@@ -111,8 +111,8 @@ export function getPrompt(name: string, args: Record<string, string> = {}): GetP
                     userMessage(
                         `Check the Grand Exchange guide price for "${itemName}".\n` +
                             `1. Call \`lookup_item\` with query="${itemName}" to resolve the exact item name and Grand Exchange ID (skip this if you already have an exact match).\n` +
-                            `2. Call \`get_item_price\` with the resolved itemId or name to get the guide price, trend, and examine text.\n` +
-                            `3. Optionally call \`summarize_price_history\` with the same itemId/name to see the min/max/average price and % change over the last 30 days.\n` +
+                            `2. Call \`get_item_details\` with the resolved itemId to get the guide price, trend, and examine text.\n` +
+                            `3. Optionally call \`get_price_series\` with view=statistics and the same itemId to see the min/max/average price and % change over the last 30 days.\n` +
                             `Report the guide price, trend, and any notable recent price movement. Say that these prices lag the live market.`
                     ),
                 ],
@@ -127,7 +127,7 @@ export function getPrompt(name: string, args: Record<string, string> = {}): GetP
                     userMessage(
                         `Compare the Grand Exchange guide prices for these items: ${items}.\n` +
                             `1. Split the comma-separated list into individual item names, trimming whitespace.\n` +
-                            `2. Call \`compare_items\` once with the \`names\` array containing all of them (up to 10 items per call).\n` +
+                            `2. Resolve each name with \`lookup_item\`, then call \`get_item_details\` with view=comparison and the \`itemIds\` array (up to 10 items per call).\n` +
                             `3. Present a clear comparison of price and volume per item, and call out any names that could not be resolved.`
                     ),
                 ],
@@ -144,7 +144,7 @@ export function getPrompt(name: string, args: Record<string, string> = {}): GetP
                         `Estimate the profitability of flipping "${itemName}"` +
                             `${quantity ? ` for a quantity of ${quantity}` : ''} on the Grand Exchange.\n` +
                             `1. Call \`lookup_item\` with query="${itemName}" if you need to resolve the exact item name or ID first.\n` +
-                            `2. Call \`estimate_flip\` with the resolved item` +
+                            `2. Call \`estimate_flip\` with the resolved itemId` +
                             `${quantity ? ` and quantity=${quantity}` : ' (default quantity)'} to get projected buy/sell prices, GE tax, and estimated profit.\n` +
                             `3. Summarize the estimated margin, GE tax, and total profit/loss. Say that the default prices lag the live market and can move before the flip completes.`
                     ),

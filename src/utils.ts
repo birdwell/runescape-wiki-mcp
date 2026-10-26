@@ -3,6 +3,13 @@
 import { USER_AGENT } from './constants.js';
 import { ToolResponse } from './types.js';
 
+export class ApiRequestError extends Error {
+    constructor(readonly status: number, statusText: string, readonly retryAfter: string | null = null) {
+        super(`API request failed: ${status} ${statusText}${status === 429 && retryAfter ? `; retry after ${retryAfter}` : ''}`);
+        this.name = 'ApiRequestError';
+    }
+}
+
 /**
  * Makes an API request with proper error handling and user agent
  */
@@ -21,7 +28,7 @@ export async function makeApiRequest(url: string, signal?: AbortSignal): Promise
     if (!response.ok) {
         const errorText = await response.text();
         debugLog(`API error response:`, errorText);
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        throw new ApiRequestError(response.status, response.statusText, response.headers.get('retry-after'));
     }
 
     const data = await response.json();
@@ -41,7 +48,7 @@ export async function makeTextApiRequest(url: string, signal?: AbortSignal): Pro
     });
 
     if (!response.ok) {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        throw new ApiRequestError(response.status, response.statusText, response.headers.get('retry-after'));
     }
 
     return response.text();

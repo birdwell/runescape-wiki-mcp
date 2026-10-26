@@ -43,14 +43,14 @@ describe('Prompts', () => {
     });
 
     describe('getPrompt', () => {
-        it('check_item_price should build a lookup_item -> get_item_price playbook', () => {
+        it('check_item_price should build a lookup_item -> get_item_details playbook', () => {
             const result = getPrompt('check_item_price', { itemName: 'Abyssal whip' });
             expect(result.messages).toHaveLength(1);
             expect(result.messages[0].role).toBe('user');
             const text = (result.messages[0].content as { text: string }).text;
             expect(text).toContain('lookup_item');
-            expect(text).toContain('get_item_price');
-            expect(text).toContain('summarize_price_history');
+            expect(text).toContain('get_item_details');
+            expect(text).toContain('view=statistics');
             expect(text).toContain('Abyssal whip');
             expect(text).toContain('guide price');
             expect(text).toContain('lag the live market');
@@ -69,12 +69,12 @@ describe('Prompts', () => {
             }
         });
 
-        it('compare_ge_items should build a compare_items playbook', () => {
+        it('compare_ge_items should build a compare_item_prices playbook', () => {
             const result = getPrompt('compare_ge_items', {
                 items: 'Abyssal whip, Dragon bones',
             });
             const text = (result.messages[0].content as { text: string }).text;
-            expect(text).toContain('compare_items');
+            expect(text).toContain('view=comparison');
             expect(text).toContain('Abyssal whip, Dragon bones');
         });
 

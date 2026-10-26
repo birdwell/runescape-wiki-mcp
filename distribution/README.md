@@ -23,8 +23,8 @@ Replace these inaccurate claims wherever they appear:
 | Old claim | Replacement |
 | --- | --- |
 | Real-time, 5-minute or hourly prices | Jagex guide prices and Weirdgloop daily history; prices lag the live market |
-| All game modes | Normal-mode RS3 hiscores; ironman/hardcore currently unsupported |
-| `get_latest_prices` | `lookup_item`, then `get_item_price` |
+| All game modes | Normal, ironman and hardcore RS3 hiscores |
+| `get_latest_prices` | `lookup_item`, then `get_item_details` |
 | Arbitrary historical intervals | 7–90 day summaries from daily samples; Jagex historical graph |
 | All-item live market scans or automated trading | Read-only lookups, comparisons and hypothetical flip estimates |
 | `prices.runescape.wiki/api/v1/rs` | Jagex GE/hiscores, Weirdgloop daily history and RuneScape Wiki |
@@ -45,7 +45,7 @@ Replace these inaccurate claims wherever they appear:
 ## Verify before submitting
 
 Run `node distribution/preflight.mjs > /tmp/rs3-preflight.json`. This makes a small
-set of read-only requests to production. It checks the current 13-tool contract,
+set of read-only requests to production. It checks the current 14-tool contract,
 annotations, name resolution, price/history, comparison, tax arithmetic, public
 hiscores, wiki search/content and invalid input. It exits nonzero on any failure;
 keep failures visible rather than substituting local behavior for production.
@@ -55,9 +55,10 @@ The repository already defines that tool. Claude connected to the direct Fly URL
 with no sign-in and detected 12 read-only tools, 4 prompts and 2 resources. Its
 directory scanner suggested adding `annotations.title` for each tool; this change
 adds that compatibility metadata alongside the existing top-level titles.
-Deploy the reviewed current server
-through the normal release process, then rerun preflight before review. This kit
-does not deploy the server or authorize a release.
+On October 25, the hosted server was deployed and verified with the current
+12-tool contract, including `search_wiki`, metadata views and legacy aliases.
+Run the current preflight again before a submission; the older 12-tool observation
+above describes a different contract. This kit does not deploy or submit anything.
 
 After transport checks pass, install the hosted endpoint in a fresh Claude and
 ChatGPT conversation. Run all eight review prompts in each client, record the
