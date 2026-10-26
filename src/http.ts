@@ -7,7 +7,9 @@ const port = Number(process.env.PORT ?? 8080);
 const host = process.env.HOST ?? '0.0.0.0';
 const app = createHttpServer(configureBeta(), port);
 app.server.listen(port, host, () => {
-    console.error(`RuneScape 3 MCP Server listening on http://${host}:${port}/mcp`);
+    const address = app.server.address();
+    const listeningPort = address && typeof address === 'object' ? address.port : port;
+    console.error(`RuneScape 3 MCP Server listening on http://${host}:${listeningPort}/mcp`);
 });
 async function shutdown(): Promise<void> {
     await app.close();

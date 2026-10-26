@@ -1,7 +1,8 @@
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import { createRequire } from 'node:module';
+import type { DatabaseSync } from 'node:sqlite';
 import { z } from 'zod';
 import { betaRequests, type BetaRequest } from './betaContext.js';
 
@@ -24,10 +25,15 @@ export class BetaLedger {
     private readonly db: DatabaseSync;
 
     constructor(path: string, private readonly now = () => Date.now()) {
+        // Public HTTP imports beta configuration even when beta is disabled.
+        // Load the optional runtime builtin only when an actual ledger is needed.
+        let sqlite: typeof import('node:sqlite');
+        try { sqlite = createRequire(import.meta.url)('node:sqlite'); }
+        catch (cause) { throw new Error('Protected beta requires Node.js 22.13+ with node:sqlite support.', { cause }); }
         // A missing database after initialization must not silently reset the cap.
         const marker = join(dirname(path), 'beta-ledger-initialized');
         if (existsSync(marker) && !existsSync(path)) throw new Error('Beta ledger missing; restore it before starting.');
-        this.db = new DatabaseSync(path);
+        this.db = new sqlite.DatabaseSync(path);
         if (existsSync(marker) && !this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='usage'").get()) {
             this.db.close();
             throw new Error('Initialized beta ledger has lost its usage table. Restore it before starting.');

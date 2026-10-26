@@ -4,6 +4,9 @@ The beta runs separately from the public wiki MCP at `https://runescape-agent-be
 All routes require an invite bearer token except `GET /health`. There is no account
 password or RuneScape login. The planner reads public account data and makes recommendations.
 
+The protected beta requires Node.js 22.13+ with `node:sqlite` support. The public
+server continues to support Node 20 and does not load SQLite when beta is disabled.
+
 ## Limits
 
 Each user gets $0.25 of Jev reservations per UTC day. The whole beta has a $1 daily
