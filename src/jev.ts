@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { reserveBetaCall, verifyBetaResponse } from './betaContext.js';
 
 // Direct HTTP keeps this decision-only loop independent of a chat-model runtime.
 // Contract: https://docs.typesafe.ai/api/system-one
@@ -60,6 +61,8 @@ export class JevSession {
         if (body.length > MAX_JEV_REQUEST_CHARS) {
             throw new Error('Recommendation context exceeds the Jev request limit.');
         }
+        // Fail closed before sending any paid request, including quest sub-sessions.
+        reserveBetaCall(this.config.model);
         this.usage.rounds += 1;
         let response: Response;
         try {
@@ -92,6 +95,7 @@ export class JevSession {
             throw new Error('Jev returned an invalid decision response.');
         }
         const result = parsed.data;
+        verifyBetaResponse(result.model, result.usage.input_tokens);
         for (const [id, question] of Object.entries(questions)) {
             const answer = result.answers[id];
             const options = Object.keys(question.criteria);

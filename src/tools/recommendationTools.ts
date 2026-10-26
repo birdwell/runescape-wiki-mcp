@@ -1,4 +1,5 @@
 import type { Tool } from '@modelcontextprotocol/server';
+import { runBetaPlan } from '../betaContext.js';
 import { z } from 'zod';
 import { RS3_SKILLS } from '../constants.js';
 import { JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
@@ -96,7 +97,7 @@ export async function handleRecommendationTool(_name: string, args: ToolArgument
             .map(issue => `${issue.path.join('.') || 'input'}: ${issue.message}`).join('; ')));
     }
     try {
-        return createSuccessResponse('RS3 next activity', await recommendActivity(input.data));
+        return createSuccessResponse('RS3 next activity', await runBetaPlan(() => recommendActivity(input.data)));
     } catch (error) {
         return createErrorResponse(error);
     }

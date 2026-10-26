@@ -423,3 +423,8 @@ Strict gateways or clients validating against fresh discovery must use the prefe
 ### Current-data views
 
 `get_item_details { "itemId": 4151 }` preserves the original catalogue-record response. Use `view: "records"` for single/batch Jagex records and optional recorded-trade enrichment. Use `{ "view": "comparison", "itemIds": [4151,536] }` for compact Weirdgloop daily snapshots; this view rejects `itemId` and live enrichment. Legacy `compare_item_prices` and `compare_items` calls remain accepted with unchanged results, including their older name-array selectors. They are no longer duplicated in the 14-tool discovery list.
+
+## Protected planner beta
+
+The account-aware planner can run as an invite-only beta with authentication and
+persistent Jev spending limits. See [beta setup and limits](docs/protected-beta.md).
