@@ -5,6 +5,10 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'n
 import { resolve } from 'node:path';
 
 const local = process.argv.includes('--local');
+const username = process.argv[process.argv.indexOf('--username') + 1];
+if (!process.argv.includes('--username') || !/^[a-zA-Z0-9 _-]{1,12}$/.test(username ?? '') || !username.trim()) {
+    throw new Error('Supply --username with the public RS3 account to test.');
+}
 const directory = resolve('.cache/beta');
 mkdirSync(directory, { recursive: true, mode: 0o700 });
 chmodSync(directory, 0o700);
@@ -61,23 +65,23 @@ try {
     const tools = await rpc('tools/list', {});
     assert.ok(tools.tools.some(tool => tool.name === 'recommend_next_activity'));
     const blocked = await rpc('tools/call', { name: 'recommend_next_activity', arguments: {
-        goal: 'Train Mining to 70', goalType: 'skill_training', targetSkill: 'Mining', targetLevel: 70, context: { username: 'killua 34' },
+        goal: 'Train Mining to 70', goalType: 'skill_training', targetSkill: 'Mining', targetLevel: 70, context: { username },
     } }, credentials.budgetCheckToken);
     assert.equal(blocked.isError, true);
     assert.match(JSON.stringify(blocked), /spending limit reached/);
     assert.equal((await usage(credentials.budgetCheckToken)).userJevCallsToday, 0);
     console.log('Auth, discovery, and zero-budget rejection passed.');
-    const journal = await rpc('tools/call', { name: 'get_player_quests', arguments: { username: 'killua 34' } });
+    const journal = await rpc('tools/call', { name: 'get_player_quests', arguments: { username } });
     assert.ok(!journal.isError, 'Public account journal failed');
     artifacts.journal = journal.structuredContent;
-    console.log('killua 34 public quest journal fetched.');
+    console.log('Public quest journal fetched.');
     artifacts.plans = [];
     for (const goal of [
         { goal: 'Train Mining to level 70', goalType: 'skill_training', targetSkill: 'Mining', targetLevel: 70 },
         { goal: 'Unlock Invention', goalType: 'unlock_progression', unlock: 'Invention' },
         { goal: 'What is the best Mining quest for me?', goalType: 'quests', targetSkill: 'Mining' },
     ]) {
-        const result = await rpc('tools/call', { name: 'recommend_next_activity', arguments: { ...goal, context: { username: 'killua 34' } } });
+        const result = await rpc('tools/call', { name: 'recommend_next_activity', arguments: { ...goal, context: { username } } });
         assert.ok(!result.isError, JSON.stringify(result));
         const plan = result.structuredContent;
         assert.ok(plan && ['recommended', 'needs_context', 'no_match', 'goal_met'].includes(plan.status));

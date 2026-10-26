@@ -43,6 +43,11 @@ paid call; a plan can stop midway if it reaches a limit.
    supporting HTTP MCP config, or copy `.cache/beta/codex.toml` into your Codex MCP
    configuration. These files contain secrets; do not paste them in issues or chats.
 
+Run `node scripts/smoke-beta.mjs --username "ACCOUNT"` against the deployed beta.
+Add `--local` to test through a temporary authenticated local HTTP server. These
+are real, budgeted Jev calls. Full account results remain in ignored local smoke
+artifacts; do not publish them with the PR's generic validation summary.
+
 Run exactly **one machine with one persistent volume**. Fly volumes are not a
 replicated database. Do not scale out, clone the ledger, restore older budget
 snapshots, change ledger paths, or delete its initialization marker. Those actions

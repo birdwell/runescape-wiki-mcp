@@ -59,7 +59,7 @@ test('all beta content requires authentication except the minimal health check',
 test('HTTP planner preserves authenticated context and rejects exhausted budgets before upstream work', async () => {
     const result = await rpc('tools/call', { name: 'recommend_next_activity', arguments: {
         goal: 'Train Mining to 70', goalType: 'skill_training', targetSkill: 'Mining', targetLevel: 70,
-        context: { username: 'killua 34' },
+        context: { username: 'Example RS3' },
     } }, exhausted);
     expect(result.response.status).toBe(200);
     expect(result.message.result.isError).toBe(true);
