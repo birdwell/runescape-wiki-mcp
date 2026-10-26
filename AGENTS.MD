@@ -43,6 +43,8 @@ runescape-wiki-mcp/
 | `get_wiki_entity_facts` | `page`, `kind` (monster/quest), optional `limit` | Structured scalar facts and variant references; no article prose |
 | `list_wiki_category_members` | `category`, optional `limit`/`cursor` | Direct Wiki category metadata; continuation is category-bound |
 | `get_wiki_drop_table` | `page`, optional `variant`/`limit`/`offset` | Indexed drop facts; notes excluded and unknown rates stay null |
+| `get_player_quests` | `username` | Complete public RuneMetrics quest journal; no Jev key needed |
+| `recommend_next_activity` | `goal`, optional planner selectors and `context` | Opt-in paid Jev planning: at most 24 quest rounds or 3 otherwise; `TYPESAFE_API_KEY` and `RUNESCAPE_RECOMMENDATIONS_ENABLED=true` required |
 
 Prompts: `check_item_price`, `compare_ge_items`, `estimate_item_flip`, `player_overview`.
 
@@ -126,3 +128,5 @@ Discovery consolidates catalogue metadata under get_ge_info views. Legacy get_al
 Preferred discovery resolves names once via lookup_item, then uses known GE IDs for pricing tools. Deprecated name selectors remain accepted for compatibility. Raw history/statistics share get_price_series with an explicit view; summarize_price_history remains callable as a legacy alias. Statistics uses Weirdgloop, rejects from/to and Jagex, and days counts usable samples. Observation defaults and all old call results remain unchanged.
 
 Current records and snapshot comparisons share get_item_details with an explicit view. Default records and all old compare_item_prices/compare_items responses remain unchanged. Comparison requires an itemIds array and rejects live enrichment; legacy name arrays remain callable outside preferred discovery.
+
+Recommendation limits: routing/non-quest work has a 55-second deadline; quest comparisons have five minutes after routing. Keep AbortSignal propagation on player/Wiki reads when changing shared tools.

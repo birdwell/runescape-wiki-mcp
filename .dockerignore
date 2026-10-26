@@ -8,3 +8,5 @@ tests
 *.md
 .env*
 debug.log
+.cache
+*.sqlite*

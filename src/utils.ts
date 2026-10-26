@@ -13,10 +13,11 @@ export class ApiRequestError extends Error {
 /**
  * Makes an API request with proper error handling and user agent
  */
-export async function makeApiRequest(url: string): Promise<any> {
+export async function makeApiRequest(url: string, signal?: AbortSignal): Promise<any> {
     debugLog(`Making API request to: ${url}`);
 
     const response = await globalThis.fetch(url, {
+        signal,
         headers: {
             'User-Agent': USER_AGENT,
         },
@@ -38,8 +39,9 @@ export async function makeApiRequest(url: string): Promise<any> {
 /**
  * Makes a text-based API request (for hiscores CSV data)
  */
-export async function makeTextApiRequest(url: string): Promise<string> {
+export async function makeTextApiRequest(url: string, signal?: AbortSignal): Promise<string> {
     const response = await globalThis.fetch(url, {
+        signal,
         headers: {
             'User-Agent': USER_AGENT,
         },
@@ -112,4 +114,4 @@ export function debugLog(message: string, data?: any) {
             data ? JSON.stringify(data, null, 2) : ''
         );
     }
-} 
+}

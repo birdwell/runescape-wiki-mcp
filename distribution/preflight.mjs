@@ -54,7 +54,7 @@ await check('Discovery and read-only annotations', async () => {
         assert.equal(tool.annotations?.openWorldHint, true, tool.name);
         assert.equal(typeof tool.annotations?.title, 'string', `${tool.name}: missing display title`);
     }
-    assert.deepEqual([...report.toolNames].sort(), ['lookup_item','get_item_details','get_price_series','get_ge_info','browse_items','estimate_flip','get_player_stats','search_wiki','get_wiki_page_content','get_wiki_entity_facts','list_wiki_category_members','get_wiki_drop_table'].sort());
+    assert.deepEqual([...report.toolNames].sort(), ['lookup_item','get_item_details','get_price_series','get_ge_info','browse_items','estimate_flip','get_player_stats','get_player_quests','recommend_next_activity','search_wiki','get_wiki_page_content','get_wiki_entity_facts','list_wiki_category_members','get_wiki_drop_table'].sort());
     return { tools: result.tools.map(tool => tool.name) };
 });
 await check('Item resolution and guide price', async () => {

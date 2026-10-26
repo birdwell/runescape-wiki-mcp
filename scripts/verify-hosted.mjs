@@ -28,8 +28,8 @@ async function call(name, args, expectedError = false, modern = false) {
 try {
  const listed = await rpc('tools/list');
  await writeFile('/tmp/rs-production-tools.json', JSON.stringify({serverName:'RuneScape Wiki',tools:listed.tools},null,2));
- if (listed.tools.length !== 12 || !listed.tools.some(t=>t.name==='search_wiki')) throw new Error('Expected 12 tools including search_wiki');
- console.log('Production exposes all 12 tools.');
+ if (listed.tools.length !== 14 || !listed.tools.some(t=>t.name==='search_wiki')) throw new Error('Expected 14 tools including search_wiki');
+ console.log('Production exposes all 14 tools.');
  const search = await call('search_wiki',{query:'Abyssal whip',limit:3});
  const hits = search.structuredContent?.results;
  if(!hits?.length) throw new Error('Wiki search returned no hits');
