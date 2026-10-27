@@ -25,6 +25,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "build:server-card": "tsc && node scripts/build-server-card.mjs",
     "dev": "tsc --watch & node --watch dist/index.js",
     "watch": "tsc --watch",
     "start": "node dist/index.js",
@@ -59,6 +60,7 @@
     "@modelcontextprotocol/node": "^2.1.2",
     "@modelcontextprotocol/server": "^2.4.0",
     "@sentry/node": "^11.9.0",
+    "htmlparser2": "^10.1.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

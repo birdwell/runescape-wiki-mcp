@@ -19,3 +19,17 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run test
       - run: bun run build
+
+  node20-public-http:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: node scripts/smoke-public-http.mjs

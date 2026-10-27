@@ -10,6 +10,7 @@ import { wikiTools, handleWikiTool } from './wikiTools.js';
 import { historyTools, handleHistoryTool } from './historyTools.js';
 import { compareTools, handleCompareTool } from './compareTools.js';
 import { flipTools, handleFlipTool } from './flipTools.js';
+import { recommendationTools, handleRecommendationTool } from './recommendationTools.js';
 import { ToolArguments, ToolResponse } from '../types.js';
 import { discoveryTool, implementationToolName } from '../toolNaming.js';
 import { unknownToolError } from '../errors.js';
@@ -22,6 +23,7 @@ export const allTools: Tool[] = [
     ...flipTools,
     ...playerTools,
     ...wikiTools,
+    ...recommendationTools,
     ...entityTools,
     ...wikiReferenceTools,
 ].filter(tool => !['get_all_categories', 'get_category_info', 'summarize_price_history', 'compare_items'].includes(tool.name)).map(discoveryTool).map(tool => ({
@@ -32,6 +34,9 @@ export const allTools: Tool[] = [
 
 export async function handleTool(name: string, args: ToolArguments): Promise<ToolResponse> {
     name = implementationToolName(name);
+    if (recommendationTools.some(tool => tool.name === name)) {
+        return handleRecommendationTool(name, args);
+    }
     if (itemTools.some(tool => tool.name === name)) {
         return handleItemTool(name, args);
     }
@@ -71,4 +76,5 @@ export {
     historyTools,
     compareTools,
     flipTools,
+    recommendationTools,
 };

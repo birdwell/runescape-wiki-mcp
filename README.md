@@ -130,6 +130,145 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 - `get_wiki_entity_facts` — Structured monster combat statistics and quest metadata.
 - `list_wiki_category_members` — Direct Wiki category members with category-bound continuation.
 - `get_wiki_drop_table` — Indexed drop references, quantities, rolls and listed rarities; notes are excluded.
+- `get_player_quests` — Complete public RuneMetrics journal with quest statuses and Jagex eligibility; no Jev key needed.
+- `recommend_next_activity` — Opt-in paid goal-based planning using account context and Wiki evidence; requires the server configuration below.
+
+### Try the Jev recommendation tool locally
+
+The MCP server owns the loop. The calling assistant supplies a goal and whatever
+account context it knows, then explains the structured result to the player.
+No separate agent framework or text-generation model is needed inside the server.
+
+Set these in a local, ignored `.env.local` file. Do not commit the API key:
+
+```dotenv
+RUNESCAPE_RECOMMENDATIONS_ENABLED=true
+TYPESAFE_API_KEY=your-typesafe-key
+# Optional; defaults to jev-latest
+TYPESAFE_MODEL=jev-latest
+```
+
+```bash
+bun run build
+node --env-file=.env.local dist/index.js
+# Or use dist/http.js for a local HTTP MCP endpoint.
+```
+
+The entry point does not automatically load dotenv files. For an MCP client's
+stdio configuration, pass the same settings through its server `env` block or
+include `--env-file=/absolute/path/to/.env.local` in the Node arguments.
+
+Example `recommend_next_activity` arguments:
+
+```json
+{
+  "goal": "Train Prayer toward bossing",
+  "context": {
+    "username": "YourName",
+    "gameMode": "normal",
+    "skills": { "Prayer": 50 },
+    "budgetGp": 2000000,
+    "sessionMinutes": 45,
+    "playStyle": "active",
+    "members": true,
+    "completedQuests": ["The Restless Ghost"],
+    "gear": [],
+    "notes": "Prefer methods that help unlock future combat upgrades."
+  }
+}
+```
+
+Only `goal` is required. Public hiscores fill missing skill levels when a username
+is supplied; caller-supplied levels take precedence and their provenance is returned.
+Quest completion comes from RuneMetrics for quest goals; membership, gear and bank
+contents remain unknown unless provided. For other goals, a caller-supplied completed
+list records known completions only; absence does not mean a quest is unfinished.
+
+For a quest question, supply the username and natural-language goal:
+
+```json
+{
+  "goal": "What is the best mining quest to do?",
+  "context": { "username": "YourName" }
+}
+```
+
+The server reads the fresh public RuneMetrics journal and the wiki pages for its
+quests, resolves title aliases and quest disambiguation, and reads the wiki's
+shared prerequisite table. Completed quests are excluded. Every unfinished quest
+is sent to Jev with completion rewards, separate conditional post-quest rewards,
+skill and quest prerequisites, current status, eligibility, and known blockers.
+Independent comparisons run in bounded batches, then a final comparison picks a
+quest to do now and useful blocked targets. The planner fetches the finalists'
+quick-guide checklists and returns their starting location, length, items, enemies,
+and opening walkthrough steps. Started quests retain their status; the exact stage
+must be read from the player's in-game journal.
+
+Quest goals use at most 24 Jev requests, including routing, with two comparison
+requests in flight at once. Individual request bodies stay below 40,000 serialized
+characters. `questCoverage` reports journal totals, metadata coverage and the exact
+number of unfinished quests evaluated. Missing/private journals and missing wiki
+facts are reported explicitly. Skill/prerequisite checks and Jagex eligibility
+constrain the choices; current membership, inventory, combat readiness, boost
+alternatives and miscellaneous requirements may still need checking. A stale
+caller-supplied completion list does not override the fresh official journal.
+Public wiki quest metadata is cached for six hours; player journals are never cached.
+
+For a skill training plan, use a goal such as "Train Mining to 70", or supply
+`goalType: "skill_training"`, `targetSkill: "Mining"` and `targetLevel: 70`.
+The server reads wiki training tables and the fresh public quest completion set when
+a username is available, preserves separate rate assumptions such as
+buying energy versus gathering it, and compares methods available at each milestone.
+`trainingPlan` includes the next method, guide excerpts, source estimates, alternatives,
+and the remaining XP when it can be calculated. Missing XP uses an explicitly labeled
+level-floor upper bound. Invention's elite XP curve is not calculated with the standard formula.
+Plans cover up to six milestones and report any remaining range. Recommended level
+bands never become hard upper eligibility limits. Unsupported guide layouts remain explicit.
+
+For unlock progression, use a goal such as "Help me unlock Invention", or supply
+`goalType: "unlock_progression"` and `unlock: "Invention"`. The planner reads sourced
+requirements, walks unfinished prerequisite quests in order, and returns every known
+missing skill target. It selects one next action and fetches its training or quest guide.
+The initial catalogue covers Invention, targets in the wiki PvM unlock guide, and named
+quest rewards found in the account's quest catalogue. Broad comparisons cover the
+closest 16 targets; this is not a catalogue of every RuneScape unlock. Quest completion
+does not prove a reward was claimed or that additional challenges or ability levels are met.
+
+Training goals use at most two Jev requests; unlock goals use at most three, including
+training selection. Set `goalType: "activity"` to use the original general activity search.
+Other activity goals make at most three Jev requests: route the goal, shortlist wiki
+search results, then assess goal relevance, eligibility, budget and session fit
+in one batch. The server performs up to two wiki searches, evaluates at most six
+candidates, and reads at most three pages. Page excerpts are capped at 6,000
+characters. Routing and non-quest requests have a 55-second deadline. Full quest
+comparisons have a separate five-minute deadline after routing, to accommodate
+the bounded batches and catalogue reads. MCP clients should allow that longer
+timeout for quest requests. All paths have individual fetch timeouts and
+an aggregate 20,000-character serialized JSON limit on caller input, checked before
+paid calls. Excerpts are shortened further when needed to keep the complete Jev
+request within 40,000 serialized characters; returned sources reflect those excerpts.
+There are no automatic paid retries. Returned token counts let you measure actual usage;
+this prototype does not promise a particular dollar cost.
+
+The result includes `recommended`, `needs_context`, `no_match`, or `goal_met`, a recommendation
+when supported, alternatives, wiki excerpts and links, missing context,
+warnings, per-dimension Jev answers and token usage. Suggestions are wiki activities
+or guides, not an exhaustive optimized progression plan. For general activity suggestions, requirements are model
+assessments over excerpts, **not verified requirements**; `requirementsVerified`
+is false. Quest suggestions report deterministic checks and their remaining limits
+through `requirementChecks`, `blockers`, and `unknowns`. Training and unlock plans return
+`trainingCoverage` and `unlockCoverage`; rates and profit figures are source estimates,
+not current-price or personal-performance predictions. It does not invent costs or durations.
+An assistant should communicate any conditions and ask for relevant missing facts.
+
+Goals, supplied account context and retrieved evidence are sent to TypeSafe for
+evaluation. The recommendation module keeps account data and decisions only for
+the request. It caches general wiki extracts for five minutes, up to 64 pages, and public
+training/unlock guides for six hours, up to 16 pages.
+It does not cache goal searches or change the player's account. The other tools
+continue working when recommendations are disabled. Use locally or behind access
+control for the first trial; enabling this tool on a public server allows callers
+to consume the operator's paid Jev quota.
 
 ### Prompts
 
@@ -201,6 +340,7 @@ Game names identify the subject of the tool; they do not indicate sponsorship. P
 ```bash
 bun install
 bun run build
+bun run build:server-card # refresh local Smithery tool metadata after schema changes
 bun run start          # stdio MCP server
 bun run test           # unit + protocol compliance
 bun run inspector      # MCP Inspector
@@ -252,7 +392,7 @@ This tool queries fixed, bounded datasets with title values kept inside data lit
 
 ### Discovery names and legacy calls
 
-Discovery groups current records and candidate comparisons under `get_item_details`, and dated observations and statistics under `get_price_series`. Existing calls to `get_item_price`, `get_item_graph`, `compare_item_prices`, `compare_items` and `summarize_price_history` remain accepted with the same arguments and results. Aliases are not duplicated in the 12-tool discovery list.
+Discovery groups current records and candidate comparisons under `get_item_details`, and dated observations and statistics under `get_price_series`. Existing calls to `get_item_price`, `get_item_graph`, `compare_item_prices`, `compare_items` and `summarize_price_history` remain accepted with the same arguments and results. Aliases are not duplicated in the 14-tool discovery list.
 
 Clients or gateways with tool-name allowlists may need the new discovery names enabled. The connector ID and hosted endpoint remain the same. No legacy call name is removed.
 
@@ -268,7 +408,7 @@ Drop facts come from the RS3 `dropsline` structured index. Editorial notes and a
 
 `get_ge_info {}` preserves the original configuration-status response. Use `{ "view": "categories" }` to list GE IDs/names, or `{ "view": "category_counts", "category": 24 }` to choose nonempty starting letters before `browse_items`. Category IDs identify groups, not items; their entry counts are not available stock. These views each return their corresponding existing result shape.
 
-Legacy `get_all_categories {}` and `get_category_info { "category": 24 }` calls remain accepted with unchanged results, alongside the pricing compatibility calls. The two catalogue helpers are no longer duplicated in discovery. All existing call names remain supported; the published surface has 12 tools.
+Legacy `get_all_categories {}` and `get_category_info { "category": 24 }` calls remain accepted with unchanged results, alongside the pricing compatibility calls. The two catalogue helpers are no longer duplicated in discovery. All existing call names remain supported; the published surface has 14 tools.
 
 Wiki attribute discovery uses existing classification queries, e.g. `search_wiki { "query": "incategory:\"Novice quests\"" }`. To traverse a category subtree, call `list_wiki_category_members` again on returned namespace-14 member titles; keep each category's cursor separate.
 
@@ -282,4 +422,9 @@ Strict gateways or clients validating against fresh discovery must use the prefe
 
 ### Current-data views
 
-`get_item_details { "itemId": 4151 }` preserves the original catalogue-record response. Use `view: "records"` for single/batch Jagex records and optional recorded-trade enrichment. Use `{ "view": "comparison", "itemIds": [4151,536] }` for compact Weirdgloop daily snapshots; this view rejects `itemId` and live enrichment. Legacy `compare_item_prices` and `compare_items` calls remain accepted with unchanged results, including their older name-array selectors. They are no longer duplicated in the 12-tool discovery list.
+`get_item_details { "itemId": 4151 }` preserves the original catalogue-record response. Use `view: "records"` for single/batch Jagex records and optional recorded-trade enrichment. Use `{ "view": "comparison", "itemIds": [4151,536] }` for compact Weirdgloop daily snapshots; this view rejects `itemId` and live enrichment. Legacy `compare_item_prices` and `compare_items` calls remain accepted with unchanged results, including their older name-array selectors. They are no longer duplicated in the 14-tool discovery list.
+
+## Protected planner beta
+
+The account-aware planner can run as an invite-only beta with authentication and
+persistent Jev spending limits. See [beta setup and limits](docs/protected-beta.md).

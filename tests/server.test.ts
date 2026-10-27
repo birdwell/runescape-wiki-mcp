@@ -21,8 +21,10 @@ describe('MCP Server', () => {
                 'browse_items',
                 'estimate_flip',
                 'get_player_stats',
+                'get_player_quests',
                 'search_wiki',
                 'get_wiki_page_content',
+                'recommend_next_activity',
                 'get_wiki_entity_facts',
                 'list_wiki_category_members',
                 'get_wiki_drop_table',
@@ -32,7 +34,7 @@ describe('MCP Server', () => {
                 expect(allTools.some(t => t.name === toolName)).toBe(true);
             });
 
-            expect(allTools).toHaveLength(12);
+            expect(allTools).toHaveLength(expected.length);
             expect(allTools.some(t => t.name === 'get_all_categories' || t.name === 'get_category_info')).toBe(false);
 
             // Removed duplicates / obsolete tools

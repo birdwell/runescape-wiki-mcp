@@ -196,7 +196,7 @@ function linkOnlyPage(title: string, revisionId: number | undefined, reason: str
     });
 }
 
-export async function handleWikiTool(name: string, args: ToolArguments): Promise<ToolResponse> {
+export async function handleWikiTool(name: string, args: ToolArguments, signal?: AbortSignal): Promise<ToolResponse> {
     switch (name) {
         case 'search_wiki': {
             const unexpected = rejectUnknownKeys(args, ['query', 'limit']);
@@ -218,7 +218,7 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
             const url =
                 `${RUNESCAPE_WIKI_API}?action=query&list=search&format=json` +
                 `&srnamespace=0&srprop=&srlimit=${limit}&srsearch=${encodeURIComponent(query)}`;
-            const data = await makeApiRequest(url);
+            const data = await makeApiRequest(url, signal);
             const apiFailure = wikiApiFailure(data);
             if (apiFailure) return apiFailure;
             const hits = (data?.query?.search ?? []) as WikiSearchHit[];
@@ -244,7 +244,7 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
                 const pages = parseBatch(args.pages, 'pages', (value, label) =>
                     requireWikiTitle(value, label));
                 if (isToolResponse(pages)) return pages;
-                return runBatch('Wiki page references', pages, page => handleWikiTool(name, { page }));
+                return runBatch('Wiki page references', pages, page => handleWikiTool(name, { page }, signal));
             }
 
             const page = requireWikiTitle(args?.page, 'page');
@@ -255,7 +255,7 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
             const url =
                 `${RUNESCAPE_WIKI_API}?action=query&prop=info%7Crevisions&rvprop=ids&format=json` +
                 `&redirects=1&titles=${encodeURIComponent(page)}`;
-            const data = await makeApiRequest(url);
+            const data = await makeApiRequest(url, signal);
             const apiFailure = wikiApiFailure(data);
             if (apiFailure) return apiFailure;
             const pages = (data?.query?.pages ?? {}) as Record<string, WikiPage>;
@@ -278,7 +278,7 @@ export async function handleWikiTool(name: string, args: ToolArguments): Promise
 
             const reviewedData = await makeApiRequest(
                 `${RUNESCAPE_WIKI_API}?action=query&prop=extracts%7Crevisions&rvprop=ids&format=json` +
-                `&explaintext=1&redirects=1&titles=${encodeURIComponent(resolvedTitle)}`);
+                `&explaintext=1&redirects=1&titles=${encodeURIComponent(resolvedTitle)}`, signal);
             const extractFailure = wikiApiFailure(reviewedData);
             if (extractFailure) return extractFailure;
             const current = Object.values(reviewedData?.query?.pages ?? {})[0] as WikiPage | undefined;
