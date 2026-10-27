@@ -22,6 +22,15 @@ updates:
       security:
         applies-to: security-updates
         patterns: ["*"]
+    # typescript is an npm alias of @typescript/typescript6. Dependabot matches
+    # ignore rules on the name in the manifest or lockfile, and those differ:
+    # the manifest key is "typescript", bun.lock's resolution name is
+    # "@typescript/typescript6". Ignore majors for both until TS 7.1.
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@typescript/typescript6"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "docker"
     directory: "/"
