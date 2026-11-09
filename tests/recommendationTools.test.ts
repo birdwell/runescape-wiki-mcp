@@ -80,6 +80,7 @@ describe('recommend_next_activity', () => {
         { goal: 'What should I do next?' },
         { goal: 'What can I do with high-level Mining?' },
         { goal: 'What can I do with high level Mining?' },
+        { goal: 'What can I do with mid level Mining?' },
     ])('returns without reviewed extracts or paid Jev calls: %j', async args => {
         const { calls } = fixture();
         wikiContentReviews.splice(0);
@@ -94,7 +95,7 @@ describe('recommend_next_activity', () => {
 
     it.each([
         ['Train Prayer to 50', 50], ['Reach level 50 in Prayer', 50], ['Get to 50 Prayer', 50],
-        ['Target 50 Prayer', 50], ['Prayer to 50', 50], ['Level Prayer', 120],
+        ['Target 50 Prayer', 50], ['Prayer to 50', 50], ['Level Prayer', 120], ['How do I level Prayer?', 120],
         ['Train Prayer without questing', 120], ['Reach level 50 in Prayer without questing', 50],
     ])('routes %s to training when there are no reviewed extracts', async (goal, targetLevel) => {
         const { calls } = fixture();

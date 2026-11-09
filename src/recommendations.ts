@@ -84,11 +84,12 @@ function inferSpecializedGoalType(goal: string): RecommendationInput['goalType']
     const quest = QUEST_GOAL.exec(goal);
     // A named training request can mention quests or unlocks as constraints or motivation.
     const leadingGoal = goal.slice(0, Math.min(unlock?.index ?? goal.length, quest?.index ?? goal.length));
-    const trainingVerb = /train(?:ing)?|levell?ing|(?<!\p{Dash_Punctuation}|\b(?:high|low)\s+)level(?:\s+up)?/u.source;
+    // Bare "level" needs command context, since it can also describe an existing skill level.
+    const trainingVerb = /\b(?:train(?:ing)?|levell?ing|level\s+up)|(?:^\s*|\b(?:please|to|I|we|me|you)\s+)level/.source;
     const trainingGoal = RS3_SKILLS.some(skill => {
         if (skill === 'Overall' || !new RegExp(`\\b${skill}\\b`, 'i').test(leadingGoal)) return false;
         const trainingPhrase = new RegExp(
-            `\\b(?:(?:${trainingVerb})\\s+(?:my\\s+)?${skill}|${skill}\\s+training)\\b`, 'iu');
+            `(?:${trainingVerb})\\s+(?:my\\s+)?${skill}\\b|\\b${skill}\\s+training\\b`, 'i');
         return trainingPhrase.test(leadingGoal) || trainingLevelFromGoal(leadingGoal, skill) !== undefined;
     });
     if (trainingGoal) return 'skill_training';
