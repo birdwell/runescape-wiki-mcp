@@ -16,7 +16,9 @@ const MAX_PAGES = 3;
 const CACHE_TTL = 5 * 60_000;
 const QUEST_TIMEOUT_MS = 5 * 60_000;
 const QUEST_GOAL = /\bquest(?:s|ing)?\b/i;
-const LEVEL_TARGET_PREFIX = /\b(?:reach|achieve|get(?:\s+to)?|to)\s+(?:(?:a|the)\s+)?/.source;
+const OPTIONAL_LEVEL_ARTICLE = /(?:(?:a|the)\s+)?/.source;
+const LEVEL_TARGET_VERB = /\b(?:reach|achieve|get(?:\s+to)?|(?:train\s+)?to|target|aim\s+for)\s+/.source;
+const LEVEL_TARGET_PREFIX = `${LEVEL_TARGET_VERB}${OPTIONAL_LEVEL_ARTICLE}`;
 const MAX_LEVEL_REQUEST = new RegExp(`${LEVEL_TARGET_PREFIX}max(?:imum)?[ -]+level\\b`, 'gi');
 // Only public wiki responses are cached. Goals, hiscores and decisions are request-local.
 const wikiCache = new Map<string, { expires: number; response: ToolResponse }>();
@@ -32,10 +34,11 @@ function isNegatedTarget(goal: string, index: number): boolean {
 /** Infer only level-shaped targets, never a bare amount of GP, XP or session time. */
 export function trainingLevelFromGoal(goal: string, skill: string, { requireNamedSkill = false } = {}): number | undefined {
     const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const levelPrefix = '(?:(?:max(?:imum)?[ -]+)?(?:level|lvl)\\s+)?';
+    const levelPrefix = /(?:(?:max(?:imum)?[ -]+)?(?:level|lvl)(?:\s+of)?\s+)?/.source;
+    const skillCommand = /(?:(?:train|level(?:\s+up)?|raise|increase)\s+(?:my\s+)?|my\s+)?/.source;
     const namedPatterns = [
-        new RegExp(`\\b${escaped}\\s+(?:from\\s+(?:level\\s+)?\\d{1,3}\\s+)?to\\s+${levelPrefix}(\\d{1,3})\\b`, 'gi'),
-        new RegExp(`\\b(?:reach|get(?:\\s+to)?|target|achieve)\\s+${levelPrefix}(\\d{1,3})\\s+(?:in\\s+)?${escaped}\\b(?!\\s+(?:xp|experience|ores?|logs?|runes?)\\b)`, 'gi'),
+        new RegExp(`\\b${skillCommand}${escaped}\\s+(?:from\\s+(?:level\\s+)?\\d{1,3}\\s+)?to\\s+${OPTIONAL_LEVEL_ARTICLE}${levelPrefix}(\\d{1,3})\\b`, 'gi'),
+        new RegExp(`${LEVEL_TARGET_PREFIX}${levelPrefix}(\\d{1,3})\\s+(?:in\\s+)?${escaped}\\b(?!\\s+(?:xp|experience|ores?|logs?|runes?)\\b)`, 'gi'),
     ];
     const patterns = requireNamedSkill ? namedPatterns : [
         /\b(?:to|reach|get(?:\s+to)?|target|aim\s+for)\s+(?:level|lvl)\s+(\d{1,3})\b/gi,

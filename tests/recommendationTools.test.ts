@@ -102,6 +102,8 @@ describe('recommend_next_activity', () => {
         ['Train Prayer to 70, not to max level', 70], ['Train Prayer to 70 on the way to max level', 70],
         ['Reach max level 99 in Prayer', 99], ['Train Prayer to max level 120', 120],
         ['Reach level 80 in combat, then train Prayer to max level 120', 120],
+        ['Train to level 99 in Prayer to reach max level', 99], ['Train to the max level 99 in Prayer', 99],
+        ['Reach a maximum level of 99 in Prayer', 99], ['Train Prayer to the max level 120', 120],
     ])('routes %s to training when there are no reviewed extracts', async (goal, targetLevel) => {
         const { calls } = fixture();
         wikiContentReviews.splice(0);
@@ -117,6 +119,7 @@ describe('recommend_next_activity', () => {
         ['Train Prayer to max level, but not to level 70', 70],
         ['Train Prayer to max level after Mining to 70', 50], ['Train Prayer, not to max level', 119],
         ['Reach level 80 in combat, then train Prayer to max level', 80],
+        ['Train Prayer to max level, but do not train Prayer to level 70', 70],
     ])('asks for a numeric target for %s without a Jev call', async (goal, currentLevel) => {
         const { calls } = fixture();
         wikiContentReviews.splice(0);
