@@ -99,6 +99,8 @@ describe('recommend_next_activity', () => {
         ['Target 50 Prayer', 50], ['Prayer to 50', 50], ['Level Prayer', 120], ['How do I level Prayer?', 120],
         ['How can I get a higher level in Prayer?', 120],
         ['Train Prayer without questing', 120], ['Reach level 50 in Prayer without questing', 50],
+        ['Train Prayer to 70, not to max level', 70], ['Train Prayer to 70 on the way to max level', 70],
+        ['Train Prayer, not to max level', 120],
     ])('routes %s to training when there are no reviewed extracts', async (goal, targetLevel) => {
         const { calls } = fixture();
         wikiContentReviews.splice(0);

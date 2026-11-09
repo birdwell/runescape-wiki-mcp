@@ -217,7 +217,7 @@ Public wiki quest metadata is cached for six hours; player journals are never ca
 
 For a skill training plan, use a goal such as "Train Mining to 70", or supply
 `goalType: "skill_training"`, `targetSkill: "Mining"` and `targetLevel: 70`.
-For max-level goals, set `targetLevel` to the gameplay cap or virtual level you want.
+For max-level goals, give the numeric gameplay cap or virtual level you want in the goal or in `targetLevel`.
 The server reads wiki training tables and the fresh public quest completion set when
 a username is available, preserves separate rate assumptions such as
 buying energy versus gathering it, and compares methods available at each milestone.

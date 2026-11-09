@@ -17,7 +17,7 @@ const CACHE_TTL = 5 * 60_000;
 const QUEST_TIMEOUT_MS = 5 * 60_000;
 const QUEST_GOAL = /\bquest(?:s|ing)?\b/i;
 const LEVEL_TARGET_PREFIX = /\b(?:reach|achieve|get(?:\s+to)?|to)\s+(?:(?:a|the)\s+)?/.source;
-const MAX_LEVEL_REQUEST = new RegExp(`${LEVEL_TARGET_PREFIX}max(?:imum)?[ -]+level\\b`, 'i');
+const MAX_LEVEL_REQUEST = new RegExp(`${LEVEL_TARGET_PREFIX}max(?:imum)?[ -]+level\\b`, 'gi');
 // Only public wiki responses are cached. Goals, hiscores and decisions are request-local.
 const wikiCache = new Map<string, { expires: number; response: ToolResponse }>();
 
@@ -81,6 +81,15 @@ const routeQueries: Record<string, string> = {
     general: 'achievement paths',
 };
 
+function requestsMaxLevel(goal: string): boolean {
+    return [...goal.matchAll(MAX_LEVEL_REQUEST)].some(match =>
+        !/\b(?:not|never|without)\s*$/i.test(goal.slice(0, match.index)));
+}
+
+function namedTrainingSkills(goal: string): string[] {
+    return RS3_SKILLS.filter(skill => skill !== 'Overall' && new RegExp(`\\b${skill}\\b`, 'i').test(goal));
+}
+
 function inferSpecializedGoalType(goal: string): RecommendationInput['goalType'] {
     const unlock = /\bunlock(?:s|ing)?\b/i.exec(goal);
     const quest = QUEST_GOAL.exec(goal);
@@ -89,9 +98,8 @@ function inferSpecializedGoalType(goal: string): RecommendationInput['goalType']
     // Bare "level" needs command context, since it can also describe an existing skill level.
     const trainingVerb = /\b(?:train(?:ing)?|levell?ing|level\s+up)|(?:^\s*|\b(?:please|to|I|we|me|you)\s+)level/.source;
     const levelTarget = `${LEVEL_TARGET_PREFIX}(?:higher|high)\\s+level(?:\\s+in)?`;
-    const maxLevelRequested = MAX_LEVEL_REQUEST.test(leadingGoal);
-    const trainingGoal = RS3_SKILLS.some(skill => {
-        if (skill === 'Overall' || !new RegExp(`\\b${skill}\\b`, 'i').test(leadingGoal)) return false;
+    const maxLevelRequested = requestsMaxLevel(leadingGoal);
+    const trainingGoal = namedTrainingSkills(leadingGoal).some(skill => {
         const trainingPhrase = new RegExp(
             `(?:${trainingVerb}|${levelTarget})\\s+(?:my\\s+)?${skill}\\b|\\b${skill}\\s+training\\b`, 'i');
         return maxLevelRequested || trainingPhrase.test(leadingGoal) || trainingLevelFromGoal(leadingGoal, skill) !== undefined;
@@ -107,11 +115,13 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
     const signal = AbortSignal.timeout(55_000);
     const { goal, context } = input;
     const hasWikiReviews = wikiContentReviews.length > 0;
-    const maxLevelRequested = MAX_LEVEL_REQUEST.test(goal);
+    const maxLevelRequested = requestsMaxLevel(goal);
     // Check unavailable activity planning and ambiguous maximums before spending on Jev.
     const goalType = input.goalType ?? (hasWikiReviews && !maxLevelRequested ? undefined : inferSpecializedGoalType(goal));
     const activityUnavailable = !hasWikiReviews && !input.unlock && (goalType === 'activity' || goalType === undefined);
-    const needsMaxTarget = goalType === 'skill_training' && !input.unlock && maxLevelRequested && input.targetLevel === undefined;
+    const needsMaxTarget = goalType === 'skill_training' && !input.unlock && maxLevelRequested && input.targetLevel === undefined &&
+        !(input.targetSkill ? [input.targetSkill] : namedTrainingSkills(goal))
+            .some(skill => trainingLevelFromGoal(goal, skill) !== undefined);
     const warnings: string[] = activityUnavailable ? [
         'General activity planning has no reviewed Wiki extracts. Set goalType to quests, skill_training, or unlock_progression for a specialized plan.',
     ] : [
@@ -178,11 +188,10 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         })),
         usage: { ...session.usage, maxRounds: 3 },
     });
+    const askForMaxTarget = () => ({ ...finish('needs_context'), warnings: [],
+        missingContext: ['Specify the numeric targetLevel for the gameplay cap or virtual level you want to reach.'] });
     if (activityUnavailable) return finish('no_match');
-    if (needsMaxTarget) {
-        return { ...finish('needs_context'), warnings: [],
-            missingContext: ['Specify the numeric targetLevel for the gameplay cap or virtual level you want to reach.'] };
-    }
+    if (needsMaxTarget) return askForMaxTarget();
 
     // The goal and external text are data, never instructions for executing arbitrary tools.
     const state = { game: 'RS3 only', goal, account };
@@ -211,8 +220,9 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
     }
     if (goalType === 'skill_training' || !goalType && category === 'skilling' && focusSkill) {
         if (!focusSkill) return { ...finish('needs_context'), missingContext: ['Which skill should the training plan target?'] };
-        const target = input.targetLevel ?? trainingLevelFromGoal(goal, focusSkill) ??
-            Math.min(120, Math.ceil(((skills[focusSkill] ?? 1) + 1) / 5) * 5);
+        const requestedLevel = input.targetLevel ?? trainingLevelFromGoal(goal, focusSkill);
+        if (requestedLevel === undefined && maxLevelRequested) return askForMaxTarget();
+        const target = requestedLevel ?? Math.min(120, Math.ceil(((skills[focusSkill] ?? 1) + 1) / 5) * 5);
         return trainingResult(input, account, await planTraining(goal, account, focusSkill, target, session, signal), session);
     }
     const queries = [...new Set([
