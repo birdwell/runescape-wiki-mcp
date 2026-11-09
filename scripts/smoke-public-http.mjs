@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +36,15 @@ try {
         child.once('exit', onExit);
         child.stderr.on('data', onData);
     });
+    // Fetch rejects TRACE before sending it, so use Node's HTTP client.
+    const trace = await new Promise((resolve, reject) => {
+        request(`${base}/mcp/server-card`, { method: 'TRACE', signal: AbortSignal.timeout(5000) }, response => {
+            response.resume();
+            resolve(response);
+        }).once('error', reject).end();
+    });
+    assert.equal(trace.statusCode, 405);
+    assert.equal(trace.headers.allow, 'GET, HEAD, OPTIONS');
     const health = await fetch(`${base}/health`, { signal: AbortSignal.timeout(5000) });
     assert.equal(health.status, 200);
     assert.deepEqual(await health.json(), { ok: true });

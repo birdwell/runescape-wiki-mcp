@@ -12,7 +12,7 @@ Connect Claude, ChatGPT, Cursor, and other assistants to RuneScape 3 Grand Excha
 
 An independent [Birdwell Labs](https://birdwellabs.com) project. No Jagex or Weird Gloop approval is claimed. [Support and rights concerns](mailto:support@birdwellabs.com) · [Permissions and source review](docs/permissions.md).
 
-Default prices are Jagex guide prices and Weirdgloop history. They lag the in-game market. Ask for reported instant-buy/sell prices to include the separate RS3 trade feed at [prices.runescape.wiki](https://prices.runescape.wiki/rs).
+`get_item_details` returns Jagex guide prices by default. Guide prices lag the in-game market. Set `includeLiveData: true` in the records view to add the latest reported instant-buy and instant-sell trades alongside the guide prices.
 
 [![Claude setup](https://img.shields.io/badge/Claude-Setup-D97757?style=for-the-badge)](#claude-setup)
 [![ChatGPT setup](https://img.shields.io/badge/ChatGPT-Setup-087F5B?style=for-the-badge)](#chatgpt-setup)
@@ -119,7 +119,7 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 ## Tools
 
 - `lookup_item` — Resolve an item name to a Grand Exchange ID and the latest guide or Weirdgloop price. Start here when you only know the name.
-- `get_item_details` — Single/batch Jagex catalogue records and guide prices, with optional recorded-trade and numeric-fact enrichment.
+- `get_item_details` — Single/batch Jagex catalogue records and guide prices. In the records view, `includeLiveData: true` adds reported trades and numeric Wiki facts.
 - `get_price_series` — Explicit observations/statistics views over historical prices; ID-based preferred discovery.
 - `estimate_flip` — Tax-adjusted flip profit, with optional remaining-quota and assumed-duration scenarios. Default prices lag the live market.
 - `browse_items` — Browse one Grand Exchange category by starting letter. This is not a name search.
@@ -131,7 +131,8 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 - `list_wiki_category_members` — Direct Wiki category members with category-bound continuation.
 - `get_wiki_drop_table` — Indexed drop references, quantities, rolls and listed rarities; notes are excluded.
 - `get_player_quests` — Complete public RuneMetrics journal with quest statuses and Jagex eligibility; no Jev key needed.
-- `recommend_next_activity` — Opt-in paid goal-based planning using account context and Wiki evidence; requires the server configuration below.
+
+`recommend_next_activity` adds paid goal-based planning using account context and Wiki evidence. It appears only on servers with `RUNESCAPE_RECOMMENDATIONS_ENABLED=true` and a nonblank `TYPESAFE_API_KEY`. With the planner disabled, the catalog has 13 tools.
 
 ### Try the Jev recommendation tool locally
 
@@ -235,9 +236,12 @@ closest 16 targets; this is not a catalogue of every RuneScape unlock. Quest com
 does not prove a reward was claimed or that additional challenges or ability levels are met.
 
 Training goals use at most two Jev requests; unlock goals use at most three, including
-training selection. Set `goalType: "activity"` to use the original general activity search.
-Other activity goals make at most three Jev requests: route the goal, shortlist wiki
-search results, then assess goal relevance, eligibility, budget and session fit
+training selection. Set `goalType: "activity"` to use general activity search.
+With an empty Wiki review list, general activity returns `no_match` before calling
+Jev. Clear quest, named skill training, and unlock requests can still route to a
+specialized planner. Set `goalType` explicitly for goals that need clarification.
+When reviews are configured, general activity makes at most three Jev requests to
+route the goal, shortlist wiki search results, then assess relevance, eligibility, budget and session fit
 in one batch. The server performs up to two wiki searches, evaluates at most six
 candidates, and reads at most three pages. Page excerpts are capped at 6,000
 characters. Routing and non-quest requests have a 55-second deadline. Full quest
@@ -304,11 +308,12 @@ Batch catalogue metadata with the `get_item_details` argument `itemIds` (GE IDs 
 
 ## Data sources
 
-Guide prices come from Jagex. Daily history comes from Weirdgloop. Both lag the live high/low feed published at `https://prices.runescape.wiki/api/v2/rs`. This server does not call that feed.
+Jagex supplies guide prices and the default raw price history. Weirdgloop supplies daily price and volume snapshots for comparisons and history statistics. The server uses the separate RS3 reported-trade feed only when `get_item_details` is called in the records view with `includeLiveData: true`.
 
 - Jagex GE: `https://secure.runescape.com/m=itemdb_rs/api`
 - Jagex hiscores lite: `https://secure.runescape.com/m=hiscore/index_lite.ws`
 - Weirdgloop RS exchange: `https://api.weirdgloop.org/exchange/history/rs`
+- RuneScape Wiki RS3 reported trades and numeric item facts (opt-in): `https://prices.runescape.wiki/api/v2/rs`
 - RuneScape Wiki MediaWiki API: `https://runescape.wiki/api.php`
 
 All requests send User-Agent:  
@@ -392,7 +397,7 @@ This tool queries fixed, bounded datasets with title values kept inside data lit
 
 ### Discovery names and legacy calls
 
-Discovery groups current records and candidate comparisons under `get_item_details`, and dated observations and statistics under `get_price_series`. Existing calls to `get_item_price`, `get_item_graph`, `compare_item_prices`, `compare_items` and `summarize_price_history` remain accepted with the same arguments and results. Aliases are not duplicated in the 14-tool discovery list.
+Discovery groups current records and candidate comparisons under `get_item_details`, and dated observations and statistics under `get_price_series`. Existing calls to `get_item_price`, `get_item_graph`, `compare_item_prices`, `compare_items` and `summarize_price_history` remain accepted with the same arguments and results. Aliases are omitted from discovery.
 
 Clients or gateways with tool-name allowlists may need the new discovery names enabled. The connector ID and hosted endpoint remain the same. No legacy call name is removed.
 
@@ -408,7 +413,7 @@ Drop facts come from the RS3 `dropsline` structured index. Editorial notes and a
 
 `get_ge_info {}` preserves the original configuration-status response. Use `{ "view": "categories" }` to list GE IDs/names, or `{ "view": "category_counts", "category": 24 }` to choose nonempty starting letters before `browse_items`. Category IDs identify groups, not items; their entry counts are not available stock. These views each return their corresponding existing result shape.
 
-Legacy `get_all_categories {}` and `get_category_info { "category": 24 }` calls remain accepted with unchanged results, alongside the pricing compatibility calls. The two catalogue helpers are no longer duplicated in discovery. All existing call names remain supported; the published surface has 14 tools.
+Legacy `get_all_categories {}` and `get_category_info { "category": 24 }` calls remain accepted with unchanged results, alongside the pricing compatibility calls. The two catalogue helpers are no longer duplicated in discovery.
 
 Wiki attribute discovery uses existing classification queries, e.g. `search_wiki { "query": "incategory:\"Novice quests\"" }`. To traverse a category subtree, call `list_wiki_category_members` again on returned namespace-14 member titles; keep each category's cursor separate.
 
@@ -422,7 +427,7 @@ Strict gateways or clients validating against fresh discovery must use the prefe
 
 ### Current-data views
 
-`get_item_details { "itemId": 4151 }` preserves the original catalogue-record response. Use `view: "records"` for single/batch Jagex records and optional recorded-trade enrichment. Use `{ "view": "comparison", "itemIds": [4151,536] }` for compact Weirdgloop daily snapshots; this view rejects `itemId` and live enrichment. Legacy `compare_item_prices` and `compare_items` calls remain accepted with unchanged results, including their older name-array selectors. They are no longer duplicated in the 14-tool discovery list.
+`get_item_details { "itemId": 4151 }` preserves the original catalogue-record response. Use `view: "records"` for single/batch Jagex records and optional recorded-trade enrichment. Use `{ "view": "comparison", "itemIds": [4151,536] }` for compact Weirdgloop daily snapshots; this view rejects `itemId` and live enrichment. Legacy `compare_item_prices` and `compare_items` calls remain accepted with unchanged results, including their older name-array selectors. Discovery shows the canonical `get_item_details` name.
 
 ## Protected planner beta
 

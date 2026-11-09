@@ -6,7 +6,7 @@ import {
     createMcpHandler,
     type McpHttpHandler,
 } from '@modelcontextprotocol/server';
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import nock from 'nock';
 import { handleTool } from '../src/tools/index.js';
 import { handlePriceTool } from '../src/tools/priceTools.js';
@@ -275,6 +275,35 @@ describe('MCP specification compliance', () => {
             expect(result.tools.some(t => t.name === 'get_item_price')).toBe(false);
             expect(result.ttlMs).toBe(3_600_000);
             expect(result.cacheScope).toBe('public');
+        });
+
+        it.each([
+            [undefined, undefined, false],
+            ['false', 'fixture-key', false],
+            ['true', undefined, false],
+            ['true', '  ', false],
+            ['true', 'fixture-key', true],
+        ])('should gate planner discovery for flag %s and key %s', async (enabled, key, visible) => {
+            const env = jest.replaceProperty(process, 'env', {
+                ...process.env,
+                RUNESCAPE_RECOMMENDATIONS_ENABLED: enabled,
+                TYPESAFE_API_KEY: key,
+            });
+            try {
+                const { status, message } = await mcpFetch(handler, 'tools/list');
+                expect(status).toBe(200);
+                const { tools } = message.result as { tools: Array<{ name: string; annotations: object }> };
+                expect(tools.some(tool => tool.name === 'get_player_quests')).toBe(true);
+                const planner = tools.find(tool => tool.name === 'recommend_next_activity');
+                if (visible) {
+                    expect(planner).toBeDefined();
+                    expect(planner?.annotations).not.toHaveProperty('idempotentHint');
+                } else {
+                    expect(planner).toBeUndefined();
+                }
+            } finally {
+                env.restore();
+            }
         });
 
         it('should call tools successfully over the wire', async () => {

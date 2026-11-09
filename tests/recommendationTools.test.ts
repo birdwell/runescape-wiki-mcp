@@ -20,7 +20,7 @@ function answer(question: ChoiceQuestion, selected: string, confidence = 1) {
 
 function fixture(options: {
     eligibility?: string; budget?: string; session?: string; confidence?: number;
-    pages?: number; extractFailure?: boolean; extract?: string;
+    pages?: number; emptySearch?: boolean; extractFailure?: boolean; extract?: string;
 } = {}) {
     sequence += 1;
     const titles = Array.from({ length: options.pages ?? 2 }, (_, index) => `Prayer method ${sequence}-${index}`);
@@ -28,7 +28,7 @@ function fixture(options: {
     const extracts = options.extract ?? 'Train Prayer using this method. Check the skill level and any unlocks before starting. ' +
         'There is no supported exact cost or duration in this fixture.';
     nock('https://runescape.wiki').get('/api.php').query(q => q.list === 'search').twice().reply(200, {
-        query: { search: titles.map(title => ({ title, snippet: 'A Prayer training method.' })) },
+        query: { search: options.emptySearch ? [] : titles.map(title => ({ title, snippet: 'A Prayer training method.' })) },
     });
     for (const title of titles.slice(0, 3)) {
         wikiContentReviews.push({ title, revisionId: 123, extractSha256: createHash('sha256').update(extracts).digest('hex'),
@@ -75,14 +75,31 @@ afterAll(() => {
 });
 
 describe('recommend_next_activity', () => {
-    it('does not send link-only wiki references to Jev as article evidence', async () => {
+    it.each([
+        { goalType: 'activity', goal: 'Train Prayer' },
+        { goal: 'What should I do next?' },
+    ])('returns without reviewed extracts or paid Jev calls: %j', async args => {
         const { calls } = fixture();
         wikiContentReviews.splice(0);
-        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
-        expect(response.structuredContent).toMatchObject({ status: 'no_match', recommendation: null });
-        expect(calls).toHaveLength(2);
-        expect(calls.every(call => call.state.pages === undefined)).toBe(true);
+        const response = await handleTool('recommend_next_activity', args);
+        expect(calls).toHaveLength(0);
+        expect(response.structuredContent).toMatchObject({
+            status: 'no_match', recommendation: null, sources: [],
+            usage: { rounds: 0, inputTokens: 0, outputTokens: 0 },
+            warnings: expect.arrayContaining([expect.stringContaining('no reviewed Wiki extracts')]),
+        });
     });
+
+    it('still routes a named skill training goal when there are no reviewed extracts', async () => {
+        const { calls } = fixture();
+        wikiContentReviews.splice(0);
+        const response = await handleTool('recommend_next_activity', {
+            goal: 'Train Prayer to 50', context: { skills: { Prayer: 50 } },
+        });
+        expect(response.structuredContent).toMatchObject({ status: 'goal_met', trainingPlan: { skill: 'Prayer', targetLevel: 50 } });
+        expect(calls).toHaveLength(1);
+    });
+
     it('executes the three-stage loop and preserves unknown account facts', async () => {
         const { calls, titles } = fixture();
         const response = await handleTool('recommend_next_activity', {
@@ -213,7 +230,7 @@ describe('recommend_next_activity', () => {
     });
 
     it('returns an empty result without further Jev calls when searches find nothing', async () => {
-        fixture({ pages: 0 });
+        fixture({ emptySearch: true });
         const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
         expect(response.structuredContent).toMatchObject({ status: 'no_match', usage: { rounds: 1 } });
     });
@@ -247,7 +264,7 @@ describe('recommend_next_activity', () => {
     it('does not reflect a provider error body or retry a failed paid request', async () => {
         const provider = nock('https://api.typesafe.ai').post('/v1/systemone')
             .reply(429, 'sensitive provider detail test-key-never-live');
-        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'skill_training', goal: 'Train Prayer' });
         expect(provider.isDone()).toBe(true);
         expect(response.isError).toBe(true);
         expect(response.content[0].text).toContain('HTTP 429');
@@ -261,7 +278,7 @@ describe('recommend_next_activity', () => {
                 confidence: 1, probabilities: { execute_shell: 1 } } },
             usage: { input_tokens: 1, output_tokens: 1 },
         });
-        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'skill_training', goal: 'Train Prayer' });
         expect(response.isError).toBe(true);
         expect(response.content[0].text).toContain('out-of-range');
     });

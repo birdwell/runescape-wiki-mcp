@@ -80,9 +80,11 @@ describe('discovery documents', () => {
                 title: tool.title,
                 readOnlyHint: true,
                 destructiveHint: false,
-                idempotentHint: true,
                 openWorldHint: tool.name !== 'get_all_categories',
             });
+            if (tool.name !== 'recommend_next_activity') {
+                expect(tool.annotations?.idempotentHint).toBe(true);
+            }
         }
     });
 });

@@ -9,7 +9,7 @@ import {
 import * as Sentry from '@sentry/node';
 
 import { SERVER_CONFIG, SERVER_INSTRUCTIONS } from './constants.js';
-import { allTools, handleTool } from './tools/index.js';
+import { availableTools, handleTool } from './tools/index.js';
 import { resources, handleResource } from './resources.js';
 import { registerPromptHandlers } from './prompts.js';
 import { createErrorResponse, debugLog } from './utils.js';
@@ -48,7 +48,7 @@ export function createServer(): Server {
 
 function setupServerHandlers(server: Server): void {
     server.setRequestHandler('tools/list', async () => {
-        return { tools: allTools };
+        return { tools: availableTools() };
     });
 
     server.setRequestHandler('tools/call', async (request: CallToolRequest) => {

@@ -4,6 +4,7 @@ import { handlePlayerTool } from './tools/playerTools.js';
 import { handleWikiTool } from './tools/wikiTools.js';
 import { recommendQuests } from './questRecommendations.js';
 import { attributedWikiSource } from './wikiAttribution.js';
+import { wikiContentReviews } from './wikiContentPolicy.js';
 import { planTraining, trainingResult } from './trainingRecommendations.js';
 import { recommendUnlocks } from './unlockRecommendations.js';
 import type { RecommendationInput } from './tools/recommendationTools.js';
@@ -14,6 +15,7 @@ const MAX_CANDIDATES = 6;
 const MAX_PAGES = 3;
 const CACHE_TTL = 5 * 60_000;
 const QUEST_TIMEOUT_MS = 5 * 60_000;
+const QUEST_GOAL = /\bquests?\b/i;
 // Only public wiki responses are cached. Goals, hiscores and decisions are request-local.
 const wikiCache = new Map<string, { expires: number; response: ToolResponse }>();
 
@@ -77,12 +79,28 @@ const routeQueries: Record<string, string> = {
     general: 'achievement paths',
 };
 
+function inferSpecializedGoalType(goal: string): RecommendationInput['goalType'] {
+    if (/\bunlock(?:s|ing)?\b/i.test(goal)) return 'unlock_progression';
+    if (QUEST_GOAL.test(goal)) return 'quests';
+    if (/\b(?:train(?:ing)?|level(?:l?ing)?)\b/i.test(goal) &&
+        RS3_SKILLS.some(skill => skill !== 'Overall' && new RegExp(`\\b${skill}\\b`, 'i').test(goal))) {
+        return 'skill_training';
+    }
+    return undefined;
+}
+
 // A request always ends. Individual fetches also abort, rather than continuing after a timeout.
 export async function recommendActivity(input: RecommendationInput): Promise<Record<string, unknown>> {
     const session = new JevSession(recommendationConfiguration());
     const signal = AbortSignal.timeout(55_000);
     const { goal, context } = input;
-    const warnings: string[] = [
+    const hasWikiReviews = wikiContentReviews.length > 0;
+    // With no general evidence available, route only recognizable specialized goals before spending on Jev.
+    const goalType = input.goalType ?? (hasWikiReviews ? undefined : inferSpecializedGoalType(goal));
+    const activityUnavailable = !hasWikiReviews && !input.unlock && (goalType === 'activity' || goalType === undefined);
+    const warnings: string[] = activityUnavailable ? [
+        'General activity planning has no reviewed Wiki extracts. Set goalType to quests, skill_training, or unlock_progression for a specialized plan.',
+    ] : [
         'First version: candidates come from wiki search, not an exhaustive activity catalogue.',
         'Eligibility, budget and session fit are Jev judgments over excerpts, not verified requirements. ' +
         'Check the cited guide before spending GP or starting an activity. No exact GP/hour or completion time is inferred.',
@@ -93,7 +111,7 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         Object.keys(skills).map(skill => [skill, 'caller'])
     );
     const unrankedSkills: string[] = [];
-    if (context.username) {
+    if (context.username && !activityUnavailable) {
         try {
             const response = await handlePlayerTool('get_player_stats', {
                 username: context.username,
@@ -146,6 +164,8 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         })),
         usage: { ...session.usage, maxRounds: 3 },
     });
+    if (activityUnavailable) return finish('no_match');
+
     // The goal and external text are data, never instructions for executing arbitrary tools.
     const state = { game: 'RS3 only', goal, account };
     const route = await session.decide(state, {
@@ -163,15 +183,15 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
     const category = route.category.confidence >= MIN_CONFIDENCE ? route.category.choice : 'general';
     const focusSkill = input.targetSkill ?? (route.skill.confidence >= MIN_CONFIDENCE && route.skill.choice !== 'none'
         ? route.skill.choice : undefined);
-    if (input.goalType === 'unlock_progression' || input.unlock || !input.goalType && category === 'unlocking') {
+    if (goalType === 'unlock_progression' || input.unlock || !goalType && category === 'unlocking') {
         return recommendUnlocks(input, account, session, signal);
     }
-    if (input.goalType === 'quests' || !input.goalType && (category === 'questing' || /\bquests?\b/i.test(goal))) {
+    if (goalType === 'quests' || !goalType && (category === 'questing' || QUEST_GOAL.test(goal))) {
         // Full journals can require eleven pairs of 12-second decisions plus
         // catalogue/guide reads. Do not inherit the short routing deadline.
         return recommendQuests(input, account, session.usage, focusSkill, AbortSignal.timeout(QUEST_TIMEOUT_MS));
     }
-    if (input.goalType === 'skill_training' || !input.goalType && category === 'skilling' && focusSkill) {
+    if (goalType === 'skill_training' || !goalType && category === 'skilling' && focusSkill) {
         if (!focusSkill) return { ...finish('needs_context'), missingContext: ['Which skill should the training plan target?'] };
         const target = input.targetLevel ?? trainingLevelFromGoal(goal, focusSkill) ??
             Math.min(120, Math.ceil(((skills[focusSkill] ?? 1) + 1) / 5) * 5);
