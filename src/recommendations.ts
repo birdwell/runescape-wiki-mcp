@@ -80,15 +80,20 @@ const routeQueries: Record<string, string> = {
 };
 
 function inferSpecializedGoalType(goal: string): RecommendationInput['goalType'] {
-    if (/\bunlock(?:s|ing)?\b/i.test(goal)) return 'unlock_progression';
-    if (QUEST_GOAL.test(goal)) return 'quests';
+    const unlock = /\bunlock(?:s|ing)?\b/i.exec(goal);
+    const quest = QUEST_GOAL.exec(goal);
+    // A named training request can mention quests or unlocks as constraints or motivation.
+    const leadingGoal = goal.slice(0, Math.min(unlock?.index ?? goal.length, quest?.index ?? goal.length));
+    const trainingVerb = /train(?:ing)?|levell?ing|(?<!\p{Dash_Punctuation}|\b(?:high|low)\s+)level(?:\s+up)?/u.source;
     const trainingGoal = RS3_SKILLS.some(skill => {
-        if (skill === 'Overall' || !new RegExp(`\\b${skill}\\b`, 'i').test(goal)) return false;
+        if (skill === 'Overall' || !new RegExp(`\\b${skill}\\b`, 'i').test(leadingGoal)) return false;
         const trainingPhrase = new RegExp(
-            `\\b(?:(?:train(?:ing)?|levell?ing|level\\s+up)\\s+(?:my\\s+)?${skill}|${skill}\\s+training)\\b`, 'i');
-        return trainingPhrase.test(goal) || trainingLevelFromGoal(goal, skill) !== undefined;
+            `\\b(?:(?:${trainingVerb})\\s+(?:my\\s+)?${skill}|${skill}\\s+training)\\b`, 'iu');
+        return trainingPhrase.test(leadingGoal) || trainingLevelFromGoal(leadingGoal, skill) !== undefined;
     });
-    return trainingGoal ? 'skill_training' : undefined;
+    if (trainingGoal) return 'skill_training';
+    if (unlock) return 'unlock_progression';
+    return quest ? 'quests' : undefined;
 }
 
 // A request always ends. Individual fetches also abort, rather than continuing after a timeout.
