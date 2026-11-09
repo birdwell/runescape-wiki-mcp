@@ -78,6 +78,7 @@ describe('recommend_next_activity', () => {
     it.each([
         { goalType: 'activity', goal: 'Train Prayer' },
         { goal: 'What should I do next?' },
+        { goal: 'What can I do with high-level Mining?' },
     ])('returns without reviewed extracts or paid Jev calls: %j', async args => {
         const { calls } = fixture();
         wikiContentReviews.splice(0);
@@ -90,13 +91,26 @@ describe('recommend_next_activity', () => {
         });
     });
 
-    it('still routes a named skill training goal when there are no reviewed extracts', async () => {
+    it.each([
+        'Train Prayer to 50', 'Reach level 50 in Prayer', 'Get to 50 Prayer', 'Target 50 Prayer', 'Prayer to 50',
+    ])('routes %s to training when there are no reviewed extracts', async goal => {
         const { calls } = fixture();
         wikiContentReviews.splice(0);
         const response = await handleTool('recommend_next_activity', {
-            goal: 'Train Prayer to 50', context: { skills: { Prayer: 50 } },
+            goal, context: { skills: { Prayer: 50 } },
         });
         expect(response.structuredContent).toMatchObject({ status: 'goal_met', trainingPlan: { skill: 'Prayer', targetLevel: 50 } });
+        expect(calls).toHaveLength(1);
+    });
+
+    it('routes questing goals when there are no reviewed extracts', async () => {
+        const { calls } = fixture();
+        wikiContentReviews.splice(0);
+        const response = await handleTool('recommend_next_activity', { goal: 'Help me get started with questing' });
+        expect(response.structuredContent).toMatchObject({
+            status: 'needs_context',
+            missingContext: [expect.stringContaining('Username for a public RuneMetrics quest journal')],
+        });
         expect(calls).toHaveLength(1);
     });
 

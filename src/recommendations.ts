@@ -15,7 +15,7 @@ const MAX_CANDIDATES = 6;
 const MAX_PAGES = 3;
 const CACHE_TTL = 5 * 60_000;
 const QUEST_TIMEOUT_MS = 5 * 60_000;
-const QUEST_GOAL = /\bquests?\b/i;
+const QUEST_GOAL = /\bquest(?:s|ing)?\b/i;
 // Only public wiki responses are cached. Goals, hiscores and decisions are request-local.
 const wikiCache = new Map<string, { expires: number; response: ToolResponse }>();
 
@@ -82,11 +82,13 @@ const routeQueries: Record<string, string> = {
 function inferSpecializedGoalType(goal: string): RecommendationInput['goalType'] {
     if (/\bunlock(?:s|ing)?\b/i.test(goal)) return 'unlock_progression';
     if (QUEST_GOAL.test(goal)) return 'quests';
-    if (/\b(?:train(?:ing)?|level(?:l?ing)?)\b/i.test(goal) &&
-        RS3_SKILLS.some(skill => skill !== 'Overall' && new RegExp(`\\b${skill}\\b`, 'i').test(goal))) {
-        return 'skill_training';
-    }
-    return undefined;
+    const trainingGoal = RS3_SKILLS.some(skill => {
+        if (skill === 'Overall' || !new RegExp(`\\b${skill}\\b`, 'i').test(goal)) return false;
+        const trainingPhrase = new RegExp(
+            `\\b(?:(?:train(?:ing)?|levell?ing|level\\s+up)\\s+(?:my\\s+)?${skill}|${skill}\\s+training)\\b`, 'i');
+        return trainingPhrase.test(goal) || trainingLevelFromGoal(goal, skill) !== undefined;
+    });
+    return trainingGoal ? 'skill_training' : undefined;
 }
 
 // A request always ends. Individual fetches also abort, rather than continuing after a timeout.
