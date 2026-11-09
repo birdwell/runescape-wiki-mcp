@@ -16,6 +16,8 @@ const MAX_PAGES = 3;
 const CACHE_TTL = 5 * 60_000;
 const QUEST_TIMEOUT_MS = 5 * 60_000;
 const QUEST_GOAL = /\bquest(?:s|ing)?\b/i;
+const LEVEL_TARGET_PREFIX = /\b(?:reach|achieve|get(?:\s+to)?|to)\s+(?:(?:a|the)\s+)?/.source;
+const MAX_LEVEL_REQUEST = new RegExp(`${LEVEL_TARGET_PREFIX}max(?:imum)?[ -]+level\\b`, 'i');
 // Only public wiki responses are cached. Goals, hiscores and decisions are request-local.
 const wikiCache = new Map<string, { expires: number; response: ToolResponse }>();
 
@@ -86,12 +88,13 @@ function inferSpecializedGoalType(goal: string): RecommendationInput['goalType']
     const leadingGoal = goal.slice(0, Math.min(unlock?.index ?? goal.length, quest?.index ?? goal.length));
     // Bare "level" needs command context, since it can also describe an existing skill level.
     const trainingVerb = /\b(?:train(?:ing)?|levell?ing|level\s+up)|(?:^\s*|\b(?:please|to|I|we|me|you)\s+)level/.source;
-    const levelTarget = /\b(?:reach|achieve|get(?:\s+to)?)\s+(?:(?:a|the)\s+)?(?:max(?:imum)?|higher|high)\s+level(?:\s+in)?/.source;
+    const levelTarget = `${LEVEL_TARGET_PREFIX}(?:higher|high)\\s+level(?:\\s+in)?`;
+    const maxLevelRequested = MAX_LEVEL_REQUEST.test(leadingGoal);
     const trainingGoal = RS3_SKILLS.some(skill => {
         if (skill === 'Overall' || !new RegExp(`\\b${skill}\\b`, 'i').test(leadingGoal)) return false;
         const trainingPhrase = new RegExp(
             `(?:${trainingVerb}|${levelTarget})\\s+(?:my\\s+)?${skill}\\b|\\b${skill}\\s+training\\b`, 'i');
-        return trainingPhrase.test(leadingGoal) || trainingLevelFromGoal(leadingGoal, skill) !== undefined;
+        return maxLevelRequested || trainingPhrase.test(leadingGoal) || trainingLevelFromGoal(leadingGoal, skill) !== undefined;
     });
     if (trainingGoal) return 'skill_training';
     if (unlock) return 'unlock_progression';
@@ -104,9 +107,11 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
     const signal = AbortSignal.timeout(55_000);
     const { goal, context } = input;
     const hasWikiReviews = wikiContentReviews.length > 0;
-    // With no general evidence available, route only recognizable specialized goals before spending on Jev.
-    const goalType = input.goalType ?? (hasWikiReviews ? undefined : inferSpecializedGoalType(goal));
+    const maxLevelRequested = MAX_LEVEL_REQUEST.test(goal);
+    // Check unavailable activity planning and ambiguous maximums before spending on Jev.
+    const goalType = input.goalType ?? (hasWikiReviews && !maxLevelRequested ? undefined : inferSpecializedGoalType(goal));
     const activityUnavailable = !hasWikiReviews && !input.unlock && (goalType === 'activity' || goalType === undefined);
+    const needsMaxTarget = goalType === 'skill_training' && !input.unlock && maxLevelRequested && input.targetLevel === undefined;
     const warnings: string[] = activityUnavailable ? [
         'General activity planning has no reviewed Wiki extracts. Set goalType to quests, skill_training, or unlock_progression for a specialized plan.',
     ] : [
@@ -120,7 +125,7 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         Object.keys(skills).map(skill => [skill, 'caller'])
     );
     const unrankedSkills: string[] = [];
-    if (context.username && !activityUnavailable) {
+    if (context.username && !activityUnavailable && !needsMaxTarget) {
         try {
             const response = await handlePlayerTool('get_player_stats', {
                 username: context.username,
@@ -174,6 +179,10 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         usage: { ...session.usage, maxRounds: 3 },
     });
     if (activityUnavailable) return finish('no_match');
+    if (needsMaxTarget) {
+        return { ...finish('needs_context'), warnings: [],
+            missingContext: ['Specify the numeric targetLevel for the gameplay cap or virtual level you want to reach.'] };
+    }
 
     // The goal and external text are data, never instructions for executing arbitrary tools.
     const state = { game: 'RS3 only', goal, account };

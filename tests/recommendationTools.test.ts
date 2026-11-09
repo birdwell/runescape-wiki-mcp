@@ -97,7 +97,7 @@ describe('recommend_next_activity', () => {
     it.each([
         ['Train Prayer to 50', 50], ['Reach level 50 in Prayer', 50], ['Get to 50 Prayer', 50],
         ['Target 50 Prayer', 50], ['Prayer to 50', 50], ['Level Prayer', 120], ['How do I level Prayer?', 120],
-        ['How can I reach max level Prayer?', 120], ['How can I get a higher level in Prayer?', 120],
+        ['How can I get a higher level in Prayer?', 120],
         ['Train Prayer without questing', 120], ['Reach level 50 in Prayer without questing', 50],
     ])('routes %s to training when there are no reviewed extracts', async (goal, targetLevel) => {
         const { calls } = fixture();
@@ -106,6 +106,27 @@ describe('recommend_next_activity', () => {
             goal, context: { skills: { Prayer: targetLevel } },
         });
         expect(response.structuredContent).toMatchObject({ status: 'goal_met', trainingPlan: { skill: 'Prayer', targetLevel } });
+        expect(calls).toHaveLength(1);
+    });
+
+    it.each(['Reach max level Prayer', 'Train Prayer to maximum level'])('asks for a numeric target for %s without a Jev call', async goal => {
+        const { calls } = fixture();
+        wikiContentReviews.splice(0);
+        const response = await handleTool('recommend_next_activity', { goal, context: { skills: { Prayer: 50 } } });
+        expect(calls).toHaveLength(0);
+        expect(response.structuredContent).toMatchObject({
+            status: 'needs_context', recommendation: null, usage: { rounds: 0 },
+            missingContext: [expect.stringContaining('numeric targetLevel')],
+        });
+    });
+
+    it('honors an explicit numeric targetLevel for a max-level goal', async () => {
+        const { calls } = fixture();
+        wikiContentReviews.splice(0);
+        const response = await handleTool('recommend_next_activity', {
+            goal: 'Reach max level Prayer', targetLevel: 70, context: { skills: { Prayer: 70 } },
+        });
+        expect(response.structuredContent).toMatchObject({ status: 'goal_met', trainingPlan: { skill: 'Prayer', targetLevel: 70 } });
         expect(calls).toHaveLength(1);
     });
 
