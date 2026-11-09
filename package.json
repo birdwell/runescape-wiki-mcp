@@ -59,7 +59,7 @@
   "dependencies": {
     "@modelcontextprotocol/node": "^2.1.2",
     "@modelcontextprotocol/server": "^2.4.0",
-    "@sentry/node": "^11.10.0",
+    "@sentry/node": "^11.11.0",
     "htmlparser2": "^12.0.0",
     "zod": "^4.6.7"
   },
@@ -69,11 +69,11 @@
     "@types/node": "^26.6.6",
     "@typescript/native": "npm:typescript@^7.0.2",
     "jest": "^30.5.2",
-    "nock": "^15.0.5",
+    "nock": "^15.0.6",
     "ts-jest": "^29.4.15",
     "tsx": "^4.23.15",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "wrangler": "^4.156.0"
+    "wrangler": "^4.158.0"
   },
   "engines": {
     "node": ">=20.0.0"
