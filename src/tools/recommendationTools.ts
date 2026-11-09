@@ -15,7 +15,7 @@ export const recommendationInput = z.strictObject({
     targetSkill: z.enum(RS3_SKILLS.filter(skill => skill !== 'Overall')).optional()
         .describe('Exact RS3 skill focus, overriding inferred focus for rewards or training. This does not select a planner; set goalType to force training or quest comparisons.'),
     targetLevel: z.number().int().min(1).max(120).optional()
-        .describe('Destination level for skill_training only, not current level or XP. Precedence: this field, then an explicit level in goal, then the next multiple of five above the current level capped at 120. Max-level goals require a numeric destination in this field or in the goal. Other planners ignore this field.'),
+        .describe('Destination level for skill_training only, not current level or XP. Precedence: this field, then an explicit level in goal, then the next multiple of five above the current level capped at 120. For max-level goals, set this field or name the skill alongside the numeric destination in the goal. Other planners ignore this field.'),
     unlock: z.string().trim().min(1).max(100).optional()
         .describe('Named unlock such as Invention or Prifddinas. Providing it forces unlock_progression even when goalType says otherwise. Supported evidence covers Invention and bounded PvM/quest-reward targets, not every game unlock.'),
     context: z.strictObject({

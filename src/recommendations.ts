@@ -30,13 +30,17 @@ function isNegatedTarget(goal: string, index: number): boolean {
 }
 
 /** Infer only level-shaped targets, never a bare amount of GP, XP or session time. */
-export function trainingLevelFromGoal(goal: string, skill: string): number | undefined {
+export function trainingLevelFromGoal(goal: string, skill: string, { requireNamedSkill = false } = {}): number | undefined {
     const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const patterns = [
+    const levelPrefix = '(?:(?:max(?:imum)?[ -]+)?(?:level|lvl)\\s+)?';
+    const namedPatterns = [
+        new RegExp(`\\b${escaped}\\s+(?:from\\s+(?:level\\s+)?\\d{1,3}\\s+)?to\\s+${levelPrefix}(\\d{1,3})\\b`, 'gi'),
+        new RegExp(`\\b(?:reach|get(?:\\s+to)?|target|achieve)\\s+${levelPrefix}(\\d{1,3})\\s+(?:in\\s+)?${escaped}\\b(?!\\s+(?:xp|experience|ores?|logs?|runes?)\\b)`, 'gi'),
+    ];
+    const patterns = requireNamedSkill ? namedPatterns : [
         /\b(?:to|reach|get(?:\s+to)?|target|aim\s+for)\s+(?:level|lvl)\s+(\d{1,3})\b/gi,
         /\b(?:train|level|raise|increase)(?:\s+(?:it|this skill|my skill))?\s+(?:up\s+)?to\s+(?:level\s+)?(\d{1,3})\b/gi,
-        new RegExp(`\\b${escaped}\\s+(?:from\\s+(?:level\\s+)?\\d{1,3}\\s+)?to\\s+(?:level\\s+)?(\\d{1,3})\\b`, 'gi'),
-        new RegExp(`\\b(?:reach|get(?:\\s+to)?|target)\\s+(\\d{1,3})\\s+${escaped}\\b(?!\\s+(?:xp|experience|ores?|logs?|runes?)\\b)`, 'gi'),
+        ...namedPatterns,
     ];
     const matches = patterns.flatMap(pattern => [...goal.matchAll(pattern)])
         .sort((a, b) => a.index! - b.index!);
@@ -127,7 +131,7 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
     const maxGoalSkill = maxLevelConstrained && maxGoalSkills.length <= 1 ? input.targetSkill ?? maxGoalSkills[0] : undefined;
     // A number in a mixed-skill goal may be a prerequisite rather than the requested destination.
     const maxGoalLevel = maxGoalSkill && (!maxGoalSkills.length || maxGoalSkill === maxGoalSkills[0])
-        ? trainingLevelFromGoal(goal, maxGoalSkill) : undefined;
+        ? trainingLevelFromGoal(goal, maxGoalSkill, { requireNamedSkill: true }) : undefined;
     const needsMaxTarget = goalType === 'skill_training' && !input.unlock && maxLevelConstrained &&
         input.targetLevel === undefined && maxGoalLevel === undefined;
     const warnings: string[] = activityUnavailable ? [
@@ -229,7 +233,7 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
     }
     if (goalType === 'skill_training' || !goalType && category === 'skilling' && focusSkill) {
         if (!focusSkill) return { ...finish('needs_context'), missingContext: ['Which skill should the training plan target?'] };
-        const requestedLevel = input.targetLevel ?? trainingLevelFromGoal(goal, focusSkill);
+        const requestedLevel = input.targetLevel ?? (maxLevelConstrained ? maxGoalLevel : trainingLevelFromGoal(goal, focusSkill));
         if (requestedLevel === undefined && maxLevelConstrained) return askForMaxTarget();
         const target = requestedLevel ?? Math.min(120, Math.ceil(((skills[focusSkill] ?? 1) + 1) / 5) * 5);
         return trainingResult(input, account, await planTraining(goal, account, focusSkill, target, session, signal), session);
