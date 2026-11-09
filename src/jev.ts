@@ -28,16 +28,24 @@ export interface ChoiceQuestion {
     criteria: Record<string, string>;
 }
 
-export function recommendationConfiguration(): { apiKey: string; model: string } {
+export function getRecommendationConfiguration(): { apiKey: string; model: string } | undefined {
     const env = typeof process === 'undefined' ? {} : process.env;
-    if (env.RUNESCAPE_RECOMMENDATIONS_ENABLED !== 'true' || !env.TYPESAFE_API_KEY?.trim()) {
+    const apiKey = env.TYPESAFE_API_KEY?.trim();
+    if (env.RUNESCAPE_RECOMMENDATIONS_ENABLED === 'true' && apiKey) {
+        return { apiKey, model: env.TYPESAFE_MODEL || 'jev-latest' };
+    }
+}
+
+export function recommendationConfiguration(): { apiKey: string; model: string } {
+    const config = getRecommendationConfiguration();
+    if (!config) {
         throw new Error(
             'Recommendations are disabled. The server operator must set ' +
             'RUNESCAPE_RECOMMENDATIONS_ENABLED=true and TYPESAFE_API_KEY. ' +
             'Existing wiki and price tools work without Jev.'
         );
     }
-    return { apiKey: env.TYPESAFE_API_KEY.trim(), model: env.TYPESAFE_MODEL || 'jev-latest' };
+    return config;
 }
 
 export class JevSession {

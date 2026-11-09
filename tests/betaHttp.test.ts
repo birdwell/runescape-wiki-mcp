@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from '@jest/globals';
+import { afterEach, beforeEach, expect, jest, test } from '@jest/globals';
 import { createHash, randomBytes } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,6 +16,11 @@ const principal = (id: string, credential: string, dailyMicros?: number) => ({ i
     sha256: createHash('sha256').update(credential).digest('hex'), dailyMicros });
 
 beforeEach(async () => {
+    jest.replaceProperty(process, 'env', {
+        ...process.env,
+        RUNESCAPE_RECOMMENDATIONS_ENABLED: 'true',
+        TYPESAFE_API_KEY: 'fixture-key',
+    });
     directory = mkdtempSync(join(tmpdir(), 'rs3-beta-http-'));
     const beta = new ProtectedBeta(new BetaLedger(join(directory, 'usage.sqlite')), [
         principal('owner', token), principal('exhausted', exhausted, 0),
@@ -28,6 +33,7 @@ beforeEach(async () => {
     base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
 });
 afterEach(async () => {
+    jest.restoreAllMocks();
     await app.close();
     rmSync(directory, { recursive: true });
 });

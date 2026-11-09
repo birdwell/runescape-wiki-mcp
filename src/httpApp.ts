@@ -66,14 +66,13 @@ export function createHttpServer(beta?: ProtectedBeta, port = 8080) {
             forwardedProto ??
             (hostHeader.startsWith('localhost') || hostHeader.startsWith('127.0.0.1') ? 'http' : 'https');
         const ifNoneMatch = req.headers['if-none-match'];
-        const discovery = handleDiscoveryRequest(
-            new Request(`${proto}://${hostHeader}${req.url ?? '/'}`, {
-                method: req.method ?? 'GET',
-                headers: {
-                    'if-none-match': Array.isArray(ifNoneMatch) ? ifNoneMatch[0] : (ifNoneMatch ?? ''),
-                },
-            })
-        );
+        const discovery = handleDiscoveryRequest({
+            url: `${proto}://${hostHeader}${req.url ?? '/'}`,
+            method: req.method ?? 'GET',
+            headers: new Headers({
+                'if-none-match': Array.isArray(ifNoneMatch) ? ifNoneMatch[0] : (ifNoneMatch ?? ''),
+            }),
+        });
         if (discovery) {
             void writeWebResponse(discovery, res);
             return;

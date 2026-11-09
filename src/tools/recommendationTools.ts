@@ -2,7 +2,7 @@ import type { Tool } from '@modelcontextprotocol/server';
 import { runBetaPlan } from '../betaContext.js';
 import { z } from 'zod';
 import { RS3_SKILLS } from '../constants.js';
-import { JSON_SCHEMA_2020_12, READ_ONLY_TOOL } from '../mcpSchemas.js';
+import { JSON_SCHEMA_2020_12 } from '../mcpSchemas.js';
 import { recommendActivity } from '../recommendations.js';
 import { createErrorResponse, createSuccessResponse } from '../utils.js';
 import type { ToolArguments, ToolResponse } from '../types.js';
@@ -15,7 +15,7 @@ export const recommendationInput = z.strictObject({
     targetSkill: z.enum(RS3_SKILLS.filter(skill => skill !== 'Overall')).optional()
         .describe('Exact RS3 skill focus, overriding inferred focus for rewards or training. This does not select a planner; set goalType to force training or quest comparisons.'),
     targetLevel: z.number().int().min(1).max(120).optional()
-        .describe('Destination level for skill_training only, not current level or XP. Precedence: this field, then an explicit level in goal, then the next multiple of five above the current level capped at 120. Other planners ignore this field.'),
+        .describe('Destination level for skill_training only, not current level or XP. Precedence: this field, then an explicit level in goal, then the next multiple of five above the current level capped at 120. For max-level goals, set this field or name the skill alongside the numeric destination in the goal. Other planners ignore this field.'),
     unlock: z.string().trim().min(1).max(100).optional()
         .describe('Named unlock such as Invention or Prifddinas. Providing it forces unlock_progression even when goalType says otherwise. Supported evidence covers Invention and bounded PvM/quest-reward targets, not every game unlock.'),
     context: z.strictObject({
@@ -59,7 +59,7 @@ export const recommendationTools: Tool[] = [{
         '- Setup/privacy: operator RUNESCAPE_RECOMMENDATIONS_ENABLED=true and TYPESAFE_API_KEY. Goal/account context goes to TypeSafe; display-name lookups go to Jagex.\n' +
         '- Cost: at most 24 paid Jev calls for quests, three otherwise, including routing. Repeated calls can incur fresh charges. No automatic paid retries; rounds completed before an error may already be billed.\n' +
         '- Timing/errors: 55 seconds for routing/non-quest work, plus five minutes for quest comparison. Invalid input/configuration or fatal provider failures return isError/text. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.\n' +
-        '- Freshness: public Wiki reads cache five minutes or six hours by planner. Player journals and decisions are not cached; no game account changes. General activity requires reviewed extracts; withheld text can yield no_match.\n' +
+        '- Freshness: public Wiki reads cache five minutes or six hours by planner. Player journals and decisions are not cached; no game account changes. General activity returns no_match with zero Jev calls when the Wiki review list is empty. For ambiguous goals, select a specialized goalType explicitly.\n' +
         '- Outcomes: needs_context may still include a conditional recommendation; use missingContext to clarify it. no_match means no supported option; goal_met refers to the selected target. Communicate warnings and source conditions.',
     inputSchema: z.toJSONSchema(recommendationInput, { target: 'draft-2020-12', io: 'input' }) as Tool['inputSchema'],
     outputSchema: {
@@ -87,7 +87,7 @@ export const recommendationTools: Tool[] = [{
             'account', 'sources', 'usage'],
         additionalProperties: false,
     },
-    ...READ_ONLY_TOOL,
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
 }];
 
 export async function handleRecommendationTool(_name: string, args: ToolArguments): Promise<ToolResponse> {

@@ -4,6 +4,7 @@ import { handlePlayerTool } from './tools/playerTools.js';
 import { handleWikiTool } from './tools/wikiTools.js';
 import { recommendQuests } from './questRecommendations.js';
 import { attributedWikiSource } from './wikiAttribution.js';
+import { wikiContentReviews } from './wikiContentPolicy.js';
 import { planTraining, trainingResult } from './trainingRecommendations.js';
 import { recommendUnlocks } from './unlockRecommendations.js';
 import type { RecommendationInput } from './tools/recommendationTools.js';
@@ -14,6 +15,11 @@ const MAX_CANDIDATES = 6;
 const MAX_PAGES = 3;
 const CACHE_TTL = 5 * 60_000;
 const QUEST_TIMEOUT_MS = 5 * 60_000;
+const QUEST_GOAL = /\bquest(?:s|ing)?\b/i;
+const OPTIONAL_LEVEL_ARTICLE = /(?:(?:a|the)\s+)?/.source;
+const LEVEL_TARGET_VERB = /\b(?:reach|achieve|get(?:\s+to)?|(?:train\s+)?to|target|aim\s+for)\s+/.source;
+const LEVEL_TARGET_PREFIX = `${LEVEL_TARGET_VERB}${OPTIONAL_LEVEL_ARTICLE}`;
+const MAX_LEVEL_REQUEST = new RegExp(`${LEVEL_TARGET_PREFIX}max(?:imum)?[ -]+level\\b`, 'gi');
 // Only public wiki responses are cached. Goals, hiscores and decisions are request-local.
 const wikiCache = new Map<string, { expires: number; response: ToolResponse }>();
 
@@ -21,18 +27,28 @@ function choice(instructions: string, criteria: Record<string, string>): ChoiceQ
     return { type: 'choice', instructions, criteria };
 }
 
+function isNegatedTarget(goal: string, index: number): boolean {
+    return /\b(?:not|never|without)\s*$/i.test(goal.slice(0, index));
+}
+
 /** Infer only level-shaped targets, never a bare amount of GP, XP or session time. */
-export function trainingLevelFromGoal(goal: string, skill: string): number | undefined {
+export function trainingLevelFromGoal(goal: string, skill: string, { requireNamedSkill = false } = {}): number | undefined {
     const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const patterns = [
+    const levelPrefix = /(?:(?:max(?:imum)?[ -]+)?(?:level|lvl)(?:\s+of)?\s+)?/.source;
+    const skillCommand = /(?:(?:train|level(?:\s+up)?|raise|increase)\s+(?:my\s+)?|my\s+)?/.source;
+    const namedPatterns = [
+        new RegExp(`\\b${skillCommand}${escaped}\\s+(?:from\\s+(?:level\\s+)?\\d{1,3}\\s+)?to\\s+${OPTIONAL_LEVEL_ARTICLE}${levelPrefix}(\\d{1,3})\\b`, 'gi'),
+        new RegExp(`${LEVEL_TARGET_PREFIX}${levelPrefix}(\\d{1,3})\\s+(?:in\\s+)?${escaped}\\b(?!\\s+(?:xp|experience|ores?|logs?|runes?)\\b)`, 'gi'),
+    ];
+    const patterns = requireNamedSkill ? namedPatterns : [
         /\b(?:to|reach|get(?:\s+to)?|target|aim\s+for)\s+(?:level|lvl)\s+(\d{1,3})\b/gi,
         /\b(?:train|level|raise|increase)(?:\s+(?:it|this skill|my skill))?\s+(?:up\s+)?to\s+(?:level\s+)?(\d{1,3})\b/gi,
-        new RegExp(`\\b${escaped}\\s+(?:from\\s+(?:level\\s+)?\\d{1,3}\\s+)?to\\s+(?:level\\s+)?(\\d{1,3})\\b`, 'gi'),
-        new RegExp(`\\b(?:reach|get(?:\\s+to)?|target)\\s+(\\d{1,3})\\s+${escaped}\\b(?!\\s+(?:xp|experience|ores?|logs?|runes?)\\b)`, 'gi'),
+        ...namedPatterns,
     ];
     const matches = patterns.flatMap(pattern => [...goal.matchAll(pattern)])
         .sort((a, b) => a.index! - b.index!);
     for (const match of matches) {
+        if (isNegatedTarget(goal, match.index!)) continue;
         const level = Number(match[1]);
         const suffix = goal.slice(match.index! + match[0].length);
         if (level < 1 || level > 120 || /^(?:[.,]\d|\s*(?:%|(?:[kmb]|hundreds?|thousands?|millions?|billions?|trillions?|mil|mn|bn|gp|coins?|gold|xp|experience|minutes?|hours?|ores?|logs?|runes?|percent)\b))/i.test(suffix)) continue;
@@ -77,12 +93,53 @@ const routeQueries: Record<string, string> = {
     general: 'achievement paths',
 };
 
+function requestsMaxLevel(goal: string): boolean {
+    return [...goal.matchAll(MAX_LEVEL_REQUEST)].some(match => !isNegatedTarget(goal, match.index));
+}
+
+function namedTrainingSkills(goal: string): string[] {
+    return RS3_SKILLS.filter(skill => skill !== 'Overall' && new RegExp(`\\b${skill}\\b`, 'i').test(goal));
+}
+
+function inferSpecializedGoalType(goal: string): RecommendationInput['goalType'] {
+    const unlock = /\bunlock(?:s|ing)?\b/i.exec(goal);
+    const quest = QUEST_GOAL.exec(goal);
+    // A named training request can mention quests or unlocks as constraints or motivation.
+    const leadingGoal = goal.slice(0, Math.min(unlock?.index ?? goal.length, quest?.index ?? goal.length));
+    // Bare "level" needs command context, since it can also describe an existing skill level.
+    const trainingVerb = /\b(?:train(?:ing)?|levell?ing|level\s+up)|(?:^\s*|\b(?:please|to|I|we|me|you)\s+)level/.source;
+    const levelTarget = `${LEVEL_TARGET_PREFIX}(?:higher|high)\\s+level(?:\\s+in)?`;
+    const maxLevelRequested = requestsMaxLevel(leadingGoal);
+    const trainingGoal = namedTrainingSkills(leadingGoal).some(skill => {
+        const trainingPhrase = new RegExp(
+            `(?:${trainingVerb}|${levelTarget})\\s+(?:my\\s+)?${skill}\\b|\\b${skill}\\s+training\\b`, 'i');
+        return maxLevelRequested || trainingPhrase.test(leadingGoal) || trainingLevelFromGoal(leadingGoal, skill) !== undefined;
+    });
+    if (trainingGoal) return 'skill_training';
+    if (unlock) return 'unlock_progression';
+    return quest ? 'quests' : undefined;
+}
+
 // A request always ends. Individual fetches also abort, rather than continuing after a timeout.
 export async function recommendActivity(input: RecommendationInput): Promise<Record<string, unknown>> {
     const session = new JevSession(recommendationConfiguration());
     const signal = AbortSignal.timeout(55_000);
     const { goal, context } = input;
-    const warnings: string[] = [
+    const hasWikiReviews = wikiContentReviews.length > 0;
+    const maxLevelConstrained = goal.search(MAX_LEVEL_REQUEST) !== -1;
+    // Check unavailable activity planning and ambiguous maximums before spending on Jev.
+    const goalType = input.goalType ?? (hasWikiReviews && !maxLevelConstrained ? undefined : inferSpecializedGoalType(goal));
+    const activityUnavailable = !hasWikiReviews && !input.unlock && (goalType === 'activity' || goalType === undefined);
+    const maxGoalSkills = maxLevelConstrained ? namedTrainingSkills(goal) : [];
+    const maxGoalSkill = maxLevelConstrained && maxGoalSkills.length <= 1 ? input.targetSkill ?? maxGoalSkills[0] : undefined;
+    // A number in a mixed-skill goal may be a prerequisite rather than the requested destination.
+    const maxGoalLevel = maxGoalSkill && (!maxGoalSkills.length || maxGoalSkill === maxGoalSkills[0])
+        ? trainingLevelFromGoal(goal, maxGoalSkill, { requireNamedSkill: true }) : undefined;
+    const needsMaxTarget = goalType === 'skill_training' && !input.unlock && maxLevelConstrained &&
+        input.targetLevel === undefined && maxGoalLevel === undefined;
+    const warnings: string[] = activityUnavailable ? [
+        'General activity planning has no reviewed Wiki extracts. Set goalType to quests, skill_training, or unlock_progression for a specialized plan.',
+    ] : [
         'First version: candidates come from wiki search, not an exhaustive activity catalogue.',
         'Eligibility, budget and session fit are Jev judgments over excerpts, not verified requirements. ' +
         'Check the cited guide before spending GP or starting an activity. No exact GP/hour or completion time is inferred.',
@@ -93,7 +150,7 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         Object.keys(skills).map(skill => [skill, 'caller'])
     );
     const unrankedSkills: string[] = [];
-    if (context.username) {
+    if (context.username && !activityUnavailable && !needsMaxTarget) {
         try {
             const response = await handlePlayerTool('get_player_stats', {
                 username: context.username,
@@ -146,6 +203,11 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         })),
         usage: { ...session.usage, maxRounds: 3 },
     });
+    const askForMaxTarget = () => ({ ...finish('needs_context'), warnings: [],
+        missingContext: ['Specify the numeric targetLevel you want the training plan to reach.'] });
+    if (activityUnavailable) return finish('no_match');
+    if (needsMaxTarget) return askForMaxTarget();
+
     // The goal and external text are data, never instructions for executing arbitrary tools.
     const state = { game: 'RS3 only', goal, account };
     const route = await session.decide(state, {
@@ -161,20 +223,22 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         }),
     }, signal);
     const category = route.category.confidence >= MIN_CONFIDENCE ? route.category.choice : 'general';
-    const focusSkill = input.targetSkill ?? (route.skill.confidence >= MIN_CONFIDENCE && route.skill.choice !== 'none'
+    const focusSkill = input.targetSkill ?? (goalType === 'skill_training' ? maxGoalSkill : undefined) ??
+        (route.skill.confidence >= MIN_CONFIDENCE && route.skill.choice !== 'none'
         ? route.skill.choice : undefined);
-    if (input.goalType === 'unlock_progression' || input.unlock || !input.goalType && category === 'unlocking') {
+    if (goalType === 'unlock_progression' || input.unlock || !goalType && category === 'unlocking') {
         return recommendUnlocks(input, account, session, signal);
     }
-    if (input.goalType === 'quests' || !input.goalType && (category === 'questing' || /\bquests?\b/i.test(goal))) {
+    if (goalType === 'quests' || !goalType && (category === 'questing' || QUEST_GOAL.test(goal))) {
         // Full journals can require eleven pairs of 12-second decisions plus
         // catalogue/guide reads. Do not inherit the short routing deadline.
         return recommendQuests(input, account, session.usage, focusSkill, AbortSignal.timeout(QUEST_TIMEOUT_MS));
     }
-    if (input.goalType === 'skill_training' || !input.goalType && category === 'skilling' && focusSkill) {
+    if (goalType === 'skill_training' || !goalType && category === 'skilling' && focusSkill) {
         if (!focusSkill) return { ...finish('needs_context'), missingContext: ['Which skill should the training plan target?'] };
-        const target = input.targetLevel ?? trainingLevelFromGoal(goal, focusSkill) ??
-            Math.min(120, Math.ceil(((skills[focusSkill] ?? 1) + 1) / 5) * 5);
+        const requestedLevel = input.targetLevel ?? (maxLevelConstrained ? maxGoalLevel : trainingLevelFromGoal(goal, focusSkill));
+        if (requestedLevel === undefined && maxLevelConstrained) return askForMaxTarget();
+        const target = requestedLevel ?? Math.min(120, Math.ceil(((skills[focusSkill] ?? 1) + 1) / 5) * 5);
         return trainingResult(input, account, await planTraining(goal, account, focusSkill, target, session, signal), session);
     }
     const queries = [...new Set([

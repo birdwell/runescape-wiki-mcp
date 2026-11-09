@@ -14,6 +14,7 @@ import { recommendationTools, handleRecommendationTool } from './recommendationT
 import { ToolArguments, ToolResponse } from '../types.js';
 import { discoveryTool, implementationToolName } from '../toolNaming.js';
 import { unknownToolError } from '../errors.js';
+import { getRecommendationConfiguration } from '../jev.js';
 
 export const allTools: Tool[] = [
     ...itemTools,
@@ -31,6 +32,11 @@ export const allTools: Tool[] = [
     // Older directory scanners still read the title from annotations.
     annotations: { ...tool.annotations, title: tool.title ?? tool.name },
 }));
+
+export function availableTools(): Tool[] {
+    if (getRecommendationConfiguration()) return allTools;
+    return allTools.filter(tool => tool.name !== 'recommend_next_activity');
+}
 
 export async function handleTool(name: string, args: ToolArguments): Promise<ToolResponse> {
     name = implementationToolName(name);

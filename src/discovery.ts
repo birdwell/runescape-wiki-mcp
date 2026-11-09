@@ -104,8 +104,16 @@ function discoveryHeaders(mediaType: string, etag: string): Headers {
  * Serve the server card and AI Catalog. Returns undefined so the MCP
  * transport can handle every other request.
  */
-export function handleDiscoveryRequest(request: Request): Response | undefined {
-    const url = new URL(request.url);
+export function handleDiscoveryRequest(request: Pick<Request, 'url' | 'method' | 'headers'>): Response | undefined {
+    let url: URL;
+    try {
+        url = new URL(request.url);
+    } catch {
+        return new Response('Bad Request', { status: 400 });
+    }
+    if (url.username || url.password) {
+        return new Response('Bad Request', { status: 400 });
+    }
     const document = documentFor(url.pathname, url.origin);
     if (!document) {
         return undefined;

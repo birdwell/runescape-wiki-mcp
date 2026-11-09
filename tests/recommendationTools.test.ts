@@ -20,7 +20,7 @@ function answer(question: ChoiceQuestion, selected: string, confidence = 1) {
 
 function fixture(options: {
     eligibility?: string; budget?: string; session?: string; confidence?: number;
-    pages?: number; extractFailure?: boolean; extract?: string;
+    pages?: number; emptySearch?: boolean; extractFailure?: boolean; extract?: string;
 } = {}) {
     sequence += 1;
     const titles = Array.from({ length: options.pages ?? 2 }, (_, index) => `Prayer method ${sequence}-${index}`);
@@ -28,7 +28,7 @@ function fixture(options: {
     const extracts = options.extract ?? 'Train Prayer using this method. Check the skill level and any unlocks before starting. ' +
         'There is no supported exact cost or duration in this fixture.';
     nock('https://runescape.wiki').get('/api.php').query(q => q.list === 'search').twice().reply(200, {
-        query: { search: titles.map(title => ({ title, snippet: 'A Prayer training method.' })) },
+        query: { search: options.emptySearch ? [] : titles.map(title => ({ title, snippet: 'A Prayer training method.' })) },
     });
     for (const title of titles.slice(0, 3)) {
         wikiContentReviews.push({ title, revisionId: 123, extractSha256: createHash('sha256').update(extracts).digest('hex'),
@@ -75,14 +75,85 @@ afterAll(() => {
 });
 
 describe('recommend_next_activity', () => {
-    it('does not send link-only wiki references to Jev as article evidence', async () => {
+    it.each([
+        { goalType: 'activity', goal: 'Train Prayer' },
+        { goal: 'What should I do next?' },
+        { goal: 'What can I do with high-level Mining?' },
+        { goal: 'What can I do with high level Mining?' },
+        { goal: 'What can I do with mid level Mining?' },
+        { goal: 'What can I do with max level Prayer?' },
+    ])('returns without reviewed extracts or paid Jev calls: %j', async args => {
         const { calls } = fixture();
         wikiContentReviews.splice(0);
-        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
-        expect(response.structuredContent).toMatchObject({ status: 'no_match', recommendation: null });
-        expect(calls).toHaveLength(2);
-        expect(calls.every(call => call.state.pages === undefined)).toBe(true);
+        const response = await handleTool('recommend_next_activity', args);
+        expect(calls).toHaveLength(0);
+        expect(response.structuredContent).toMatchObject({
+            status: 'no_match', recommendation: null, sources: [],
+            usage: { rounds: 0, inputTokens: 0, outputTokens: 0 },
+            warnings: expect.arrayContaining([expect.stringContaining('no reviewed Wiki extracts')]),
+        });
     });
+
+    it.each([
+        ['Train Prayer to 50', 50], ['Reach level 50 in Prayer', 50], ['Get to 50 Prayer', 50],
+        ['Target 50 Prayer', 50], ['Prayer to 50', 50], ['Level Prayer', 120], ['How do I level Prayer?', 120],
+        ['How can I get a higher level in Prayer?', 120],
+        ['Train Prayer without questing', 120], ['Reach level 50 in Prayer without questing', 50],
+        ['Train Prayer to 70, not to max level', 70], ['Train Prayer to 70 on the way to max level', 70],
+        ['Reach max level 99 in Prayer', 99], ['Train Prayer to max level 120', 120],
+        ['Reach level 80 in combat, then train Prayer to max level 120', 120],
+        ['Train to level 99 in Prayer to reach max level', 99], ['Train to the max level 99 in Prayer', 99],
+        ['Reach a maximum level of 99 in Prayer', 99], ['Train Prayer to the max level 120', 120],
+    ])('routes %s to training when there are no reviewed extracts', async (goal, targetLevel) => {
+        const { calls } = fixture();
+        wikiContentReviews.splice(0);
+        const response = await handleTool('recommend_next_activity', {
+            goal, context: { skills: { Prayer: targetLevel } },
+        });
+        expect(response.structuredContent).toMatchObject({ status: 'goal_met', trainingPlan: { skill: 'Prayer', targetLevel } });
+        expect(calls).toHaveLength(1);
+    });
+
+    it.each([
+        ['Reach max level Prayer', 50], ['Train Prayer to maximum level', 50],
+        ['Train Prayer to max level, but not to level 70', 70],
+        ['Train Prayer to max level after Mining to 70', 50], ['Train Prayer, not to max level', 119],
+        ['Reach level 80 in combat, then train Prayer to max level', 80],
+        ['Train Prayer to max level, but do not train Prayer to level 70', 70],
+    ])('asks for a numeric target for %s without a Jev call', async (goal, currentLevel) => {
+        const { calls } = fixture();
+        wikiContentReviews.splice(0);
+        const response = await handleTool('recommend_next_activity', { goal, context: { skills: { Prayer: currentLevel } } });
+        expect(calls).toHaveLength(0);
+        expect(response.structuredContent).toMatchObject({
+            status: 'needs_context', recommendation: null, usage: { rounds: 0 },
+            missingContext: [expect.stringContaining('numeric targetLevel')],
+        });
+    });
+
+    it('honors an explicit numeric targetLevel for a max-level goal', async () => {
+        const { calls } = fixture();
+        wikiContentReviews.splice(0);
+        const response = await handleTool('recommend_next_activity', {
+            goal: 'Reach max level Prayer', targetLevel: 70, context: { skills: { Prayer: 70 } },
+        });
+        expect(response.structuredContent).toMatchObject({ status: 'goal_met', trainingPlan: { skill: 'Prayer', targetLevel: 70 } });
+        expect(calls).toHaveLength(1);
+    });
+
+    it.each([
+        'Help me get started with questing', 'What is the best quest to train Prayer?',
+    ])('routes %s to quests when there are no reviewed extracts', async goal => {
+        const { calls } = fixture();
+        wikiContentReviews.splice(0);
+        const response = await handleTool('recommend_next_activity', { goal });
+        expect(response.structuredContent).toMatchObject({
+            status: 'needs_context',
+            missingContext: [expect.stringContaining('Username for a public RuneMetrics quest journal')],
+        });
+        expect(calls).toHaveLength(1);
+    });
+
     it('executes the three-stage loop and preserves unknown account facts', async () => {
         const { calls, titles } = fixture();
         const response = await handleTool('recommend_next_activity', {
@@ -213,7 +284,7 @@ describe('recommend_next_activity', () => {
     });
 
     it('returns an empty result without further Jev calls when searches find nothing', async () => {
-        fixture({ pages: 0 });
+        fixture({ emptySearch: true });
         const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
         expect(response.structuredContent).toMatchObject({ status: 'no_match', usage: { rounds: 1 } });
     });
@@ -247,7 +318,7 @@ describe('recommend_next_activity', () => {
     it('does not reflect a provider error body or retry a failed paid request', async () => {
         const provider = nock('https://api.typesafe.ai').post('/v1/systemone')
             .reply(429, 'sensitive provider detail test-key-never-live');
-        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'skill_training', goal: 'Train Prayer' });
         expect(provider.isDone()).toBe(true);
         expect(response.isError).toBe(true);
         expect(response.content[0].text).toContain('HTTP 429');
@@ -261,7 +332,7 @@ describe('recommend_next_activity', () => {
                 confidence: 1, probabilities: { execute_shell: 1 } } },
             usage: { input_tokens: 1, output_tokens: 1 },
         });
-        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer' });
+        const response = await handleTool('recommend_next_activity', { goalType: 'skill_training', goal: 'Train Prayer' });
         expect(response.isError).toBe(true);
         expect(response.content[0].text).toContain('out-of-range');
     });
