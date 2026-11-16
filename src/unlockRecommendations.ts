@@ -1,6 +1,6 @@
 import { JevSession, MAX_JEV_REQUEST_CHARS, type ChoiceQuestion } from './jev.js';
 import { fetchGuide, guideSections, guideTables, inventionRequirements, type Guide } from './wikiGuides.js';
-import { fetchPlayerQuests, fetchQuestCatalogue, fetchQuestGuide, questKey, type JournalQuest } from './questData.js';
+import { fetchPlayerQuests, fetchQuestCatalogue, playerDataFailure, fetchQuestGuide, questKey, type JournalQuest } from './questData.js';
 import { wikiText, type QuestMetadata } from './questParsing.js';
 import { attributedWikiSource } from './wikiAttribution.js';
 import { experienceGap, planTraining, type PlanningAccount } from './trainingRecommendations.js';
@@ -83,7 +83,7 @@ export function buildUnlockPath(target: UnlockDefinition, account: PlanningAccou
         const skillsMet = !page.requirements.complex && page.requirements.skills.every(requirement =>
             account.skills[requirement.skill] !== undefined && account.skills[requirement.skill] >= requirement.level);
         if (dependenciesComplete && skillsMet && !quest.userEligible)
-            path.unknowns.push(`RuneMetrics marks ${page.title} ineligible despite parsed skill/quest checks; verify its additional requirements.`);
+            path.unknowns.push(`Jagex Player Data marks ${page.title} ineligible despite parsed skill/quest checks; verify its additional requirements.`);
         if (dependenciesComplete && skillsMet && quest.userEligible && (account.members !== false || !quest.members))
             path.nextActions.push({ id: '', type: 'quest', title: page.title,
                 conditional: quest.members && account.members === undefined || Boolean(page.guide.items || page.guide.enemies) });
@@ -175,9 +175,11 @@ export async function recommendUnlocks(input: RecommendationInput, account: Plan
                     }
                 }
             }
-        } catch {
+        } catch (error) {
+            const reason = playerDataFailure(error);
+            if (reason) warnings.push(reason);
             warnings.push('Quest unlock coverage is unavailable; no quest completion statuses or prerequisite paths were inferred.');
-            missingContext.push('Public RuneMetrics username/journal for quest-based unlock comparisons');
+            missingContext.push('Public username for the Jagex Player Data quest journal for quest-based unlock comparisons');
         }
     }
     let paths = definitions.map(definition => buildUnlockPath(definition, account, journal, metadata, dependencies));

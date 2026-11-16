@@ -1,28 +1,66 @@
 import { z } from 'zod';
 import { RUNESCAPE_WIKI_API } from './constants.js';
-import { makeApiRequest } from './utils.js';
+import { ApiRequestError, makeApiRequest } from './utils.js';
 import { parseQuestDependencies, parseQuestPage, templates, wikiText, type QuestMetadata } from './questParsing.js';
 
-export const RUNEMETRICS_QUESTS = 'https://apps.runescape.com/runemetrics/quests';
-export const questJournalSchema = z.object({ quests: z.array(z.object({
+// Jagex Platform API (Adventurer's Log Player Data), which replaced RuneMetrics on 10 November 2026.
+// https://developer.runescape.com/platform/modules/adventurers-log/player-data.html
+export const PLAYER_DATA_API = 'https://secure.runescape.com/m=adventurers-log/api/v1/playerData';
+const playerDataQuestsSchema = z.object({ quests: z.record(z.string(), z.object({
     title: z.string().min(1).max(255),
     status: z.enum(['COMPLETED', 'STARTED', 'NOT_STARTED']),
     members: z.boolean(),
-    userEligible: z.boolean(),
-    questPoints: z.number().int().nonnegative(),
-})).min(1).max(600) });
-export type JournalQuest = z.infer<typeof questJournalSchema>['quests'][number];
+    eligible: z.boolean(),
+    qp: z.number().int().nonnegative(),
+})) });
+export interface JournalQuest {
+    title: string;
+    status: 'COMPLETED' | 'STARTED' | 'NOT_STARTED';
+    members: boolean;
+    userEligible: boolean;
+    questPoints: number;
+}
+
+const PLAYER_DATA_ERRORS: Record<string, string> = {
+    PLAYER_NOT_FOUND: 'Jagex Player Data API reports this player does not exist or is hidden from public view.',
+    PLAYER_NOT_MEMBER: 'Jagex Player Data API only returns quest data for members, and this player is not a member.',
+};
+
+/** A Player Data failure whose message is safe to show users as the reason quest status is unknown. */
+export class PlayerDataError extends Error {
+    override name = 'PlayerDataError';
+}
+
+/** The user-facing reason a quest journal fetch failed, or undefined for other errors (abort, wiki, etc.). */
+export function playerDataFailure(error: unknown): string | undefined {
+    return error instanceof PlayerDataError ? error.message : undefined;
+}
+
+const MALFORMED_JOURNAL = 'Jagex Player Data API returned an unavailable or malformed quest journal. No completion statuses were inferred.';
+
+async function requestPlayerData(source: string, signal?: AbortSignal): Promise<unknown> {
+    try {
+        return await makeApiRequest(source, signal);
+    } catch (error) {
+        // response.json() can throw a SyntaxError from another realm, so match by name.
+        if ((error as { name?: unknown } | null)?.name === 'SyntaxError') throw new PlayerDataError(MALFORMED_JOURNAL);
+        if (!(error instanceof ApiRequestError) || error.status === 429) throw error;
+        let code: unknown;
+        try { code = JSON.parse(error.body)?.error; } catch { /* Non-JSON error body. */ }
+        const known = typeof code === 'string' ? PLAYER_DATA_ERRORS[code] : undefined;
+        throw new PlayerDataError(`${known ?? `Jagex Player Data API request failed (${error.status}${typeof code === 'string' ? ` ${code}` : ''}).`} No completion statuses were inferred.`);
+    }
+}
 
 export async function fetchPlayerQuests(username: string, signal?: AbortSignal) {
-    const source = `${RUNEMETRICS_QUESTS}?user=${encodeURIComponent(username)}`;
-    const raw = await makeApiRequest(source, signal);
-    const parsed = questJournalSchema.safeParse(raw);
-    if (!parsed.success) {
-        throw new Error('RuneMetrics quest journal is unavailable or private. Make the RuneMetrics profile public to use account-specific quest recommendations. No completion statuses were inferred.');
-    }
-    const quests = parsed.data.quests;
+    const source = `${PLAYER_DATA_API}/${encodeURIComponent(username)}?includeQuests=true`;
+    const parsed = playerDataQuestsSchema.safeParse(await requestPlayerData(source, signal));
+    const entries = parsed.success ? Object.values(parsed.data.quests) : [];
+    if (entries.length < 1 || entries.length > 600) throw new PlayerDataError(MALFORMED_JOURNAL);
+    const quests: JournalQuest[] = entries.map(({ title, status, members, eligible, qp }) =>
+        ({ title, status, members, userEligible: eligible, questPoints: qp }));
     if (new Set(quests.map(quest => quest.title)).size !== quests.length) {
-        throw new Error('RuneMetrics returned duplicate quest titles; no completion statuses were inferred.');
+        throw new PlayerDataError('Jagex Player Data API returned duplicate quest titles; no completion statuses were inferred.');
     }
     return { username, source, fetchedAt: new Date().toISOString(), quests,
         counts: {

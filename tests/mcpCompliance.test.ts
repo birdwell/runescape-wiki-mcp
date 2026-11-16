@@ -12,6 +12,7 @@ import { handleTool } from '../src/tools/index.js';
 import { handlePriceTool } from '../src/tools/priceTools.js';
 import { createServer } from '../src/server.js';
 import { RS3_GE_API, RESOURCE_URIS, SERVER_CONFIG, SERVER_INSTRUCTIONS } from '../src/constants.js';
+import { playerDataPath, playerDataQuests } from './testUtils.js';
 
 const PROTOCOL_VERSION = '2026-07-28';
 
@@ -124,8 +125,8 @@ describe('MCP specification compliance', () => {
             { title: 'Next quest', status: 'STARTED', members: true, userEligible: false, questPoints: 2 },
             { title: 'Later quest', status: 'NOT_STARTED', members: true, userEligible: false, questPoints: 3 },
         ];
-        const upstream = nock('https://apps.runescape.com').get('/runemetrics/quests')
-            .query({ user: 'A B' }).reply(200, { quests });
+        const upstream = nock('https://secure.runescape.com').get(playerDataPath('A B'))
+            .query({ includeQuests: 'true' }).reply(200, playerDataQuests(quests));
         const { status, message } = await mcpFetch(handler, 'tools/call', { legacy, name: 'get_player_quests',
             params: { name: 'get_player_quests', arguments: { username: 'A B' } } });
         expect(status).toBe(200);
@@ -133,21 +134,21 @@ describe('MCP specification compliance', () => {
         const result = message.result as { isError?: boolean; structuredContent: Record<string, unknown> };
         expect(result.isError).toBeFalsy();
         expect(result.structuredContent).toEqual({ username: 'A B',
-            source: 'https://apps.runescape.com/runemetrics/quests?user=A%20B', fetchedAt: expect.any(String),
+            source: 'https://secure.runescape.com/m=adventurers-log/api/v1/playerData/A%20B?includeQuests=true', fetchedAt: expect.any(String),
             quests, counts: { total: 3, completed: 1, started: 1, notStarted: 1 } });
         expect(upstream.isDone()).toBe(true);
     });
 
     it('returns a private journal as an execution error rather than a successful empty journal', async () => {
-        nock('https://apps.runescape.com').get('/runemetrics/quests').query({ user: 'TestPlayer' })
-            .reply(200, { error: 'PROFILE_PRIVATE' });
+        nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query({ includeQuests: 'true' })
+            .reply(404, { error: 'PLAYER_NOT_FOUND' });
         const { status, message } = await mcpFetch(handler, 'tools/call', { name: 'get_player_quests',
             params: { name: 'get_player_quests', arguments: { username: 'TestPlayer' } } });
         expect(status).toBe(200);
         expect(message.error).toBeUndefined();
         const result = message.result as { isError?: boolean; content: { text: string }[]; structuredContent?: unknown };
         expect(result.isError).toBe(true);
-        expect(result.content[0].text).toContain('unavailable or private');
+        expect(result.content[0].text).toContain('does not exist or is hidden');
         expect(result.structuredContent).toBeUndefined();
     });
 

@@ -130,7 +130,7 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 - `get_wiki_entity_facts` — Structured monster combat statistics and quest metadata.
 - `list_wiki_category_members` — Direct Wiki category members with category-bound continuation.
 - `get_wiki_drop_table` — Indexed drop references, quantities, rolls and listed rarities; notes are excluded.
-- `get_player_quests` — Complete public RuneMetrics journal with quest statuses and Jagex eligibility; no Jev key needed.
+- `get_player_quests` — Complete public Jagex Player Data quest journal with quest statuses and Jagex eligibility; no Jev key needed.
 
 `recommend_next_activity` adds paid goal-based planning using account context and Wiki evidence. It appears only on servers with `RUNESCAPE_RECOMMENDATIONS_ENABLED=true` and a nonblank `TYPESAFE_API_KEY`. With the planner disabled, the catalog has 13 tools.
 
@@ -181,7 +181,7 @@ Example `recommend_next_activity` arguments:
 
 Only `goal` is required. Public hiscores fill missing skill levels when a username
 is supplied; caller-supplied levels take precedence and their provenance is returned.
-Quest completion comes from RuneMetrics for quest goals; membership, gear and bank
+Quest completion comes from the Jagex Player Data API for quest goals; membership, gear and bank
 contents remain unknown unless provided. For other goals, a caller-supplied completed
 list records known completions only; absence does not mean a quest is unfinished.
 
@@ -194,7 +194,7 @@ For a quest question, supply the username and natural-language goal:
 }
 ```
 
-The server reads the fresh public RuneMetrics journal and the wiki pages for its
+The server reads the fresh public Jagex Player Data quest journal and the wiki pages for its
 quests, resolves title aliases and quest disambiguation, and reads the wiki's
 shared prerequisite table. Completed quests are excluded. Every unfinished quest
 is sent to Jev with completion rewards, separate conditional post-quest rewards,
