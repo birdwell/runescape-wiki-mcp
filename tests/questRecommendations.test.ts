@@ -5,7 +5,7 @@ import { fetchPlayerQuests, fetchQuestCatalogue, fetchQuestGuide, questKey } fro
 import { parseQuestDependencies, parseQuestPage, wikiText } from '../src/questParsing.js';
 import { assessQuest } from '../src/questRecommendations.js';
 import type { ChoiceQuestion } from '../src/jev.js';
-import { playerDataPath, playerDataQuests } from './testUtils.js';
+import { hiscoresJson, playerDataPath, playerDataQuests } from './testUtils.js';
 
 const enabled = process.env.RUNESCAPE_RECOMMENDATIONS_ENABLED;
 const key = process.env.TYPESAFE_API_KEY;
@@ -71,8 +71,8 @@ function mockJev(nextOverride?: string, onCall?: (count: number) => void) {
 function mockAccount(quests = journal) {
     nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query({ includeQuests: 'true' })
         .reply(200, playerDataQuests(quests));
-    nock('https://secure.runescape.com').get('/m=hiscore/index_lite.ws').query(true)
-        .reply(200, '1,1000,100000\n1,40,1000');
+    nock('https://secure.runescape.com').get('/m=hiscore/index_lite.json').query(true)
+        .reply(200, hiscoresJson([[1, 1000, 100000], [1, 40, 1000]]));
 }
 
 beforeEach(() => {
@@ -342,7 +342,7 @@ describe('quest recommendation pipeline', () => {
 
     it('asks for a public journal when completion data is private', async () => {
         mockJev();
-        nock('https://secure.runescape.com').get('/m=hiscore/index_lite.ws').query(true).reply(200, '1,1000,100000');
+        nock('https://secure.runescape.com').get('/m=hiscore/index_lite.json').query(true).reply(200, hiscoresJson([[1, 1000, 100000]]));
         nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query(true).reply(403, { error: 'PLAYER_NOT_MEMBER' });
         const result = await handleTool('recommend_next_activity', { goal: 'Best mining quest', context: { username: 'TestPlayer' } });
         expect(result.structuredContent).toMatchObject({ status: 'needs_context', recommendation: null, questCoverage: { evaluated: 0 } });

@@ -17,12 +17,14 @@ export const JAGEX_CONTENT_NOTICE =
     "Created using intellectual property belonging to Jagex Limited under the terms of Jagex's Fan Content Policy. This content is not endorsed by or affiliated with Jagex.";
 export const WEIRDGLOOP_EXCHANGE_API = 'https://api.weirdgloop.org/exchange/history/rs';
 
-// Public RS3 hiscores boards. A 404 applies to the requested player/board,
-// not proof that an entire leaderboard is unavailable.
+// Public RS3 hiscores instances, read through the documented Platform API
+// Index Lite endpoint: https://developer.runescape.com/platform/modules/hiscores/
+// A 404 applies to the requested player/board, not proof that an entire
+// leaderboard is unavailable.
 export const GAME_MODE_PATHS = {
-    normal: '/m=hiscore/index_lite.ws',
-    ironman: '/m=hiscore_ironman/index_lite.ws',
-    hardcore: '/m=hiscore_hardcore_ironman/index_lite.ws',
+    normal: '/m=hiscore/index_lite.json',
+    ironman: '/m=hiscore_ironman/index_lite.json',
+    hardcore: '/m=hiscore_hardcore_ironman/index_lite.json',
 } as const;
 
 // User agent for API requests

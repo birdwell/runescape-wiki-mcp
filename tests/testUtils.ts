@@ -36,12 +36,23 @@ export const mockResponses = {
         }
     },
 
-    playerStats: "55,2736,5400000000\n493,99,200000000\n966,99,200000000",
+    playerStats: hiscoresJson([[55, 2736, 5400000000], [493, 99, 200000000], [966, 99, 200000000]]),
 
     geInfo: {
         lastConfigUpdateRuneday: 1640995200
     }
 };
+
+// Builds a Platform API Index Lite body (index_lite.json) from [rank, level, xp] rows in skill-id order.
+// Names mirror the live API (e.g. Hitpoints), not the tool's output keys.
+export function hiscoresJson(rows: Array<[number, number, number]>, name = 'TestPlayer') {
+    const names = ['Overall', 'Attack', 'Defence', 'Strength', 'Hitpoints', 'Ranged'];
+    return {
+        name,
+        skills: rows.map(([rank, level, xp], id) => ({ id, name: names[id] ?? `Skill ${id}`, rank, level, xp })),
+        activities: [{ id: 0, name: 'Grid Points', rank: -1, score: 0 }],
+    };
+}
 
 // Helper to validate tool response structure
 export function validateToolResponse(response: any) {
