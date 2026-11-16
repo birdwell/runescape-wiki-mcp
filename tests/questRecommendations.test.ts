@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import nock from 'nock';
 import { handleTool } from '../src/tools/index.js';
+import { hiscoresJson } from './testUtils.js';
 import { fetchPlayerQuests, fetchQuestCatalogue, fetchQuestGuide, questKey } from '../src/questData.js';
 import { parseQuestDependencies, parseQuestPage, wikiText } from '../src/questParsing.js';
 import { assessQuest } from '../src/questRecommendations.js';
@@ -70,8 +71,8 @@ function mockJev(nextOverride?: string, onCall?: (count: number) => void) {
 function mockAccount(quests = journal) {
     nock('https://apps.runescape.com').get('/runemetrics/quests').query({ user: 'TestPlayer' })
         .reply(200, { quests });
-    nock('https://secure.runescape.com').get('/m=hiscore/index_lite.ws').query(true)
-        .reply(200, '1,1000,100000\n1,40,1000');
+    nock('https://secure.runescape.com').get('/m=hiscore/index_lite.json').query(true)
+        .reply(200, hiscoresJson([[1, 1000, 100000], [1, 40, 1000]]));
 }
 
 beforeEach(() => {
@@ -303,7 +304,7 @@ describe('quest recommendation pipeline', () => {
 
     it('asks for a public journal when completion data is private', async () => {
         mockJev();
-        nock('https://secure.runescape.com').get('/m=hiscore/index_lite.ws').query(true).reply(200, '1,1000,100000');
+        nock('https://secure.runescape.com').get('/m=hiscore/index_lite.json').query(true).reply(200, hiscoresJson([[1, 1000, 100000]]));
         nock('https://apps.runescape.com').get('/runemetrics/quests').query(true).reply(200, { error: 'PROFILE_PRIVATE' });
         const result = await handleTool('recommend_next_activity', { goal: 'Best mining quest', context: { username: 'TestPlayer' } });
         expect(result.structuredContent).toMatchObject({ status: 'needs_context', recommendation: null, questCoverage: { evaluated: 0 } });

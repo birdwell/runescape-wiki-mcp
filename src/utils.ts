@@ -37,24 +37,6 @@ export async function makeApiRequest(url: string, signal?: AbortSignal): Promise
 }
 
 /**
- * Makes a text-based API request (for hiscores CSV data)
- */
-export async function makeTextApiRequest(url: string, signal?: AbortSignal): Promise<string> {
-    const response = await globalThis.fetch(url, {
-        signal,
-        headers: {
-            'User-Agent': USER_AGENT,
-        },
-    });
-
-    if (!response.ok) {
-        throw new ApiRequestError(response.status, response.statusText, response.headers.get('retry-after'));
-    }
-
-    return response.text();
-}
-
-/**
  * Creates a standardized error response
  */
 export function createErrorResponse(error: unknown): {
