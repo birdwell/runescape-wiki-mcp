@@ -1,5 +1,7 @@
 import { RS3_SKILLS } from './constants.js';
 import { JevSession, MAX_JEV_REQUEST_CHARS, recommendationConfiguration, type ChoiceQuestion } from './jev.js';
+import { fetchPlayerSkills } from './playerSkills.js';
+import { playerDataFailure } from './questData.js';
 import { handlePlayerTool } from './tools/playerTools.js';
 import { handleWikiTool } from './tools/wikiTools.js';
 import { recommendQuests } from './questRecommendations.js';
@@ -150,7 +152,25 @@ export async function recommendActivity(input: RecommendationInput): Promise<Rec
         Object.keys(skills).map(skill => [skill, 'caller'])
     );
     const unrankedSkills: string[] = [];
+    let freshSkills: Awaited<ReturnType<typeof fetchPlayerSkills>>['skills'] | undefined;
     if (context.username && !activityUnavailable && !needsMaxTarget) {
+        // Player Data syncs during play, so prefer it; levels belong to the account, not a hiscores board.
+        try {
+            freshSkills = (await fetchPlayerSkills(context.username, AbortSignal.any([signal, AbortSignal.timeout(8_000)]))).skills;
+        } catch (error) {
+            warnings.push(`Player Data skills unavailable: ${playerDataFailure(error) ?? 'Jagex Player Data could not be fetched.'} Falling back to public hiscores for skill levels.`);
+        }
+        for (const [skill, { level, experience }] of Object.entries(freshSkills ?? {})) {
+            if (skillExperience[skill] === undefined && (skills[skill] === undefined || skills[skill] === level)) {
+                skillExperience[skill] = experience;
+            }
+            if (skills[skill] === undefined) {
+                skills[skill] = level;
+                skillSources[skill] = 'player_data';
+            }
+        }
+    }
+    if (context.username && !activityUnavailable && !needsMaxTarget && !freshSkills) {
         try {
             const response = await handlePlayerTool('get_player_stats', {
                 username: context.username,

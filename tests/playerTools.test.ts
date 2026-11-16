@@ -2,7 +2,7 @@
 
 import nock from 'nock';
 import { handlePlayerTool } from '../src/tools/playerTools.js';
-import { hiscoresJson, mockResponses, validateToolResponse } from './testUtils.js';
+import { hiscoresJson, mockResponses, playerDataPath, playerDataSkills, validateToolResponse } from './testUtils.js';
 
 describe('Player Tools', () => {
     beforeEach(() => {
@@ -166,6 +166,78 @@ describe('Player Tools', () => {
             });
             expect(result.isError).toBe(true);
             expect(result.content[0].text).toContain('Unexpected argument');
+        });
+    });
+
+    describe('get_player_skills', () => {
+        const playerData = (username = 'Test Player') =>
+            nock('https://secure.runescape.com').get(playerDataPath(username)).query({ includeSkills: 'true' });
+        const hiscores = (username = 'Test Player') =>
+            nock('https://secure.runescape.com').get('/m=hiscore/index_lite.json').query({ player: username });
+
+        it('reads Player Data skills and maps them to get_player_stats names', async () => {
+            playerData().reply(200, { name: 'Test Player', skills: {
+                attack: { level: 70, fine_xp: 8137025 },
+                hitpoints: { level: 99, fine_xp: 130344310 },
+                runecraft: { level: 110, fine_xp: 2000000000 },
+                newskill: { level: 1, fine_xp: 0 },
+            } });
+            const result = await handlePlayerTool('get_player_skills', { username: ' Test Player ' });
+            expect(result.isError).toBeFalsy();
+            expect(result.structuredContent).toMatchObject({
+                username: 'Test Player', source: 'player_data',
+                sourceUrl: `https://secure.runescape.com${playerDataPath('Test Player')}?includeSkills=true`,
+                skills: {
+                    Attack: { level: 70, experience: 813702 },
+                    Constitution: { level: 99, experience: 13034431 },
+                    Runecrafting: { level: 110, experience: 200000000 },
+                },
+            });
+            expect(Object.keys(result.structuredContent?.skills as object)).toHaveLength(3);
+            expect(result.structuredContent).not.toHaveProperty('fallbackReason');
+        });
+
+        it.each([
+            ['a non-member', 403, { error: 'PLAYER_NOT_MEMBER' }, 'only returns skill data for members'],
+            ['a hidden player', 404, { error: 'PLAYER_NOT_FOUND' }, 'does not exist or is hidden'],
+            ['a malformed body', 200, { name: 'Test Player' }, 'malformed skill data'],
+        ])('falls back to the normal hiscores for %s', async (_label, status, body, reason) => {
+            playerData().reply(status, body);
+            hiscores().reply(200, hiscoresJson([[5, 2000, 900000], [9, 80, 2000000], [-1, -1, -1]]));
+            const result = await handlePlayerTool('get_player_skills', { username: 'Test Player' });
+            expect(result.isError).toBeFalsy();
+            expect(result.structuredContent).toMatchObject({
+                source: 'hiscores',
+                sourceUrl: 'https://secure.runescape.com/m=hiscore/index_lite.json?player=Test%20Player',
+                skills: { Attack: { level: 80, experience: 2000000 } },
+            });
+            expect(result.structuredContent?.fallbackReason).toContain(reason);
+            expect(Object.keys(result.structuredContent?.skills as object)).toEqual(['Attack']);
+            expect(nock.isDone()).toBe(true);
+        });
+
+        it('reports both failures when the hiscores fallback also misses', async () => {
+            playerData().reply(404, { error: 'PLAYER_NOT_FOUND' });
+            hiscores().reply(404, 'Not found');
+            const result = await handlePlayerTool('get_player_skills', { username: 'Test Player' });
+            expect(result.isError).toBe(true);
+            expect(result.content[0].text).toContain('does not exist or is hidden');
+            expect(result.content[0].text).toContain('Hiscores fallback: Player "Test Player" was not found on the normal hiscores');
+        });
+
+        it('surfaces Player Data 429 with Retry-After instead of falling back', async () => {
+            playerData().reply(429, 'Too many requests', { 'Retry-After': '30' });
+            const fallback = hiscores().reply(200, hiscoresJson([[1, 1, 1]]));
+            await expect(handlePlayerTool('get_player_skills', { username: 'Test Player' }))
+                .rejects.toThrow('429 Too Many Requests; retry after 30');
+            expect(fallback.isDone()).toBe(false);
+        });
+
+        it('validates arguments', async () => {
+            expect((await handlePlayerTool('get_player_skills', {})).isError).toBe(true);
+            expect((await handlePlayerTool('get_player_skills', { username: 'x'.repeat(13) })).isError).toBe(true);
+            const extra = await handlePlayerTool('get_player_skills', { username: 'Test', gameMode: 'ironman' });
+            expect(extra.content[0].text).toContain('Unexpected argument');
         });
     });
 

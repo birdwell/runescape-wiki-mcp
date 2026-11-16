@@ -68,6 +68,12 @@ export function playerDataPath(username: string): string {
     return `/m=adventurers-log/api/v1/playerData/${encodeURIComponent(username)}`;
 }
 
+// Player Data includeSkills body; keys are the API's internal skill names (e.g. hitpoints, runecraft).
+export function playerDataSkills(skills: Record<string, [level: number, xp: number]>) {
+    return { name: 'Fixture', skills: Object.fromEntries(Object.entries(skills)
+        .map(([key, [level, xp]]) => [key, { level, fine_xp: xp * 10 }])) };
+}
+
 export function playerDataQuests(quests: JournalFixture[]) {
     return { name: 'Fixture', qp: 0, qp_max: 0, quests: Object.fromEntries(quests.map((quest, index) => [String(index + 1), {
         title: quest.title, status: quest.status, members: quest.members, eligible: quest.userEligible,

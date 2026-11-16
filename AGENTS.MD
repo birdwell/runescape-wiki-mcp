@@ -38,6 +38,7 @@ runescape-wiki-mcp/
 | `browse_items` | `category`, optional `alpha`/`page` | Catalogue browse — **not** name search |
 | `get_ge_info` | optional `view` (status/categories/category_counts), conditional `category` | Default configuration status; category IDs or letter counts by explicit view; never price freshness |
 | `get_player_stats` | `username`, optional `gameMode` | Normal, ironman and hardcore boards; 404 is player/board-specific |
+| `get_player_skills` | `username` | Current levels/XP from Jagex Player Data; no ranks; falls back to normal hiscores with `fallbackReason` |
 | `search_wiki` | `query`, optional `limit` | Wiki source search with full-text/title syntax and namespace prefixes; not a price search. |
 | `get_wiki_page_content` | `page` **or** `pages` (1–10) | Single/batch references; text only for a reviewed revision and extract hash |
 | `get_wiki_entity_facts` | `page`, `kind` (monster/quest), optional `limit` | Structured scalar facts and variant references; no article prose |
@@ -64,6 +65,7 @@ get_player_stats { "username": "Zezima", "gameMode": "normal" }
 ## APIs
 
 - GE: `https://secure.runescape.com/m=itemdb_rs/api`
+- Player Data: `https://secure.runescape.com/m=adventurers-log/api/v1/playerData/NAME?includeSkills=true` (`fine_xp` is XP × 10)
 - Hiscores: `https://secure.runescape.com/m=hiscore/index_lite.json?player=` (Platform API Index Lite; `hiscore_ironman` / `hiscore_hardcore_ironman` for other boards)
 - Weirdgloop: `https://api.weirdgloop.org/exchange/history/rs/latest`
 - Wiki: `https://runescape.wiki/api.php`
