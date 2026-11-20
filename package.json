@@ -32,6 +32,7 @@
     "start:http": "node dist/http.js",
     "debug": "DEBUG=true node dist/index.js",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test:e2e": "bun run build && playwright test",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
     "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "test:verbose": "NODE_OPTIONS='--experimental-vm-modules' jest --verbose",
@@ -64,6 +65,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@smithery/cli": "^4.11.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.6.6",
