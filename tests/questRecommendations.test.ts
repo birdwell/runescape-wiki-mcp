@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import nock from 'nock';
 import { handleTool } from '../src/tools/index.js';
-import { hiscoresJson } from './testUtils.js';
+import { hiscoresJson, playerDataPath, playerDataQuests } from './testUtils.js';
 import { fetchPlayerQuests, fetchQuestCatalogue, fetchQuestGuide, questKey } from '../src/questData.js';
 import { parseQuestDependencies, parseQuestPage, wikiText } from '../src/questParsing.js';
 import { assessQuest } from '../src/questRecommendations.js';
@@ -69,8 +69,8 @@ function mockJev(nextOverride?: string, onCall?: (count: number) => void) {
     return calls;
 }
 function mockAccount(quests = journal) {
-    nock('https://apps.runescape.com').get('/runemetrics/quests').query({ user: 'TestPlayer' })
-        .reply(200, { quests });
+    nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query({ includeQuests: 'true' })
+        .reply(200, playerDataQuests(quests));
     nock('https://secure.runescape.com').get('/m=hiscore/index_lite.json').query(true)
         .reply(200, hiscoresJson([[1, 1000, 100000], [1, 40, 1000]]));
 }
@@ -175,12 +175,12 @@ describe('quest facts and account eligibility', () => {
     });
 
     it.each(['TestPlayer', 'Bob Smith'])('trims %s before fetching and echoes the trimmed literal name', async username => {
-        const request = nock('https://apps.runescape.com').get('/runemetrics/quests').query({ user: username })
-            .reply(200, { quests: journal });
+        const request = nock('https://secure.runescape.com').get(playerDataPath(username)).query({ includeQuests: 'true' })
+            .reply(200, playerDataQuests(journal));
         const result = await handleTool('get_player_quests', { username: ` ${username} ` });
         expect(result.isError).toBeFalsy();
         expect(result.structuredContent).toMatchObject({ username,
-            source: `https://apps.runescape.com/runemetrics/quests?user=${encodeURIComponent(username)}` });
+            source: `https://secure.runescape.com${playerDataPath(username)}?includeQuests=true` });
         expect(request.isDone()).toBe(true);
     });
 
@@ -197,9 +197,47 @@ describe('quest facts and account eligibility', () => {
         expect(result.structuredContent).toMatchObject({ counts: { total: 5, completed: 1, started: 1, notStarted: 3 } });
     });
 
-    it('rejects private profiles instead of inventing a completed or incomplete list', async () => {
-        nock('https://apps.runescape.com').get('/runemetrics/quests').query(true).reply(200, { error: 'PROFILE_PRIVATE' });
-        await expect(fetchPlayerQuests('TestPlayer')).rejects.toThrow('unavailable or private');
+    it('maps Player Data quest objects to the stable journal shape', async () => {
+        mockAccount();
+        const result = await fetchPlayerQuests('TestPlayer');
+        expect(result.quests).toEqual(journal);
+        expect(result.source).toBe('https://secure.runescape.com/m=adventurers-log/api/v1/playerData/TestPlayer?includeQuests=true');
+    });
+
+    it.each([
+        ['PLAYER_NOT_FOUND', 404, 'does not exist or is hidden'],
+        ['PLAYER_NOT_MEMBER', 403, 'only returns quest data for members'],
+        ['INTERNAL_ERROR', 500, 'request failed (500 INTERNAL_ERROR)'],
+    ])('rejects %s instead of inventing a completed or incomplete list', async (error, status, message) => {
+        nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query(true).reply(status, { error });
+        await expect(fetchPlayerQuests('TestPlayer')).rejects.toThrow(message);
+    });
+
+    it('rejects a malformed or empty journal', async () => {
+        nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query(true).reply(200, { name: 'TestPlayer', quests: {} });
+        await expect(fetchPlayerQuests('TestPlayer')).rejects.toThrow('unavailable or malformed');
+    });
+
+    it.each([
+        ['an HTML 4xx error page', 400, '<!doctype html><title>Error</title>', 'request failed (400)'],
+        ['a non-JSON 200 body', 200, '<!doctype html><title>Error</title>', 'unavailable or malformed'],
+        ['a 200 error object', 200, { error: 'INTERNAL_ERROR' }, 'unavailable or malformed'],
+    ])('rejects %s with a quest-journal message', async (_label, status, body, message) => {
+        nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query(true).reply(status, body as any);
+        await expect(fetchPlayerQuests('TestPlayer')).rejects.toMatchObject({ name: 'PlayerDataError',
+            message: expect.stringContaining(message) });
+    });
+
+    it('rejects a journal over the 600-entry cap', async () => {
+        mockAccount(Array.from({ length: 601 }, (_, index) =>
+            ({ title: `Quest ${index}`, status: 'NOT_STARTED' as const, userEligible: true, members: false, questPoints: 1 })));
+        await expect(fetchPlayerQuests('TestPlayer')).rejects.toThrow('unavailable or malformed');
+    });
+
+    it('keeps rate-limit errors as ApiRequestError so callers can honor Retry-After', async () => {
+        nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query(true)
+            .reply(429, { error: 'RATE_LIMITED' }, { 'Retry-After': '30' });
+        await expect(fetchPlayerQuests('TestPlayer')).rejects.toMatchObject({ name: 'ApiRequestError', status: 429, retryAfter: '30' });
     });
 });
 
@@ -305,9 +343,10 @@ describe('quest recommendation pipeline', () => {
     it('asks for a public journal when completion data is private', async () => {
         mockJev();
         nock('https://secure.runescape.com').get('/m=hiscore/index_lite.json').query(true).reply(200, hiscoresJson([[1, 1000, 100000]]));
-        nock('https://apps.runescape.com').get('/runemetrics/quests').query(true).reply(200, { error: 'PROFILE_PRIVATE' });
+        nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query(true).reply(403, { error: 'PLAYER_NOT_MEMBER' });
         const result = await handleTool('recommend_next_activity', { goal: 'Best mining quest', context: { username: 'TestPlayer' } });
         expect(result.structuredContent).toMatchObject({ status: 'needs_context', recommendation: null, questCoverage: { evaluated: 0 } });
+        expect(result.structuredContent?.warnings).toEqual(expect.arrayContaining([expect.stringContaining('only returns quest data for members')]));
     });
 
     it('asks for a username rather than inferring unfinished quests from an incomplete list', async () => {

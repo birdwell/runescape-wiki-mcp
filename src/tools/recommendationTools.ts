@@ -20,7 +20,7 @@ export const recommendationInput = z.strictObject({
         .describe('Named unlock such as Invention or Prifddinas. Providing it forces unlock_progression even when goalType says otherwise. Supported evidence covers Invention and bounded PvM/quest-reward targets, not every game unlock.'),
     context: z.strictObject({
         username: z.string().trim().min(1).max(12).regex(/^[a-zA-Z0-9 _-]+$/).optional()
-            .describe('RS3 display name for public hiscores and, for quest planning, the fresh RuneMetrics journal. Private journals cannot establish quest completion.'),
+            .describe('RS3 display name for public hiscores and, for quest planning, the fresh Jagex Player Data quest journal. Private journals cannot establish quest completion.'),
         gameMode: z.enum(['normal', 'ironman', 'hardcore']).optional()
             .describe('Account mode; public hiscores lookup uses normal when omitted, while the account mode remains listed as missing context.'),
         skills: z.partialRecord(z.enum(RS3_SKILLS.filter(skill => skill !== 'Overall')),
@@ -38,7 +38,7 @@ export const recommendationInput = z.strictObject({
         members: z.boolean().optional()
             .describe('Whether the player has membership. Omitted membership stays unknown, rather than assuming free-to-play or members.'),
         completedQuests: names.optional()
-            .describe('Known completed quest titles; a partial list is allowed and absence does not mean unfinished. Fresh RuneMetrics status overrides conflicting caller claims. This list cannot replace the public journal required by quest comparisons.'),
+            .describe('Known completed quest titles; a partial list is allowed and absence does not mean unfinished. Fresh Jagex Player Data status overrides conflicting caller claims. This list cannot replace the public journal required by quest comparisons.'),
         gear: names.optional()
             .describe('Relevant equipment the player owns; this is caller context, not a fetched inventory or bank.'),
         notes: z.string().trim().max(1000).optional()

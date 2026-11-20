@@ -1,7 +1,7 @@
 import { JevSession, MAX_JEV_REQUEST_CHARS, type ChoiceQuestion } from './jev.js';
 import { fetchGuide, parseTrainingMethods, type TrainingMethod } from './wikiGuides.js';
 import type { RecommendationInput } from './tools/recommendationTools.js';
-import { fetchPlayerQuests, questKey } from './questData.js';
+import { fetchPlayerQuests, playerDataFailure, questKey } from './questData.js';
 
 export type PlanningAccount = RecommendationInput['context'] & {
     skills: Record<string, number>;
@@ -89,7 +89,11 @@ export async function planTraining(goal: string, account: PlanningAccount, skill
                 completed: relevantQuests.filter(quest => quest.status === 'COMPLETED').map(quest => quest.title),
                 unfinished: relevantQuests.filter(quest => quest.status !== 'COMPLETED').map(quest => quest.title),
                 scope: 'Fresh status for titles mentioned in method evidence only. Other quest statuses remain unknown to this comparison.' };
-        } catch { plan.warnings.push('Fresh quest status was unavailable; quest-locked training methods remain conditional.'); }
+        } catch (error) {
+            const reason = playerDataFailure(error);
+            if (reason) plan.warnings.push(reason);
+            plan.warnings.push('Fresh quest status was unavailable; quest-locked training methods remain conditional.');
+        }
     }
     const blocked = new Set<TrainingMethod>();
     for (const method of methods) {

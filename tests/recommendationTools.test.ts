@@ -150,7 +150,7 @@ describe('recommend_next_activity', () => {
         const response = await handleTool('recommend_next_activity', { goal });
         expect(response.structuredContent).toMatchObject({
             status: 'needs_context',
-            missingContext: [expect.stringContaining('Username for a public RuneMetrics quest journal')],
+            missingContext: [expect.stringContaining('Username for a public Jagex Player Data quest journal')],
         });
         expect(calls).toHaveLength(1);
     });

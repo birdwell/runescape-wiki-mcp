@@ -61,3 +61,16 @@ export function validateToolResponse(response: any) {
     expect(response.content[0]).toHaveProperty('type', 'text');
     expect(response.content[0]).toHaveProperty('text');
 } 
+type JournalFixture = { title: string; status: string; members: boolean; userEligible: boolean; questPoints: number };
+
+/** Path and reply body for the Jagex Player Data API quest journal (replaced RuneMetrics). */
+export function playerDataPath(username: string): string {
+    return `/m=adventurers-log/api/v1/playerData/${encodeURIComponent(username)}`;
+}
+
+export function playerDataQuests(quests: JournalFixture[]) {
+    return { name: 'Fixture', qp: 0, qp_max: 0, quests: Object.fromEntries(quests.map((quest, index) => [String(index + 1), {
+        title: quest.title, status: quest.status, members: quest.members, eligible: quest.userEligible,
+        qp: quest.questPoints, difficulty: 0,
+    }])) };
+}

@@ -8,6 +8,7 @@ import { attributedWikiSource } from '../src/wikiAttribution.js';
 import { JevSession, type ChoiceQuestion } from '../src/jev.js';
 import { handleRecommendationTool, recommendationInput } from '../src/tools/recommendationTools.js';
 import type { JournalQuest } from '../src/questData.js';
+import { playerDataPath, playerDataQuests } from './testUtils.js';
 import { trainingLevelFromGoal } from '../src/recommendations.js';
 
 function guide(title: string, html: string): Guide {
@@ -355,8 +356,8 @@ describe('bounded training decisions', () => {
     it('excludes an explicitly quest-locked method and retains only relevant fresh quest statuses', async () => {
         mockWiki('Pay-to-play Smithing training', '<h2>Forging bars</h2><p>Requires completion of Plague\'s End.</p>' +
             '<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th></tr><tr><td>70–80</td><td>Forging bars</td><td>100,000</td></tr></table>');
-        nock('https://apps.runescape.com').get('/runemetrics/quests').query({ user: 'Fixture' }).reply(200,
-            { quests: [journal("Plague's End"), journal("Cook's Assistant", 'COMPLETED')] });
+        nock('https://secure.runescape.com').get(playerDataPath('Fixture')).query({ includeQuests: 'true' }).reply(200,
+            playerDataQuests([journal("Plague's End"), journal("Cook's Assistant", 'COMPLETED')]));
         const calls: any[] = [];
         mockJev(() => 'none', calls);
         const session = new JevSession({ apiKey: 'test', model: 'jev-test' });
@@ -368,6 +369,18 @@ describe('bounded training decisions', () => {
         expect(plan.status).toBe('no_match');
         expect(calls).toHaveLength(0);
         expect(session.usage.rounds).toBe(0);
+    });
+    it('explains why fresh quest status is unavailable when Player Data refuses the account', async () => {
+        mockWiki('Pay-to-play Smithing training', '<h2>Forging bars</h2><p>Requires completion of Plague\'s End.</p>' +
+            '<table><tr><th>Levels</th><th>Method</th><th>XP/hour</th></tr><tr><td>70–80</td><td>Forging bars</td><td>100,000</td></tr></table>');
+        nock('https://secure.runescape.com').get(playerDataPath('Fixture')).query({ includeQuests: 'true' })
+            .reply(403, { error: 'PLAYER_NOT_MEMBER' });
+        mockJev(() => 'none', []);
+        const plan = await planTraining('Smithing to 80', { username: 'Fixture', members: true, skills: { Smithing: 71 }, skillExperience: {} },
+            'Smithing', 80, new JevSession({ apiKey: 'test', model: 'jev-test' }), AbortSignal.timeout(5000));
+        expect(plan.questJournal).toBeUndefined();
+        expect(plan.warnings).toEqual(expect.arrayContaining([expect.stringContaining('only returns quest data for members'),
+            expect.stringContaining('Fresh quest status was unavailable')]));
     });
     it('routes an Invention goal into all three requirements and a concrete ordinary Divination method', async () => {
         const enabled = process.env.RUNESCAPE_RECOMMENDATIONS_ENABLED, key = process.env.TYPESAFE_API_KEY;

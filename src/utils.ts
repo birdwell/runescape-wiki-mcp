@@ -4,7 +4,8 @@ import { USER_AGENT } from './constants.js';
 import { ToolResponse } from './types.js';
 
 export class ApiRequestError extends Error {
-    constructor(readonly status: number, statusText: string, readonly retryAfter: string | null = null) {
+    constructor(readonly status: number, statusText: string, readonly retryAfter: string | null = null,
+        readonly body = '') {
         super(`API request failed: ${status} ${statusText}${status === 429 && retryAfter ? `; retry after ${retryAfter}` : ''}`);
         this.name = 'ApiRequestError';
     }
@@ -28,7 +29,7 @@ export async function makeApiRequest(url: string, signal?: AbortSignal): Promise
     if (!response.ok) {
         const errorText = await response.text();
         debugLog(`API error response:`, errorText);
-        throw new ApiRequestError(response.status, response.statusText, response.headers.get('retry-after'));
+        throw new ApiRequestError(response.status, response.statusText, response.headers.get('retry-after'), errorText);
     }
 
     const data = await response.json();

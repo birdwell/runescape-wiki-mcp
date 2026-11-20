@@ -1,5 +1,5 @@
 import { JevSession, MAX_JEV_REQUEST_CHARS, recommendationConfiguration, type ChoiceAnswer, type ChoiceQuestion } from './jev.js';
-import { fetchPlayerQuests, fetchQuestCatalogue, fetchQuestGuide, questKey, type JournalQuest } from './questData.js';
+import { fetchPlayerQuests, fetchQuestCatalogue, playerDataFailure, fetchQuestGuide, questKey, type JournalQuest } from './questData.js';
 import { wikiText, type QuestMetadata } from './questParsing.js';
 import { attributedWikiSource } from './wikiAttribution.js';
 import type { RecommendationInput } from './tools/recommendationTools.js';
@@ -39,7 +39,7 @@ export function assessQuest(
     const unknowns: string[] = [];
     let missingSkillLevels = 0, missingQuestCount = 0;
     let unknownSkillGap = false, unknownQuestGap = prerequisites === undefined;
-    if (!quest.userEligible) blockers.push('RuneMetrics marks this quest not currently eligible.');
+    if (!quest.userEligible) blockers.push('Jagex Player Data marks this quest not currently eligible.');
     if (quest.members && members === false) blockers.push('Requires membership.');
     if (quest.members && members === undefined) unknowns.push('Current membership status is unknown.');
     if (!metadata?.available) unknowns.push('Wiki quest rewards or requirements are unavailable.');
@@ -138,15 +138,17 @@ export async function recommendQuests(
         sources: [...recommendations, ...blockedAlternatives].map(row => row.source), usage: usage(),
     });
     if (!input.context.username) {
-        missingContext.push('Username for a public RuneMetrics quest journal; incomplete completed-quest lists cannot establish every unfinished quest.');
+        missingContext.push('Username for a public Jagex Player Data quest journal; incomplete completed-quest lists cannot establish every unfinished quest.');
         return output('needs_context');
     }
     let journal: Awaited<ReturnType<typeof fetchPlayerQuests>>;
     try {
         journal = await fetchPlayerQuests(input.context.username,
             AbortSignal.any([signal, AbortSignal.timeout(12_000)]));
-    } catch {
-        missingContext.push('A publicly accessible RuneMetrics quest journal. Quest completion could not be verified.');
+    } catch (error) {
+        missingContext.push('A publicly accessible Jagex Player Data quest journal. Quest completion could not be verified.');
+        const reason = playerDataFailure(error);
+        if (reason) warnings.push(reason);
         warnings.push('No quests were assumed incomplete or available.');
         return output('needs_context');
     }
@@ -254,10 +256,10 @@ export async function recommendQuests(
             requirements: candidate.requirements, rewards: candidate.rewards,
             goalSkillXp: targetXp,
             reason: `${candidate.status === 'STARTED' ? 'Already in progress. ' : ''}` +
-                `${candidate.jagexEligible ? 'RuneMetrics marks quest prerequisites eligible. ' : ''}` +
+                `${candidate.jagexEligible ? 'Jagex Player Data marks quest prerequisites eligible. ' : ''}` +
                 (targetXp.length ? `Completion reward lists ${targetXp.map(xp => `${xp.amount.toLocaleString('en-US')} ${xp.skill} XP`).join(', ')}; check reward conditions below.` : 'Compare the listed unlocks and reward conditions against your goal.'),
             nextStep: candidate.status === 'STARTED'
-                ? 'Resume this quest at the current stage in your in-game quest journal; RuneMetrics does not expose that stage.'
+                ? 'Resume this quest at the current stage in your in-game quest journal; the Jagex Player Data API does not expose that stage.'
                 : metadata?.guide.start ?? 'Check the linked quest guide.',
             guideSummary: includeGuide && metadata ? await guideSummary(metadata, signal) : metadata?.guide,
             requirementChecks: 'Jagex eligibility plus parsed base skill and prerequisite quest checks; items, boosts, combat readiness and miscellaneous conditions are not fully verified.',
