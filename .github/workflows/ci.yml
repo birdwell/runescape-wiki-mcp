@@ -18,7 +18,8 @@ jobs:
           bun-version: 1.4.5
       - run: bun install --frozen-lockfile
       - run: bun run test
-      - run: bun run build
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run test:e2e
 
   node20-public-http:
     runs-on: ubuntu-latest
