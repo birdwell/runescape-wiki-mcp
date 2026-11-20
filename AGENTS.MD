@@ -43,7 +43,7 @@ runescape-wiki-mcp/
 | `get_wiki_entity_facts` | `page`, `kind` (monster/quest), optional `limit` | Structured scalar facts and variant references; no article prose |
 | `list_wiki_category_members` | `category`, optional `limit`/`cursor` | Direct Wiki category metadata; continuation is category-bound |
 | `get_wiki_drop_table` | `page`, optional `variant`/`limit`/`offset` | Indexed drop facts; notes excluded and unknown rates stay null |
-| `get_player_quests` | `username` | Complete public RuneMetrics quest journal; no Jev key needed |
+| `get_player_quests` | `username` | Complete public Jagex Player Data quest journal; no Jev key needed |
 | `recommend_next_activity` | `goal`, optional planner selectors and `context` | Opt-in paid Jev planning: at most 24 quest rounds or 3 otherwise; `TYPESAFE_API_KEY` and `RUNESCAPE_RECOMMENDATIONS_ENABLED=true` required |
 
 Prompts: `check_item_price`, `compare_ge_items`, `estimate_item_flip`, `player_overview`.
