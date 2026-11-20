@@ -27,7 +27,7 @@ An independent [Birdwell Labs](https://birdwellabs.com) project. No Jagex or Wei
 
 The server answers questions about items you name. It does not rank the whole Grand Exchange.
 
-Price questions use `lookup_item`, `get_item_details` current-data views, `get_price_series` history views, and `estimate_flip`. Stats questions use `get_player_stats` on the selected normal, ironman or hardcore board; the assistant turns those levels into a training suggestion. Wiki questions use `search_wiki`, then `get_wiki_page_content`.
+Price questions use `lookup_item`, `get_item_details` current-data views, `get_price_series` history views, and `estimate_flip`. Stats questions use `get_player_skills` for current levels and XP, or `get_player_stats` for ranks on the selected normal, ironman or hardcore board; the assistant turns those levels into a training suggestion. Wiki questions use `search_wiki`, then `get_wiki_page_content`.
 
 Wiki pages return source links by default. Article text is available only for reviewed revisions; the server does not supply an article summary when text is withheld.
 
@@ -125,6 +125,7 @@ Speaks MCP **2026-07-28** (stateless) via stdio and Streamable HTTP, with legacy
 - `browse_items` — Browse one Grand Exchange category by starting letter. This is not a name search.
 - `get_ge_info` — Catalogue metadata: default status, `view: "categories"` for IDs/names, or `view: "category_counts"` with `category` for letter counts.
 - `get_player_stats` — RS3 hiscores for a username. `gameMode` selects normal, ironman or hardcore. A 404 means the player was not found on that board; no other board is substituted.
+- `get_player_skills` — Current levels and XP from Jagex Player Data, which syncs during play and is usually fresher than the hiscores. No ranks. Falls back to the normal hiscores board (and says so) when Player Data refuses the player.
 - `search_wiki` — Search RuneScape Wiki titles and source links when the page title is unknown.
 - `get_wiki_page_content` — Source reference following redirects; text only for a reviewed revision and matching content hash.
 - `get_wiki_entity_facts` — Structured monster combat statistics and quest metadata.
@@ -179,8 +180,8 @@ Example `recommend_next_activity` arguments:
 }
 ```
 
-Only `goal` is required. Public hiscores fill missing skill levels when a username
-is supplied; caller-supplied levels take precedence and their provenance is returned.
+Only `goal` is required. Jagex Player Data (or, if it refuses the player, public hiscores)
+fills missing skill levels when a username is supplied; caller-supplied levels take precedence and their provenance is returned.
 Quest completion comes from the Jagex Player Data API for quest goals; membership, gear and bank
 contents remain unknown unless provided. For other goals, a caller-supplied completed
 list records known completions only; absence does not mean a quest is unfinished.
@@ -314,6 +315,7 @@ Batch catalogue metadata with the `get_item_details` argument `itemIds` (GE IDs 
 Jagex supplies guide prices and the default raw price history. Weirdgloop supplies daily price and volume snapshots for comparisons and history statistics. The server uses the separate RS3 reported-trade feed only when `get_item_details` is called in the records view with `includeLiveData: true`.
 
 - Jagex GE: `https://secure.runescape.com/m=itemdb_rs/api`
+- Jagex Player Data (current skills and quest journals): `https://secure.runescape.com/m=adventurers-log/api/v1/playerData/NAME` ([docs](https://developer.runescape.com/platform/modules/adventurers-log/player-data.html))
 - Jagex hiscores (Platform API Index Lite): `https://secure.runescape.com/m=hiscore/index_lite.json` ([docs](https://developer.runescape.com/platform/modules/hiscores/index-lite.html))
 - Weirdgloop RS exchange: `https://api.weirdgloop.org/exchange/history/rs`
 - RuneScape Wiki RS3 reported trades and numeric item facts (opt-in): `https://prices.runescape.wiki/api/v2/rs`

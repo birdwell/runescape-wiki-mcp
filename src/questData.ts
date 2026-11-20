@@ -21,34 +21,43 @@ export interface JournalQuest {
     questPoints: number;
 }
 
-const PLAYER_DATA_ERRORS: Record<string, string> = {
-    PLAYER_NOT_FOUND: 'Jagex Player Data API reports this player does not exist or is hidden from public view.',
-    PLAYER_NOT_MEMBER: 'Jagex Player Data API only returns quest data for members, and this player is not a member.',
+/** Which Player Data section a request reads; it only changes the wording of failures. */
+export type PlayerDataKind = 'quest' | 'skill';
+
+const PLAYER_DATA_ERRORS: Record<string, (kind: PlayerDataKind) => string> = {
+    PLAYER_NOT_FOUND: () => 'Jagex Player Data API reports this player does not exist or is hidden from public view.',
+    PLAYER_NOT_MEMBER: kind => `Jagex Player Data API only returns ${kind} data for members, and this player is not a member.`,
+};
+const NOTHING_INFERRED: Record<PlayerDataKind, string> = {
+    quest: 'No completion statuses were inferred.',
+    skill: 'No skill levels were inferred.',
 };
 
-/** A Player Data failure whose message is safe to show users as the reason quest status is unknown. */
+/** A Player Data failure whose message is safe to show users as the reason quest or skill data is unknown. */
 export class PlayerDataError extends Error {
     override name = 'PlayerDataError';
 }
 
-/** The user-facing reason a quest journal fetch failed, or undefined for other errors (abort, wiki, etc.). */
+/** The user-facing reason a Player Data fetch failed, or undefined for other errors (abort, wiki, etc.). */
 export function playerDataFailure(error: unknown): string | undefined {
     return error instanceof PlayerDataError ? error.message : undefined;
 }
 
 const MALFORMED_JOURNAL = 'Jagex Player Data API returned an unavailable or malformed quest journal. No completion statuses were inferred.';
 
-async function requestPlayerData(source: string, signal?: AbortSignal): Promise<unknown> {
+/** Reads a Player Data URL; failures other than 429 and aborts become a PlayerDataError. */
+export async function requestPlayerData(source: string, signal?: AbortSignal, kind: PlayerDataKind = 'quest',
+    malformed = MALFORMED_JOURNAL): Promise<unknown> {
     try {
         return await makeApiRequest(source, signal);
     } catch (error) {
         // response.json() can throw a SyntaxError from another realm, so match by name.
-        if ((error as { name?: unknown } | null)?.name === 'SyntaxError') throw new PlayerDataError(MALFORMED_JOURNAL);
+        if ((error as { name?: unknown } | null)?.name === 'SyntaxError') throw new PlayerDataError(malformed);
         if (!(error instanceof ApiRequestError) || error.status === 429) throw error;
         let code: unknown;
         try { code = JSON.parse(error.body)?.error; } catch { /* Non-JSON error body. */ }
-        const known = typeof code === 'string' ? PLAYER_DATA_ERRORS[code] : undefined;
-        throw new PlayerDataError(`${known ?? `Jagex Player Data API request failed (${error.status}${typeof code === 'string' ? ` ${code}` : ''}).`} No completion statuses were inferred.`);
+        const known = typeof code === 'string' ? PLAYER_DATA_ERRORS[code]?.(kind) : undefined;
+        throw new PlayerDataError(`${known ?? `Jagex Player Data API request failed (${error.status}${typeof code === 'string' ? ` ${code}` : ''}).`} ${NOTHING_INFERRED[kind]}`);
     }
 }
 

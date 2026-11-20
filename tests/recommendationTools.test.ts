@@ -6,7 +6,7 @@ import { wikiContentReviews } from '../src/wikiContentPolicy.js';
 import { JevSession, type ChoiceQuestion } from '../src/jev.js';
 import { createServer } from '../src/server.js';
 import { handleTool } from '../src/tools/index.js';
-import { hiscoresJson } from './testUtils.js';
+import { hiscoresJson, playerDataPath, playerDataSkills } from './testUtils.js';
 import { recommendationInput } from '../src/tools/recommendationTools.js';
 
 const originalEnabled = process.env.RUNESCAPE_RECOMMENDATIONS_ENABLED;
@@ -207,8 +207,27 @@ describe('recommend_next_activity', () => {
         expect(calls).toHaveLength(2);
     });
 
-    it('fetches public hiscores and records per-skill provenance without overwriting supplied levels', async () => {
+    it('prefers Player Data skills and records per-skill provenance without overwriting supplied levels', async () => {
         const { calls } = fixture();
+        nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query({ includeSkills: 'true' })
+            .reply(200, playerDataSkills({ attack: [80, 10000], defence: [71, 9500], hitpoints: [60, 300000] }));
+        const hiscores = nock('https://secure.runescape.com').get('/m=hiscore/index_lite.json').query(true)
+            .reply(200, hiscoresJson([[1, 2000, 100000], [1, 80, 10000], [1, 70, 9000]]));
+        const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer',
+            context: { username: 'TestPlayer', gameMode: 'ironman', skills: { Attack: 90 } } });
+        expect(calls[0].state.account.skills).toEqual({ Attack: 90, Defence: 71, Constitution: 60 });
+        expect(response.structuredContent?.account).toMatchObject({
+            skillSources: { Attack: 'caller', Defence: 'player_data', Constitution: 'player_data' },
+            skillExperience: { Defence: 9500, Constitution: 300000 },
+        });
+        expect((response.structuredContent?.account as any).skillExperience.Attack).toBeUndefined();
+        expect(hiscores.isDone()).toBe(false);
+    });
+
+    it('falls back to public hiscores with a warning when Player Data refuses the player', async () => {
+        const { calls } = fixture();
+        nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query({ includeSkills: 'true' })
+            .reply(403, { error: 'PLAYER_NOT_MEMBER' });
         nock('https://secure.runescape.com').get('/m=hiscore/index_lite.json')
             .query({ player: 'TestPlayer' }).reply(200, hiscoresJson([[1, 2000, 100000], [1, 80, 10000], [1, 70, 9000]]));
         const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer',
@@ -217,10 +236,15 @@ describe('recommend_next_activity', () => {
         expect(response.structuredContent?.account).toMatchObject({
             skillSources: { Attack: 'caller', Defence: 'hiscores' },
         });
+        const warning = (response.structuredContent?.warnings as string[]).find(text => text.startsWith('Player Data skills unavailable'));
+        expect(warning).toContain('only returns skill data for members');
+        expect(warning).toContain('Falling back to public hiscores for skill levels.');
     });
 
     it('does not substitute normal hiscores when ironman lookup fails', async () => {
         fixture();
+        nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query({ includeSkills: 'true' })
+            .reply(404, { error: 'PLAYER_NOT_FOUND' });
         const ironman = nock('https://secure.runescape.com').get('/m=hiscore_ironman/index_lite.json')
             .query(true).reply(404);
         const response = await handleTool('recommend_next_activity', { goalType: 'activity', goal: 'Train Prayer',

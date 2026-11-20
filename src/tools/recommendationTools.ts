@@ -20,15 +20,15 @@ export const recommendationInput = z.strictObject({
         .describe('Named unlock such as Invention or Prifddinas. Providing it forces unlock_progression even when goalType says otherwise. Supported evidence covers Invention and bounded PvM/quest-reward targets, not every game unlock.'),
     context: z.strictObject({
         username: z.string().trim().min(1).max(12).regex(/^[a-zA-Z0-9 _-]+$/).optional()
-            .describe('RS3 display name for public hiscores and, for quest planning, the fresh Jagex Player Data quest journal. Private journals cannot establish quest completion.'),
+            .describe('RS3 display name for Jagex Player Data skill levels (public hiscores fallback) and, for quest planning, the fresh Jagex Player Data quest journal. Private journals cannot establish quest completion.'),
         gameMode: z.enum(['normal', 'ironman', 'hardcore']).optional()
-            .describe('Account mode; public hiscores lookup uses normal when omitted, while the account mode remains listed as missing context.'),
+            .describe('Account mode; selects the hiscores board when Player Data skills are unavailable (normal when omitted), while the account mode remains listed as missing context.'),
         skills: z.partialRecord(z.enum(RS3_SKILLS.filter(skill => skill !== 'Overall')),
             z.number().int().min(1).max(120)).optional()
-            .describe('Current skill levels keyed by exact RS3 skill names; not targets. Caller levels override hiscores. Missing ranked levels may be fetched; unranked/missing skills remain unknown, not level one.'),
+            .describe('Current skill levels keyed by exact RS3 skill names; not targets. Caller levels override fetched levels. Missing levels may be fetched from Player Data or ranked hiscores; unranked/missing skills remain unknown, not level one.'),
         skillExperience: z.partialRecord(z.enum(RS3_SKILLS.filter(skill => skill !== 'Overall')),
             z.number().int().min(0).max(200_000_000)).optional()
-            .describe('Current total XP per skill, not XP to earn. Consistent exact XP supports training estimates; omitted XP can be filled from compatible public hiscores.'),
+            .describe('Current total XP per skill, not XP to earn. Consistent exact XP supports training estimates; omitted XP can be filled from compatible Player Data or public hiscores.'),
         budgetGp: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional()
             .describe('Available spending budget in coins: zero means no GP available to spend; omit when unknown. The server does not read a bank balance.'),
         sessionMinutes: z.number().int().min(1).max(1440).optional()
@@ -52,10 +52,10 @@ export type RecommendationInput = z.infer<typeof recommendationInput>;
 export const recommendationTools: Tool[] = [{
     name: 'recommend_next_activity',
     title: 'Recommend Next RS3 Activity',
-    description: 'Plan the next RS3 activity, training milestone or unlock prerequisite. Use get_player_quests for progress, get_player_stats for levels, get_wiki_entity_facts for one quest\'s facts, or search_wiki for references.\n' +
+    description: 'Plan the next RS3 activity, training milestone or unlock prerequisite. Use get_player_quests for progress, get_player_skills for levels, get_wiki_entity_facts for one quest\'s facts, or search_wiki for references.\n' +
         '- Routing: unlock overrides goalType, otherwise goalType overrides inference. targetSkill sets focus, not the planner.\n' +
         '- Example: {"goal":"Train Mining","goalType":"skill_training","targetSkill":"Mining","targetLevel":70,"context":{"skills":{"Mining":52}}}. Without a target or goal-specified level, 52 defaults to 55.\n' +
-        '- Account: caller levels override hiscores; fresh journals override completion claims. Quest comparison needs a public context.username. Membership, gear and bank balances are not fetched.\n' +
+        '- Account: caller levels override Player Data and hiscores; fresh journals override completion claims. Quest comparison needs a public context.username. Membership, gear and bank balances are not fetched.\n' +
         '- Setup/privacy: operator RUNESCAPE_RECOMMENDATIONS_ENABLED=true and TYPESAFE_API_KEY. Goal/account context goes to TypeSafe; display-name lookups go to Jagex.\n' +
         '- Cost: at most 24 paid Jev calls for quests, three otherwise, including routing. Repeated calls can incur fresh charges. No automatic paid retries; rounds completed before an error may already be billed.\n' +
         '- Timing/errors: 55 seconds for routing/non-quest work, plus five minutes for quest comparison. Invalid input/configuration or fatal provider failures return isError/text. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.\n' +

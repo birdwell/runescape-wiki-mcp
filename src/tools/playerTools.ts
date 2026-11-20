@@ -2,7 +2,8 @@
 
 import type { Tool } from '@modelcontextprotocol/server';
 import { GAME_MODE_PATHS, RS3_HISCORES_ORIGIN, RS3_SKILLS } from '../constants.js';
-import { fetchPlayerQuests } from '../questData.js';
+import { fetchPlayerSkills, type SkillRow } from '../playerSkills.js';
+import { fetchPlayerQuests, playerDataFailure } from '../questData.js';
 import { JSON_SCHEMA_2020_12, playerStatsOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { GameMode, PlayerStatsResponse, ToolArguments, ToolResponse } from '../types.js';
 import { ApiRequestError, createSuccessResponse, makeApiRequest } from '../utils.js';
@@ -46,7 +47,7 @@ export const playerTools: Tool[] = [
     {
         name: 'get_player_quests',
         title: 'Get Player Quest Journal',
-        description: "Read a public RS3 character's complete Jagex Player Data quest journal. Use get_player_stats for levels or get_wiki_entity_facts with kind=quest for one quest's metadata. If listed, recommend_next_activity offers paid advice.\n\n- username is the character's display name, not a Jagex login, account ID or quest name. No signed-in-player default exists; ask which character when unknown.\n- Send {\"username\":\"A B\"}, not {\"username\":\"A%20B\"}. The server trims outer whitespace and encodes the name once. The returned username echoes that input; no alias or canonical-identity lookup is performed.\n- No gameMode or quest/status selector applies. Filter the complete returned journal locally; there is no pagination. A quest's members flag does not establish current account membership.\n- Invalid names, private/unavailable or malformed journals return isError/text, not an empty journal or guessed progress.\n- Sends the display name to the Jagex Player Data API for one uncached read (Jagex syncs on logout, world hop and periodically, and may serve data up to 10 minutes old; non-members may be refused), with a 12-second default deadline and no automatic retry. No Jev, API key, login or game changes. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
+        description: "Read a public RS3 character's complete Jagex Player Data quest journal. Use get_player_skills for current levels, get_player_stats for hiscores ranks, or get_wiki_entity_facts with kind=quest for one quest's metadata. If listed, recommend_next_activity offers paid advice.\n\n- username is the character's display name, not a Jagex login, account ID or quest name. No signed-in-player default exists; ask which character when unknown.\n- Send {\"username\":\"A B\"}, not {\"username\":\"A%20B\"}. The server trims outer whitespace and encodes the name once. The returned username echoes that input; no alias or canonical-identity lookup is performed.\n- No gameMode or quest/status selector applies. Filter the complete returned journal locally; there is no pagination. A quest's members flag does not establish current account membership.\n- Invalid names, private/unavailable or malformed journals return isError/text, not an empty journal or guessed progress.\n- Sends the display name to the Jagex Player Data API for one uncached read (Jagex syncs on logout, world hop and periodically, and may serve data up to 10 minutes old; non-members may be refused), with a 12-second default deadline and no automatic retry. No Jev, API key, login or game changes. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
         inputSchema: {
             $schema: JSON_SCHEMA_2020_12, type: 'object',
             properties: { username: { type: 'string', minLength: 1, maxLength: 12, description: 'Exact RS3 player display name' } },
@@ -84,7 +85,7 @@ export const playerTools: Tool[] = [
         name: 'get_player_stats',
         title: 'Get Player Stats',
         description:
-            "Read an RS3 player's published hiscores ranks, levels and experience, including Overall. Use search_wiki for training guides rather than player data.\n" +
+            "Read an RS3 player's published hiscores ranks, levels and experience, including Overall. Use it for ranks or a specific leaderboard; get_player_skills has fresher levels and XP. Use search_wiki for training guides rather than player data.\n" +
             "- username is the literal in-game display name, including spaces; the server URL-encodes it. gameMode chooses a separate leaderboard, not a filter on normal stats. Omit it for normal mode.\n" +
             "- Normal, ironman and hardcore boards are supported. A player absent from the selected board returns a 404 tool error; the tool never substitutes another board. Unranked skills use rank Unranked; unavailable level/XP becomes 0.\n" +
             "- No login, account changes or local cache. HTTP shares a default 60 requests/IP/minute budget; honor Retry-After on 429.",
@@ -110,6 +111,47 @@ export const playerTools: Tool[] = [
         outputSchema: playerStatsOutputSchema,
         ...READ_ONLY_TOOL,
     },
+    {
+        name: 'get_player_skills',
+        title: 'Get Player Skills',
+        description:
+            "Read an RS3 character's current skill levels and XP from Jagex Player Data, which syncs during play and is usually fresher than the hiscores. It has no ranks or Overall row; use get_player_stats for ranks or a specific leaderboard.\n" +
+            "- username is the character's display name; send it with spaces, not URL-encoded. No gameMode applies: levels belong to the account, not a leaderboard.\n" +
+            "- If Player Data refuses the player (not found, hidden, non-member or malformed), the tool falls back to the normal hiscores board, which also lists ironmen, and reports source=hiscores with fallbackReason. Hiscore skills with no stored data are omitted.\n" +
+            "- Experience is whole XP (Player Data fine_xp / 10, rounded down). Jagex may serve Player Data up to 10 minutes old.\n" +
+            "- No login, account changes or local cache; 12-second default deadline, no automatic retry. HTTP shares 60 requests/IP/minute by default; honor Retry-After on 429.",
+        inputSchema: {
+            $schema: JSON_SCHEMA_2020_12, type: 'object',
+            properties: { username: { type: 'string', minLength: 1, maxLength: 12, description: 'Exact RS3 player display name' } },
+            required: ['username'], additionalProperties: false,
+        },
+        outputSchema: {
+            $schema: JSON_SCHEMA_2020_12, type: 'object',
+            properties: {
+                username: { type: 'string', description: 'Trimmed input echoed back; not a separate canonical-identity lookup' },
+                source: { type: 'string', enum: ['player_data', 'hiscores'], description: 'player_data, or hiscores when Player Data refused the player' },
+                sourceUrl: { type: 'string', format: 'uri', description: 'Request URL that supplied the skills' },
+                fetchedAt: { type: 'string', format: 'date-time', description: 'UTC retrieval time for this uncached read' },
+                fallbackReason: { type: 'string', description: 'Why Player Data was not used; present only when source is hiscores' },
+                skills: {
+                    type: 'object',
+                    description: 'Map of RS3 skill name (same names as get_player_stats, without Overall) to level and XP',
+                    additionalProperties: {
+                        type: 'object',
+                        properties: {
+                            level: { type: 'integer', minimum: 0, description: 'Skill level' },
+                            experience: { type: 'integer', minimum: 0, description: 'Whole skill experience' },
+                        },
+                        required: ['level', 'experience'],
+                        additionalProperties: false,
+                    },
+                },
+            },
+            required: ['username', 'source', 'sourceUrl', 'fetchedAt', 'skills'],
+            additionalProperties: false,
+        },
+        ...READ_ONLY_TOOL,
+    },
 ];
 
 export async function handlePlayerTool(name: string, args: ToolArguments, signal?: AbortSignal): Promise<ToolResponse> {
@@ -122,6 +164,35 @@ export async function handlePlayerTool(name: string, args: ToolArguments, signal
             if (isToolResponse(username)) return username;
             return createSuccessResponse(`Quest journal for ${username}`, await fetchPlayerQuests(username,
                 signal ?? AbortSignal.timeout(12_000)));
+        }
+        case 'get_player_skills': {
+            const unexpected = rejectUnknownKeys(args, ['username']);
+            if (unexpected) return unexpected;
+            const username = requireString(typeof args?.username === 'string' ? args.username.trim() : args?.username,
+                'username', { minLength: 1, maxLength: 12 });
+            if (isToolResponse(username)) return username;
+            const deadline = signal ?? AbortSignal.timeout(12_000);
+            try {
+                return createSuccessResponse(`Skills for ${username}`, await fetchPlayerSkills(username, deadline));
+            } catch (error) {
+                const fallbackReason = playerDataFailure(error);
+                if (!fallbackReason) throw error;
+                // The normal board lists every player type, so it is the right fallback for account levels.
+                const hiscores = await handlePlayerTool('get_player_stats', { username }, deadline);
+                if (hiscores.isError) {
+                    return validationError(`${fallbackReason} Hiscores fallback: ${hiscores.content[0].text}`);
+                }
+                const skills: Record<string, SkillRow> = {};
+                for (const [skill, row] of Object.entries(hiscores.structuredContent ?? {})) {
+                    const { level, experience } = row as SkillRow;
+                    if (skill !== 'Overall' && level > 0) skills[skill] = { level, experience };
+                }
+                return createSuccessResponse(`Skills for ${username} (hiscores fallback)`, {
+                    username, source: 'hiscores',
+                    sourceUrl: `${RS3_HISCORES_ORIGIN}${GAME_MODE_PATHS.normal}?player=${encodeURIComponent(username)}`,
+                    fetchedAt: new Date().toISOString(), fallbackReason, skills,
+                });
+            }
         }
         case 'get_player_stats': {
             const unexpected = rejectUnknownKeys(args, ['username', 'gameMode']);
