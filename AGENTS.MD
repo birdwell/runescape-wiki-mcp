@@ -64,7 +64,7 @@ get_player_stats { "username": "Zezima", "gameMode": "normal" }
 ## APIs
 
 - GE: `https://secure.runescape.com/m=itemdb_rs/api`
-- Hiscores: `https://secure.runescape.com/m=hiscore/index_lite.ws?player=`
+- Hiscores: `https://secure.runescape.com/m=hiscore/index_lite.json?player=` (Platform API Index Lite; `hiscore_ironman` / `hiscore_hardcore_ironman` for other boards)
 - Weirdgloop: `https://api.weirdgloop.org/exchange/history/rs/latest`
 - Wiki: `https://runescape.wiki/api.php`
 

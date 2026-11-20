@@ -314,7 +314,7 @@ Batch catalogue metadata with the `get_item_details` argument `itemIds` (GE IDs 
 Jagex supplies guide prices and the default raw price history. Weirdgloop supplies daily price and volume snapshots for comparisons and history statistics. The server uses the separate RS3 reported-trade feed only when `get_item_details` is called in the records view with `includeLiveData: true`.
 
 - Jagex GE: `https://secure.runescape.com/m=itemdb_rs/api`
-- Jagex hiscores lite: `https://secure.runescape.com/m=hiscore/index_lite.ws`
+- Jagex hiscores (Platform API Index Lite): `https://secure.runescape.com/m=hiscore/index_lite.json` ([docs](https://developer.runescape.com/platform/modules/hiscores/index-lite.html))
 - Weirdgloop RS exchange: `https://api.weirdgloop.org/exchange/history/rs`
 - RuneScape Wiki RS3 reported trades and numeric item facts (opt-in): `https://prices.runescape.wiki/api/v2/rs`
 - RuneScape Wiki MediaWiki API: `https://runescape.wiki/api.php`
@@ -371,7 +371,7 @@ src/
 
 - **RS3 only**, not OSRS (different IDs and endpoints).
 - Guide prices and Weirdgloop history lag the live market. Pass your own buy and sell prices to `estimate_flip` when you have them.
-- Normal, ironman and hardcore `index_lite` endpoints are supported. A player missing from the selected board returns a 404 tool error without falling back to another board.
+- Normal, ironman and hardcore `index_lite.json` instances are supported. A player missing from the selected board returns a 404 tool error without falling back to another board.
 - Smithery hosts should rebuild the server card after tool changes so the published schema matches this README.
 
 ## License

@@ -5,7 +5,7 @@ import { GAME_MODE_PATHS, RS3_HISCORES_ORIGIN, RS3_SKILLS } from '../constants.j
 import { fetchPlayerQuests } from '../questData.js';
 import { JSON_SCHEMA_2020_12, playerStatsOutputSchema, READ_ONLY_TOOL } from '../mcpSchemas.js';
 import { GameMode, PlayerStatsResponse, ToolArguments, ToolResponse } from '../types.js';
-import { createSuccessResponse, makeTextApiRequest } from '../utils.js';
+import { ApiRequestError, createSuccessResponse, makeApiRequest } from '../utils.js';
 import {
     isToolResponse,
     rejectUnknownKeys,
@@ -17,6 +17,29 @@ const GAME_MODES = ['normal', 'ironman', 'hardcore'] as const;
 
 function isGameMode(value: string): value is GameMode {
     return (GAME_MODES as readonly string[]).includes(value);
+}
+
+/**
+ * Parses Platform API Index Lite skills into the tool's existing output shape.
+ * Rows are keyed by `id`, the same order as RS3_SKILLS, because the JSON uses
+ * different names for some skills (Hitpoints, Runecraft). Unknown ids are skipped.
+ * Rank -1 means unranked; level/xp -1 means no data is stored (older records).
+ */
+function parseHiscoreSkills(data: unknown): PlayerStatsResponse | null {
+    const skills = (data as { skills?: unknown } | null)?.skills;
+    if (!Array.isArray(skills)) return null;
+
+    const parsedStats: PlayerStatsResponse = {};
+    for (const row of skills) {
+        const { id, rank, level, xp } = (row ?? {}) as Record<string, unknown>;
+        if (!Number.isInteger(id) || (id as number) < 0 || (id as number) >= RS3_SKILLS.length) continue;
+        parsedStats[RS3_SKILLS[id as number]] = {
+            rank: Number.isSafeInteger(rank) && (rank as number) > 0 ? (rank as number) : 'Unranked',
+            level: Number.isSafeInteger(level) && (level as number) >= 0 ? (level as number) : 0,
+            experience: Number.isSafeInteger(xp) && (xp as number) >= 0 ? (xp as number) : 0,
+        };
+    }
+    return Object.keys(parsedStats).length > 0 ? parsedStats : null;
 }
 
 export const playerTools: Tool[] = [
@@ -122,40 +145,28 @@ export async function handlePlayerTool(name: string, args: ToolArguments, signal
             const path = GAME_MODE_PATHS[gameMode];
             const url = `${RS3_HISCORES_ORIGIN}${path}?player=${encodeURIComponent(username)}`;
 
-            let csvData: string;
+            let data: unknown;
             try {
-                csvData = await makeTextApiRequest(url, signal);
+                data = await makeApiRequest(url, signal);
             } catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
-                if (message.includes('404')) {
+                if (error instanceof ApiRequestError && error.status === 404) {
                     return validationError(
                         `Player "${username}" was not found on the ${gameMode} hiscores (HTTP 404). ` +
                             'Check the display name and selected leaderboard. No other board was queried.'
                     );
                 }
+                // fetch's JSON parser may throw a SyntaxError from another realm, so match by name.
+                if ((error as { name?: unknown } | null)?.name === 'SyntaxError') {
+                    return validationError(`Unexpected hiscores response for "${username}" (${gameMode}).`);
+                }
                 throw error;
             }
 
-            const lines = csvData.trim().split('\n').filter(line => line.length > 0);
-            if (lines.length === 0 || !lines[0].includes(',')) {
+            const parsedStats = parseHiscoreSkills(data);
+            if (!parsedStats) {
                 return validationError(
                     `Unexpected hiscores response for "${username}" (${gameMode}).`
                 );
-            }
-
-            const parsedStats: PlayerStatsResponse = {};
-            const skillCount = Math.min(RS3_SKILLS.length, lines.length);
-            for (let index = 0; index < skillCount; index += 1) {
-                const parts = lines[index]?.split(',') ?? [];
-                const [rank, level, xp] = parts;
-                const rankNum = Number.parseInt(rank ?? '', 10);
-                const levelNum = Number.parseInt(level ?? '', 10);
-                const xpNum = Number.parseInt(xp ?? '', 10);
-                parsedStats[RS3_SKILLS[index]] = {
-                    rank: rank === '-1' || !Number.isFinite(rankNum) ? 'Unranked' : rankNum,
-                    level: level === '-1' || !Number.isFinite(levelNum) ? 0 : levelNum,
-                    experience: xp === '-1' || !Number.isFinite(xpNum) ? 0 : xpNum,
-                };
             }
 
             return createSuccessResponse(`Player Stats for ${username} (${gameMode})`, parsedStats);
