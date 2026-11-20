@@ -1,6 +1,6 @@
 FROM node:26-alpine AS build
 WORKDIR /app
-RUN npm install -g bun@1.4.3
+RUN npm install -g bun@1.4.5
 COPY package.json bun.lock tsconfig.json ./
 COPY src ./src
 RUN bun install --frozen-lockfile --ignore-scripts && bun run build
@@ -11,7 +11,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 ENV HOST=0.0.0.0
-RUN npm install -g bun@1.4.3 && npm cache clean --force
+RUN npm install -g bun@1.4.5 && npm cache clean --force
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production --ignore-scripts
 COPY --from=build /app/dist ./dist
