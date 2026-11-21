@@ -213,6 +213,21 @@ describe('quest facts and account eligibility', () => {
         await expect(fetchPlayerQuests('TestPlayer')).rejects.toThrow(message);
     });
 
+    it.each(['X'.repeat(41), 'X'.repeat(10000), 'bad code', '<html>error</html>', 'INTERNAL_ERROR\n',
+        'INTERNAL_ERROR\r', '', 'constructor', '__proto__', 123, null])(
+        'omits an unsafe upstream error code from the user-facing reason (%#)', async error => {
+            nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query(true).reply(500, { error });
+            await expect(fetchPlayerQuests('TestPlayer')).rejects.toMatchObject({ name: 'PlayerDataError', code: undefined,
+                message: 'Jagex Player Data API request failed (500). No completion statuses were inferred.' });
+        });
+
+    it('preserves an unknown error code at the 40-character limit', async () => {
+        const error = 'X'.repeat(40);
+        nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query(true).reply(500, { error });
+        await expect(fetchPlayerQuests('TestPlayer')).rejects.toMatchObject({ code: error,
+            message: `Jagex Player Data API request failed (500 ${error}). No completion statuses were inferred.` });
+    });
+
     it('rejects a malformed or empty journal', async () => {
         nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query(true).reply(200, { name: 'TestPlayer', quests: {} });
         await expect(fetchPlayerQuests('TestPlayer')).rejects.toThrow('unavailable or malformed');
@@ -340,14 +355,20 @@ describe('quest recommendation pipeline', () => {
         expect((result.structuredContent?.account as any).completedQuests).toEqual(['Finished Mining Quest']);
     });
 
-    it('asks for a public journal when completion data is private', async () => {
+    it.each([
+        ['PLAYER_NOT_FOUND', 404, 'does not exist or is hidden', true],
+        ['PLAYER_NOT_MEMBER', 403, 'only returns quest data for members', false],
+        ['INTERNAL_ERROR', 500, 'request failed (500 INTERNAL_ERROR)', false],
+    ] as const)('only requests a public journal for an actionable failure: %s', async (error, status, reason, actionable) => {
         mockJev();
         nock('https://secure.runescape.com').get('/m=hiscore/index_lite.json').query(true).reply(200, hiscoresJson([[1, 1000, 100000]]));
         nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query({ includeSkills: 'true' }).reply(403, { error: 'PLAYER_NOT_MEMBER' });
-        nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query({ includeQuests: 'true' }).reply(403, { error: 'PLAYER_NOT_MEMBER' });
+        nock('https://secure.runescape.com').get(playerDataPath('TestPlayer')).query({ includeQuests: 'true' }).reply(status, { error });
         const result = await handleTool('recommend_next_activity', { goal: 'Best mining quest', context: { username: 'TestPlayer' } });
         expect(result.structuredContent).toMatchObject({ status: 'needs_context', recommendation: null, questCoverage: { evaluated: 0 } });
-        expect(result.structuredContent?.warnings).toEqual(expect.arrayContaining([expect.stringContaining('only returns quest data for members')]));
+        expect(result.structuredContent?.warnings).toEqual(expect.arrayContaining([expect.stringContaining(reason)]));
+        expect(result.structuredContent?.missingContext).toEqual(actionable
+            ? [expect.stringContaining('publicly accessible Jagex Player Data quest journal')] : []);
     });
 
     it('asks for a username rather than inferring unfinished quests from an incomplete list', async () => {
