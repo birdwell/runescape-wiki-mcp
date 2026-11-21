@@ -1,5 +1,5 @@
 import { JevSession, MAX_JEV_REQUEST_CHARS, recommendationConfiguration, type ChoiceAnswer, type ChoiceQuestion } from './jev.js';
-import { fetchPlayerQuests, fetchQuestCatalogue, playerDataFailure, fetchQuestGuide, questKey, type JournalQuest } from './questData.js';
+import { fetchPlayerQuests, fetchQuestCatalogue, PlayerDataError, playerDataFailure, fetchQuestGuide, questKey, type JournalQuest } from './questData.js';
 import { wikiText, type QuestMetadata } from './questParsing.js';
 import { attributedWikiSource } from './wikiAttribution.js';
 import type { RecommendationInput } from './tools/recommendationTools.js';
@@ -146,7 +146,8 @@ export async function recommendQuests(
         journal = await fetchPlayerQuests(input.context.username,
             AbortSignal.any([signal, AbortSignal.timeout(12_000)]));
     } catch (error) {
-        missingContext.push('A publicly accessible Jagex Player Data quest journal. Quest completion could not be verified.');
+        if (error instanceof PlayerDataError && error.code === 'PLAYER_NOT_FOUND')
+            missingContext.push('A publicly accessible Jagex Player Data quest journal. Quest completion could not be verified.');
         const reason = playerDataFailure(error);
         if (reason) warnings.push(reason);
         warnings.push('No quests were assumed incomplete or available.');

@@ -1,6 +1,6 @@
 import { JevSession, MAX_JEV_REQUEST_CHARS, type ChoiceQuestion } from './jev.js';
 import { fetchGuide, guideSections, guideTables, inventionRequirements, type Guide } from './wikiGuides.js';
-import { fetchPlayerQuests, fetchQuestCatalogue, playerDataFailure, fetchQuestGuide, questKey, type JournalQuest } from './questData.js';
+import { fetchPlayerQuests, fetchQuestCatalogue, PlayerDataError, playerDataFailure, fetchQuestGuide, questKey, type JournalQuest } from './questData.js';
 import { wikiText, type QuestMetadata } from './questParsing.js';
 import { attributedWikiSource } from './wikiAttribution.js';
 import { experienceGap, planTraining, type PlanningAccount } from './trainingRecommendations.js';
@@ -154,33 +154,45 @@ export async function recommendUnlocks(input: RecommendationInput, account: Plan
     let journal: JournalQuest[] = [];
     let metadata = new Map<string, QuestMetadata>(), dependencies = new Map<string, string[]>();
     if (!namedInvention) {
-        try {
-            if (!account.username) throw new Error('Public username is needed for quest prerequisite status.');
-            const playerJournal = await fetchPlayerQuests(account.username, signal);
-            journal = playerJournal.quests;
-            const data = await fetchQuestCatalogue(journal.map(quest => quest.title), signal);
-            metadata = data.metadata; dependencies = data.dependencies;
-            const guide = await fetchGuide('PvM unlock guide', signal);
-            sources.push(guide.source);
-            definitions.push(...catalogue(guide, journal, metadata));
-            // A named city/area may be a quest reward rather than a row in the PvM guide.
-            if (requested && requested.length <= 60 && !/^(?:next|should|useful|some|something|progression)\b/i.test(requested) &&
-                !definitions.some(definition => questKey(definition.name).includes(questKey(requested)))) {
-                for (const quest of journal) {
-                    const page = metadata.get(questKey(quest.title));
-                    if (page?.available && rewardDirectlyUnlocks(page.rewards.text, requested)) {
-                        definitions.push({ id: '', name: requested, requiredQuests: [quest.title], requiredSkills: {},
-                            members: quest.members, notes: page.rewards.text, source: attributedWikiSource(page.title, page.url,
-                                'Named unlock matched to quest-completion reward text.', page.revisionId) });
+        const journalContext = 'Public username for the Jagex Player Data quest journal for quest-based unlock comparisons';
+        if (!account.username) missingContext.push(journalContext);
+        else {
+            try {
+                const playerJournal = await fetchPlayerQuests(account.username, signal);
+                journal = playerJournal.quests;
+            } catch (error) {
+                const reason = playerDataFailure(error);
+                if (reason) warnings.push(reason);
+                if (error instanceof PlayerDataError && error.code === 'PLAYER_NOT_FOUND') missingContext.push(journalContext);
+            }
+        }
+        let questCoverageAvailable = false;
+        if (journal.length) {
+            try {
+                const data = await fetchQuestCatalogue(journal.map(quest => quest.title), signal);
+                metadata = data.metadata; dependencies = data.dependencies;
+                const guide = await fetchGuide('PvM unlock guide', signal);
+                sources.push(guide.source);
+                definitions.push(...catalogue(guide, journal, metadata));
+                // A named city/area may be a quest reward rather than a row in the PvM guide.
+                if (requested && requested.length <= 60 && !/^(?:next|should|useful|some|something|progression)\b/i.test(requested) &&
+                    !definitions.some(definition => questKey(definition.name).includes(questKey(requested)))) {
+                    for (const quest of journal) {
+                        const page = metadata.get(questKey(quest.title));
+                        if (page?.available && rewardDirectlyUnlocks(page.rewards.text, requested)) {
+                            definitions.push({ id: '', name: requested, requiredQuests: [quest.title], requiredSkills: {},
+                                members: quest.members, notes: page.rewards.text, source: attributedWikiSource(page.title, page.url,
+                                    'Named unlock matched to quest-completion reward text.', page.revisionId) });
+                        }
                     }
                 }
+                questCoverageAvailable = true;
+            } catch {
+                warnings.push('Wiki quest catalogue or PvM unlock guide was unavailable; quest-based unlock comparisons could not be completed.');
             }
-        } catch (error) {
-            const reason = playerDataFailure(error);
-            if (reason) warnings.push(reason);
-            warnings.push('Quest unlock coverage is unavailable; no quest completion statuses or prerequisite paths were inferred.');
-            missingContext.push('Public username for the Jagex Player Data quest journal for quest-based unlock comparisons');
         }
+        if (!questCoverageAvailable)
+            warnings.push('Quest unlock coverage is unavailable; no quest completion statuses or prerequisite paths were inferred.');
     }
     let paths = definitions.map(definition => buildUnlockPath(definition, account, journal, metadata, dependencies));
     const named = namedInvention ? 'Invention' : requested && !/^(?:next|should|useful|some|something|progression)\b/i.test(requested) ? requested : undefined;

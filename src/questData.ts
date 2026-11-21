@@ -36,6 +36,10 @@ const NOTHING_INFERRED: Record<PlayerDataKind, string> = {
 /** A Player Data failure whose message is safe to show users as the reason quest or skill data is unknown. */
 export class PlayerDataError extends Error {
     override name = 'PlayerDataError';
+
+    constructor(message: string, readonly code?: string) {
+        super(message);
+    }
 }
 
 /** The user-facing reason a Player Data fetch failed, or undefined for other errors (abort, wiki, etc.). */
@@ -56,8 +60,10 @@ export async function requestPlayerData(source: string, signal?: AbortSignal, ki
         if (!(error instanceof ApiRequestError) || error.status === 429) throw error;
         let code: unknown;
         try { code = JSON.parse(error.body)?.error; } catch { /* Non-JSON error body. */ }
-        const known = typeof code === 'string' ? PLAYER_DATA_ERRORS[code]?.(kind) : undefined;
-        throw new PlayerDataError(`${known ?? `Jagex Player Data API request failed (${error.status}${typeof code === 'string' ? ` ${code}` : ''}).`} ${NOTHING_INFERRED[kind]}`);
+        const safeCode = typeof code === 'string' && code.length >= 1 && code.length <= 40 && !/[^A-Z_]/.test(code)
+            ? code : undefined;
+        const known = safeCode ? PLAYER_DATA_ERRORS[safeCode]?.(kind) : undefined;
+        throw new PlayerDataError(`${known ?? `Jagex Player Data API request failed (${error.status}${safeCode ? ` ${safeCode}` : ''}).`} ${NOTHING_INFERRED[kind]}`, safeCode);
     }
 }
 
