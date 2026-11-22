@@ -107,6 +107,21 @@ test('public MCP metrics distinguish setup, discovery and tool outcomes on both 
         expect(batch.status).toBe(200);
         expect(await batch.text()).toContain('"error"');
 
+        const cancelled = await post([
+            { jsonrpc: '2.0', id: 1, method: 'tools/call', params: flip },
+            { jsonrpc: '2.0', method: 'notifications/cancelled', params: { requestId: 1 } },
+            { jsonrpc: '2.0', id: 2, method: 'ping' },
+        ], legacyHeaders);
+        expect(cancelled.status).toBe(200);
+        const reader = cancelled.body!.getReader();
+        try {
+            const response = await reader.read();
+            expect(new TextDecoder().decode(response.value)).toContain('"id":2');
+        } finally {
+            // The legacy stream otherwise waits for the suppressed reply.
+            await reader.cancel();
+        }
+
         const malformed = await fetch(endpoint, { method: 'POST', headers: legacyHeaders,
             signal: AbortSignal.timeout(5000), body: '{' });
         expect(malformed.status).toBe(400);
@@ -137,9 +152,12 @@ test('public MCP metrics distinguish setup, discovery and tool outcomes on both 
         expect(Object.fromEntries(byMethod)).toEqual({
             'public tools/call success': 2,
             'public tools/call failed': 5,
+            'public tools/call aborted': 1,
             'public tools/list received': 2,
             'public initialize received': 1,
             'public notifications/initialized received': 1,
+            'public notifications/cancelled received': 1,
+            'public ping received': 1,
             'public server/discover received': 1,
             'smoke_test tools/call success': 2,
             'smoke_test tools/list received': 1,

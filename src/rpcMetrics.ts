@@ -16,6 +16,8 @@ export interface RpcMetrics {
     pendingTools: Map<RequestId, number>;
 }
 
+export type ToolOutcome = 'success' | 'failed' | 'aborted';
+
 export function trackRpcMethods(metrics: RpcMetrics, body: unknown): void {
     const received = new Map<string, number>();
     for (const message of Array.isArray(body) ? body : [body]) {
@@ -32,12 +34,12 @@ export function trackRpcMethods(metrics: RpcMetrics, body: unknown): void {
     for (const [method, count] of received) countRpc(metrics, method, 'received', count);
 }
 
-export function trackToolResult(metrics: RpcMetrics, id: RequestId, succeeded: boolean): void {
+export function trackToolResult(metrics: RpcMetrics, id: RequestId, outcome: ToolOutcome): void {
     const count = metrics.pendingTools.get(id);
     if (count === undefined) return;
     if (count === 1) metrics.pendingTools.delete(id);
     else metrics.pendingTools.set(id, count - 1);
-    countRpc(metrics, 'tools/call', succeeded ? 'success' : 'failed');
+    countRpc(metrics, 'tools/call', outcome);
 }
 
 export function finishRpcMetrics(metrics: RpcMetrics, aborted: boolean): void {
@@ -48,7 +50,7 @@ export function finishRpcMetrics(metrics: RpcMetrics, aborted: boolean): void {
     if (remaining) countRpc(metrics, 'tools/call', aborted ? 'aborted' : 'failed', remaining);
 }
 
-function countRpc(metrics: RpcMetrics, method: string, outcome: string, count = 1): void {
+function countRpc(metrics: RpcMetrics, method: string, outcome: ToolOutcome | 'received', count = 1): void {
     try {
         Sentry.metrics.count('runescape.mcp.rpc.message', count, {
             attributes: { rpc_method: method, outcome, traffic_source: metrics.trafficSource },

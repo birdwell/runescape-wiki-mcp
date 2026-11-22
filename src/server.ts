@@ -13,6 +13,7 @@ import { SERVER_CONFIG, SERVER_INSTRUCTIONS } from './constants.js';
 import { availableTools, handleTool } from './tools/index.js';
 import { resources, handleResource } from './resources.js';
 import { registerPromptHandlers } from './prompts.js';
+import type { ToolOutcome } from './rpcMetrics.js';
 import { createErrorResponse, debugLog } from './utils.js';
 
 const SERVER_OPTIONS = {
@@ -41,7 +42,7 @@ export function createServer(): Server {
     return createServerWithToolObserver();
 }
 
-type ToolObserver = (name: string, id: RequestId, succeeded: boolean) => void;
+type ToolObserver = (name: string, id: RequestId, outcome: ToolOutcome) => void;
 
 export function createServerWithToolObserver(onToolResult?: ToolObserver): Server {
     const server = new Server(SERVER_CONFIG, SERVER_OPTIONS);
@@ -66,14 +67,14 @@ function setupServerHandlers(server: Server, onToolResult?: ToolObserver): void 
         try {
             const result = await handleTool(name, args || {});
             debugLog(`Tool ${name} succeeded`, result);
-            observeToolResult(onToolResult, name, mcpReq.id, !result.isError);
+            observeToolResult(onToolResult, name, mcpReq.id, mcpReq.signal, result.isError ? 'failed' : 'success');
             return {
                 content: result.content,
                 structuredContent: result.structuredContent,
                 isError: result.isError,
             };
         } catch (error) {
-            observeToolResult(onToolResult, name, mcpReq.id, false);
+            observeToolResult(onToolResult, name, mcpReq.id, mcpReq.signal, 'failed');
             if (error instanceof ProtocolError) {
                 throw error;
             }
@@ -104,9 +105,10 @@ function setupServerHandlers(server: Server, onToolResult?: ToolObserver): void 
     });
 }
 
-function observeToolResult(observer: ToolObserver | undefined, name: string, id: RequestId, succeeded: boolean): void {
+function observeToolResult(observer: ToolObserver | undefined, name: string, id: RequestId, signal: AbortSignal,
+    outcome: Exclude<ToolOutcome, 'aborted'>): void {
     try {
-        observer?.(name, id, succeeded);
+        observer?.(name, id, signal.aborted ? 'aborted' : outcome);
     } catch {
         debugLog('Could not record tool result');
     }
