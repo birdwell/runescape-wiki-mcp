@@ -1,29 +1,48 @@
 // Node HTTP entry — Streamable HTTP MCP for remote hosts (Fly, etc.).
 
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { createMcpHandler } from '@modelcontextprotocol/server';
+import { createMcpHandler, isJsonContentType } from '@modelcontextprotocol/server';
 import { toNodeHandler } from '@modelcontextprotocol/node';
 import * as Sentry from '@sentry/node';
 import { handleDiscoveryRequest } from './discovery.js';
 import { homepageHtml } from './homepage.js';
 import { clientKeyFromHeaders, consumeRateLimit } from './rateLimit.js';
 import { createServer as createMcpServer, createServerWithToolObserver } from './server.js';
+import { finishRpcMetrics, trackRpcMethods, trackToolResult, type RpcMetrics } from './rpcMetrics.js';
 import type { ProtectedBeta } from './beta.js';
 
 export function createHttpServer(beta?: ProtectedBeta, port = 8080) {
-
-    const handler = createMcpHandler(({ requestInfo }) => {
-        if (beta || !requestInfo || !Sentry.isEnabled() || new URL(requestInfo.url).pathname !== '/mcp') {
-            return createMcpServer();
-        }
-        const trafficSource = requestInfo.headers.get('x-runescape-mcp-smoke') === '1' ? 'smoke_test' : 'public';
-        return createServerWithToolObserver(toolName => {
-            Sentry.metrics.count('runescape.mcp.tool_call.success', 1, {
-                attributes: { tool_name: toolName, traffic_source: trafficSource },
-            });
+    const rpcMetrics = new AsyncLocalStorage<RpcMetrics>();
+    const handler = createMcpHandler(() => {
+        const metrics = rpcMetrics.getStore();
+        if (!metrics) return createMcpServer();
+        return createServerWithToolObserver((toolName, id, outcome) => {
+            trackToolResult(metrics, id, outcome);
+            if (outcome === 'success') {
+                Sentry.metrics.count('runescape.mcp.tool_call.success', 1, {
+                    attributes: { tool_name: toolName, traffic_source: metrics.trafficSource },
+                });
+            }
         });
     });
-    const nodeHandler = toNodeHandler(handler);
+    const nodeHandler = toNodeHandler({
+        async fetch(request, options) {
+            const metrics = rpcMetrics.getStore();
+            if (!metrics || !isJsonContentType(request.headers.get('content-type'))) return handler.fetch(request, options);
+
+            let body: unknown;
+            try {
+                // The Node adapter already enforces the body limit. Keep its
+                // original Request available for the SDK's malformed-JSON path.
+                body = options?.parsedBody ?? await request.clone().json();
+            } catch {
+                return handler.fetch(request, options);
+            }
+            if (!request.signal.aborted) trackRpcMethods(metrics, body);
+            return handler.fetch(request, { ...options, parsedBody: body });
+        },
+    });
 
     function serveHomepage(_req: IncomingMessage, res: ServerResponse): void {
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
@@ -109,10 +128,21 @@ export function createHttpServer(beta?: ProtectedBeta, port = 8080) {
             return;
         }
 
-        void nodeHandler(req, res).catch(() => {
+        const serveMcp = () => nodeHandler(req, res).catch(() => {
             if (!res.headersSent) res.writeHead(500, { 'content-type': 'application/json' });
             res.end('{"error":"Request failed"}');
         });
+        if (!beta && req.method === 'POST' && path === '/mcp' && Sentry.isEnabled()) {
+            const metrics: RpcMetrics = {
+                trafficSource: req.headers['x-runescape-mcp-smoke'] === '1' ? 'smoke_test' : 'public',
+                pendingTools: new Map(),
+            };
+            res.once('finish', () => finishRpcMetrics(metrics, false));
+            res.once('close', () => finishRpcMetrics(metrics, !res.writableFinished));
+            void rpcMetrics.run(metrics, serveMcp);
+        } else {
+            void serveMcp();
+        }
     }
 
     async function writeWebResponse(response: Response, res: ServerResponse): Promise<void> {
