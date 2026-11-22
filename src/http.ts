@@ -1,5 +1,6 @@
 // Node HTTP entry for the public server or the isolated protected beta.
 import './instrument.js';
+import * as Sentry from '@sentry/node';
 import { configureBeta } from './beta.js';
 import { createHttpServer } from './httpApp.js';
 
@@ -13,6 +14,7 @@ app.server.listen(port, host, () => {
 });
 async function shutdown(): Promise<void> {
     await app.close();
+    await Sentry.flush(2_000);
     process.exit(0);
 }
 process.on('SIGINT', () => { void shutdown(); });

@@ -123,6 +123,17 @@ export async function someFunction(params: any) {
 
 ## 7. Monitoring in Production
 
+In Sentry's Explore → Metrics, select the `runescape-wiki-mcp` project and its
+production environment. Sum `runescape.mcp.tool_call.success` over the week,
+group by `tool_name`, and filter on `traffic_source:public`. To verify a smoke
+run, select `traffic_source:smoke_test` instead.
+
+The counter increments when a tool called on the public `/mcp` endpoint returns
+without an MCP error. It groups calls by the requested tool name, including any
+legacy aliases. The hosted verification script sends `X-Runescape-Mcp-Smoke: 1`
+on both protocol versions. Use the same header for manual smoke requests.
+The counter starts when the change is deployed with `SENTRY_DSN` configured.
+
 For production debugging:
 1. Redirect stderr to a log file: `bun run start 2> debug.log`
 2. Use environment variables for different log levels

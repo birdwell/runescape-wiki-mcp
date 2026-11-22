@@ -37,8 +37,12 @@ const SERVER_OPTIONS = {
  * so each request or connection gets a fresh instance for the 2026-07-28 era.
  */
 export function createServer(): Server {
+    return createServerWithToolObserver();
+}
+
+export function createServerWithToolObserver(onToolSuccess?: (name: string) => void): Server {
     const server = new Server(SERVER_CONFIG, SERVER_OPTIONS);
-    setupServerHandlers(server);
+    setupServerHandlers(server, onToolSuccess);
     registerPromptHandlers(server);
     if (Sentry.isInitialized()) {
         return Sentry.wrapMcpServerWithSentry(server);
@@ -46,7 +50,7 @@ export function createServer(): Server {
     return server;
 }
 
-function setupServerHandlers(server: Server): void {
+function setupServerHandlers(server: Server, onToolSuccess?: (name: string) => void): void {
     server.setRequestHandler('tools/list', async () => {
         return { tools: availableTools() };
     });
@@ -59,6 +63,13 @@ function setupServerHandlers(server: Server): void {
         try {
             const result = await handleTool(name, args || {});
             debugLog(`Tool ${name} succeeded`, result);
+            if (!result.isError && onToolSuccess) {
+                try {
+                    onToolSuccess(name);
+                } catch {
+                    debugLog('Could not record successful tool call');
+                }
+            }
             return {
                 content: result.content,
                 structuredContent: result.structuredContent,
