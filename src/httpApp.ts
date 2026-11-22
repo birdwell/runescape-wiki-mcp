@@ -3,15 +3,26 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { toNodeHandler } from '@modelcontextprotocol/node';
+import * as Sentry from '@sentry/node';
 import { handleDiscoveryRequest } from './discovery.js';
 import { homepageHtml } from './homepage.js';
 import { clientKeyFromHeaders, consumeRateLimit } from './rateLimit.js';
-import { createServer as createMcpServer } from './server.js';
+import { createServer as createMcpServer, createServerWithToolObserver } from './server.js';
 import type { ProtectedBeta } from './beta.js';
 
 export function createHttpServer(beta?: ProtectedBeta, port = 8080) {
 
-    const handler = createMcpHandler(createMcpServer);
+    const handler = createMcpHandler(({ requestInfo }) => {
+        if (beta || !requestInfo || !Sentry.isEnabled() || new URL(requestInfo.url).pathname !== '/mcp') {
+            return createMcpServer();
+        }
+        const trafficSource = requestInfo.headers.get('x-runescape-mcp-smoke') === '1' ? 'smoke_test' : 'public';
+        return createServerWithToolObserver(toolName => {
+            Sentry.metrics.count('runescape.mcp.tool_call.success', 1, {
+                attributes: { tool_name: toolName, traffic_source: trafficSource },
+            });
+        });
+    });
     const nodeHandler = toNodeHandler(handler);
 
     function serveHomepage(_req: IncomingMessage, res: ServerResponse): void {

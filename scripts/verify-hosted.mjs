@@ -1,10 +1,15 @@
 import { writeFile } from 'node:fs/promises';
 const endpoint = process.env.MCP_ENDPOINT ?? 'https://runescape-wiki-mcp.fly.dev/mcp';
+const smokeHeaders = { 'X-Runescape-Mcp-Smoke': '1' };
 const checks = [];
 let requestId = 0;
 async function rpc(method, params = {}, modern = false) {
   const protocol = '2026-07-28';
-  const headers = {'Content-Type':'application/json','Accept':'application/json, text/event-stream'};
+  const headers = {
+    ...smokeHeaders,
+    'Content-Type': 'application/json',
+    Accept: 'application/json, text/event-stream',
+  };
   if (modern) {
     headers['MCP-Protocol-Version'] = protocol; headers['Mcp-Method'] = method;
     if (params.name) headers['Mcp-Name'] = params.name;
@@ -140,7 +145,7 @@ try {
  if(!variantDrops.structuredContent?.rows?.length||variantDrops.structuredContent.rows.some(row=>row.sourceReference!==dropVariant)) throw new Error('Drop variant selection failed');
  const invalidTitle=await call('get_wiki_page_content',{page:'https://runescape.wiki/w/Abyssal_whip'},true);
  if(!invalidTitle.content?.some(part=>part.text?.includes('wiki title'))) throw new Error('Invalid URL title did not return actionable validation');
- const card=await fetch(endpoint+'/server-card').then(r=>r.json());
+ const card = await fetch(endpoint + '/server-card', { headers: smokeHeaders }).then(r => r.json());
  console.log('Server card:',card.name,card.version);
 } catch(e) { console.error(e); process.exitCode=1; }
 await writeFile('/tmp/rs-production-verification.json',JSON.stringify({endpoint,checkedAt:new Date().toISOString(),checks},null,2));
