@@ -130,8 +130,9 @@ run, select `traffic_source:smoke_test` instead.
 
 The counter increments when a tool called on the public `/mcp` endpoint returns
 without an MCP error. It groups calls by the requested tool name, including any
-legacy aliases. The hosted verification script sends `X-Runescape-Mcp-Smoke: 1`
-on both protocol versions. Use the same header for manual smoke requests.
+legacy aliases. Hosted verification sends `X-Runescape-Mcp-Smoke: 1` on both
+protocol versions. The distribution preflight and manual smoke requests use
+the same header.
 The counter starts when the change is deployed with `SENTRY_DSN` configured.
 
 For production debugging:

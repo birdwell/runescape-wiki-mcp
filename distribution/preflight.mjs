@@ -13,6 +13,7 @@ async function rpc(method, params) {
             'Content-Type': 'application/json',
             Accept: 'application/json, text/event-stream',
             'MCP-Protocol-Version': '2025-03-26',
+            'X-Runescape-Mcp-Smoke': '1',
         },
         body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method, params }),
         signal: AbortSignal.timeout(30000),
