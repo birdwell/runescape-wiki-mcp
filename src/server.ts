@@ -5,6 +5,7 @@ import {
     ProtocolError,
     type CallToolRequest,
     type ReadResourceRequest,
+    type RequestId,
 } from '@modelcontextprotocol/server';
 import * as Sentry from '@sentry/node';
 
@@ -40,9 +41,11 @@ export function createServer(): Server {
     return createServerWithToolObserver();
 }
 
-export function createServerWithToolObserver(onToolSuccess?: (name: string) => void): Server {
+type ToolObserver = (name: string, id: RequestId, succeeded: boolean) => void;
+
+export function createServerWithToolObserver(onToolResult?: ToolObserver): Server {
     const server = new Server(SERVER_CONFIG, SERVER_OPTIONS);
-    setupServerHandlers(server, onToolSuccess);
+    setupServerHandlers(server, onToolResult);
     registerPromptHandlers(server);
     if (Sentry.isInitialized()) {
         return Sentry.wrapMcpServerWithSentry(server);
@@ -50,12 +53,12 @@ export function createServerWithToolObserver(onToolSuccess?: (name: string) => v
     return server;
 }
 
-function setupServerHandlers(server: Server, onToolSuccess?: (name: string) => void): void {
+function setupServerHandlers(server: Server, onToolResult?: ToolObserver): void {
     server.setRequestHandler('tools/list', async () => {
         return { tools: availableTools() };
     });
 
-    server.setRequestHandler('tools/call', async (request: CallToolRequest) => {
+    server.setRequestHandler('tools/call', async (request: CallToolRequest, { mcpReq }) => {
         const { name, arguments: args } = request.params;
 
         debugLog(`Tool called: ${name}`, args);
@@ -63,19 +66,14 @@ function setupServerHandlers(server: Server, onToolSuccess?: (name: string) => v
         try {
             const result = await handleTool(name, args || {});
             debugLog(`Tool ${name} succeeded`, result);
-            if (!result.isError && onToolSuccess) {
-                try {
-                    onToolSuccess(name);
-                } catch {
-                    debugLog('Could not record successful tool call');
-                }
-            }
+            observeToolResult(onToolResult, name, mcpReq.id, !result.isError);
             return {
                 content: result.content,
                 structuredContent: result.structuredContent,
                 isError: result.isError,
             };
         } catch (error) {
+            observeToolResult(onToolResult, name, mcpReq.id, false);
             if (error instanceof ProtocolError) {
                 throw error;
             }
@@ -104,4 +102,12 @@ function setupServerHandlers(server: Server, onToolSuccess?: (name: string) => v
             );
         }
     });
+}
+
+function observeToolResult(observer: ToolObserver | undefined, name: string, id: RequestId, succeeded: boolean): void {
+    try {
+        observer?.(name, id, succeeded);
+    } catch {
+        debugLog('Could not record tool result');
+    }
 }

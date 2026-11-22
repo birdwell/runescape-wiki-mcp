@@ -134,6 +134,16 @@ legacy aliases. Hosted verification sends `X-Runescape-Mcp-Smoke: 1` on both
 protocol versions. The distribution preflight sends the same header. Include it
 in manual smoke requests.
 
+For endpoint traffic, sum `runescape.mcp.rpc.message`, group by `rpc_method`
+and `outcome`, and filter on `traffic_source:public`. Discovery and setup
+methods such as `server/discover`, `tools/list`, `initialize`, and
+`notifications/initialized` appear as `received`. Tool requests appear as
+`success`, `failed`, or `aborted`. An MCP tool error can appear as `failed`
+even with HTTP `200`. Unknown method names appear as `other`.
+
+This metric covers JSON-RPC requests and notifications parsed at `/mcp` after
+the HTTP rate limit check. Legacy batches count each message.
+
 Counting begins after deployment with `SENTRY_DSN` configured.
 
 For production debugging:
