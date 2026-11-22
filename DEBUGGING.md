@@ -131,9 +131,10 @@ run, select `traffic_source:smoke_test` instead.
 The counter increments when a tool called on the public `/mcp` endpoint returns
 without an MCP error. It groups calls by the requested tool name, including any
 legacy aliases. Hosted verification sends `X-Runescape-Mcp-Smoke: 1` on both
-protocol versions. The distribution preflight and manual smoke requests use
-the same header.
-The counter starts when the change is deployed with `SENTRY_DSN` configured.
+protocol versions. The distribution preflight sends the same header. Include it
+in manual smoke requests.
+
+Counting begins after deployment with `SENTRY_DSN` configured.
 
 For production debugging:
 1. Redirect stderr to a log file: `bun run start 2> debug.log`
