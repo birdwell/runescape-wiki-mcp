@@ -14,11 +14,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/birdwell/runescape-wiki-mcp.git"
+    "url": "git+https://github.com/birdwelllabs/runescape-wiki-mcp.git"
   },
   "homepage": "https://runescape-wiki-mcp.fly.dev",
   "bugs": {
-    "url": "https://github.com/birdwell/runescape-wiki-mcp/issues"
+    "url": "https://github.com/birdwelllabs/runescape-wiki-mcp/issues"
   },
   "main": "dist/index.js",
   "module": "src/smithery.ts",

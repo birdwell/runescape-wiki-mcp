@@ -4,7 +4,7 @@
   "title": "RuneScape 3 MCP Server",
   "description": "RS3 guide prices and history, flip tax, hiscores, and wiki. Lags the live GE.",
   "repository": {
-    "url": "https://github.com/birdwell/runescape-wiki-mcp",
+    "url": "https://github.com/birdwelllabs/runescape-wiki-mcp",
     "source": "github",
     "id": "1047256430"
   },

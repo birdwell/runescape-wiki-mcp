@@ -2,8 +2,8 @@
 
 [![npm](https://img.shields.io/npm/v/runescape-wiki-mcp)](https://www.npmjs.com/package/runescape-wiki-mcp)
 [![npm downloads per month](https://img.shields.io/npm/dm/runescape-wiki-mcp)](https://www.npmjs.com/package/runescape-wiki-mcp)
-[![CI](https://github.com/birdwell/runescape-wiki-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/birdwell/runescape-wiki-mcp/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/github/license/birdwell/runescape-wiki-mcp)](https://github.com/birdwell/runescape-wiki-mcp/blob/main/LICENSE)
+[![CI](https://github.com/birdwelllabs/runescape-wiki-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/birdwelllabs/runescape-wiki-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/birdwelllabs/runescape-wiki-mcp)](https://github.com/birdwelllabs/runescape-wiki-mcp/blob/main/LICENSE)
 [![Glama connector quality and endpoint health](https://glama.ai/mcp/connectors/io.github.birdwell/runescape-wiki-mcp/badges/score.svg)](https://glama.ai/mcp/connectors/io.github.birdwell/runescape-wiki-mcp)
 
 **Ask what it's worth, whether the flip clears tax, and what to train next.**
@@ -438,3 +438,14 @@ Strict gateways or clients validating against fresh discovery must use the prefe
 
 The account-aware planner can run as an invite-only beta with authentication and
 persistent Jev spending limits. See [beta setup and limits](docs/protected-beta.md).
+
+
+### Update the existing MCP Registry listing
+
+The registry identifier `io.github.birdwell/runescape-wiki-mcp` belongs to the
+`birdwell` GitHub account. For a release, check out the reviewed tag, verify
+the npm package referenced in `server.json` is available, and use the official
+`mcp-publisher` CLI from the repository root. Run `mcp-publisher login github`
+and sign in as `birdwell`, then run `mcp-publisher publish`. Verify the listing
+version and hosted URL in the [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.birdwell/runescape-wiki-mcp).
+The tag workflow checks the identifiers and records the manual publication step.
