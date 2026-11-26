@@ -3,6 +3,9 @@
 import assert from 'node:assert/strict';
 
 const endpoint = 'https://runescape-wiki-mcp.fly.dev/mcp';
+// Without MCP_SMOKE_TOKEN, the server counts these checks as public traffic.
+const smokeToken = process.env.MCP_SMOKE_TOKEN;
+if (!smokeToken) console.error('MCP_SMOKE_TOKEN is not set: these checks will count as public traffic.');
 const report = { checkedAt: new Date().toISOString(), endpoint, checks: [] };
 let id = 0;
 
@@ -13,7 +16,7 @@ async function rpc(method, params) {
             'Content-Type': 'application/json',
             Accept: 'application/json, text/event-stream',
             'MCP-Protocol-Version': '2025-03-26',
-            'X-Runescape-Mcp-Smoke': '1',
+            ...(smokeToken ? { 'X-Runescape-Mcp-Smoke': smokeToken } : {}),
         },
         body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method, params }),
         signal: AbortSignal.timeout(30000),

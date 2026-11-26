@@ -33,6 +33,14 @@ export const allTools: Tool[] = [
     annotations: { ...tool.annotations, title: tool.title ?? tool.name },
 }));
 
+const implementedToolNames = new Set([itemTools, priceTools, historyTools, compareTools, flipTools,
+    playerTools, wikiTools, recommendationTools, entityTools, wikiReferenceTools].flat().map(tool => tool.name));
+
+/** True when handleTool dispatches this name. Keeps client strings out of metric dimensions. */
+export function isKnownToolName(name: string): boolean {
+    return implementedToolNames.has(implementationToolName(name));
+}
+
 export function availableTools(): Tool[] {
     if (getRecommendationConfiguration()) return allTools;
     return allTools.filter(tool => tool.name !== 'recommend_next_activity');

@@ -130,9 +130,18 @@ run, select `traffic_source:smoke_test` instead.
 
 The counter increments when a tool called on the public `/mcp` endpoint returns
 without an MCP error. It groups calls by the requested tool name, including any
-legacy aliases. Hosted verification sends `X-Runescape-Mcp-Smoke: 1` on both
-protocol versions. The distribution preflight sends the same header. Include it
-in manual smoke requests.
+legacy aliases.
+
+Smoke traffic must prove it knows a shared secret. The server reads it from
+`MCP_SMOKE_TOKEN`. A request counts as `smoke_test` only when its
+`X-Runescape-Mcp-Smoke` header equals that secret. Any other value, including
+the old `1`, counts as `public`. Without `MCP_SMOKE_TOKEN` on the server, all
+traffic counts as `public`.
+
+Hosted verification and the distribution preflight read the same secret from
+`MCP_SMOKE_TOKEN` and send it on both protocol versions. Without it, they warn
+and their checks count as public traffic. Send the secret in manual smoke
+requests too.
 
 For endpoint traffic, sum `runescape.mcp.rpc.message`, group by `rpc_method`
 and `outcome`, and filter on `traffic_source:public`. Discovery and setup
@@ -140,6 +149,18 @@ methods such as `server/discover`, `tools/list`, `initialize`, and
 `notifications/initialized` appear as `received`. Tool requests appear as
 `success`, `failed`, or `aborted`. An MCP tool error can appear as `failed`
 even with HTTP `200`. Unknown method names appear as `other`.
+
+`tools/call` messages also carry `tool_name`, so failures can be grouped by
+tool. It is the requested name, including legacy aliases. Names the server
+does not accept appear as `other`. Other methods have no `tool_name`.
+
+For unique users, query request spans, not metrics. Each public `POST /mcp`
+root span carries `mcp.traffic_source`. Spans where a tool handler ran also
+carry `mcp.tool_call:true`. Requests the SDK rejects before the handler, such as
+HTTP `406`, are not tagged. Count users with `count_unique(user.ip)` and
+filter on `is_transaction:true mcp.traffic_source:public mcp.tool_call:true`.
+This counts IP addresses, not people: shared networks undercount, and changing
+networks overcount. Drop `mcp.tool_call:true` to include setup-only scanners.
 
 This metric covers JSON-RPC requests and notifications parsed at `/mcp` after
 the HTTP rate limit check. Legacy batches count each message.
