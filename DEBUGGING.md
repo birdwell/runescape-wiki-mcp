@@ -130,9 +130,18 @@ run, select `traffic_source:smoke_test` instead.
 
 The counter increments when a tool called on the public `/mcp` endpoint returns
 without an MCP error. It groups calls by the requested tool name, including any
-legacy aliases. Hosted verification sends `X-Runescape-Mcp-Smoke: 1` on both
-protocol versions. The distribution preflight sends the same header. Include it
-in manual smoke requests.
+legacy aliases.
+
+Smoke traffic must prove it knows a shared secret. The server reads it from
+`MCP_SMOKE_TOKEN`. A request counts as `smoke_test` only when its
+`X-Runescape-Mcp-Smoke` header equals that secret. Any other value, including
+the old `1`, counts as `public`. Without `MCP_SMOKE_TOKEN` on the server, all
+traffic counts as `public`.
+
+Hosted verification and the distribution preflight read the same secret from
+`MCP_SMOKE_TOKEN` and send it on both protocol versions. Without it, they warn
+and their checks count as public traffic. Send the secret in manual smoke
+requests too.
 
 For endpoint traffic, sum `runescape.mcp.rpc.message`, group by `rpc_method`
 and `outcome`, and filter on `traffic_source:public`. Discovery and setup

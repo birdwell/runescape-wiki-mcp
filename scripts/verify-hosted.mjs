@@ -1,6 +1,9 @@
 import { writeFile } from 'node:fs/promises';
 const endpoint = process.env.MCP_ENDPOINT ?? 'https://runescape-wiki-mcp.fly.dev/mcp';
-const smokeHeaders = { 'X-Runescape-Mcp-Smoke': '1' };
+// Without MCP_SMOKE_TOKEN, the server counts these checks as public traffic.
+const smokeToken = process.env.MCP_SMOKE_TOKEN;
+if (!smokeToken) console.error('MCP_SMOKE_TOKEN is not set: these checks will count as public traffic.');
+const smokeHeaders = smokeToken ? { 'X-Runescape-Mcp-Smoke': smokeToken } : {};
 const checks = [];
 let requestId = 0;
 async function rpc(method, params = {}, modern = false) {

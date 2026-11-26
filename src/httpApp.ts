@@ -1,6 +1,7 @@
 // Node HTTP entry — Streamable HTTP MCP for remote hosts (Fly, etc.).
 
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createMcpHandler, isJsonContentType } from '@modelcontextprotocol/server';
 import { toNodeHandler } from '@modelcontextprotocol/node';
@@ -11,6 +12,17 @@ import { clientKeyFromHeaders, consumeRateLimit } from './rateLimit.js';
 import { createServer as createMcpServer, createServerWithToolObserver } from './server.js';
 import { finishRpcMetrics, tagRequestSpan, trackRpcMethods, trackToolResult, type RpcMetrics } from './rpcMetrics.js';
 import type { ProtectedBeta } from './beta.js';
+
+/**
+ * Smoke traffic must prove it knows MCP_SMOKE_TOKEN. Without the secret, a
+ * public caller could send the header and hide from usage counts.
+ */
+function isVerifiedSmokeTest(header: string | string[] | undefined): boolean {
+    const token = process.env.MCP_SMOKE_TOKEN;
+    if (!token || typeof header !== 'string') return false;
+    const digest = (value: string) => createHash('sha256').update(value).digest();
+    return timingSafeEqual(digest(header), digest(token));
+}
 
 export function createHttpServer(beta?: ProtectedBeta, port = 8080) {
     const rpcMetrics = new AsyncLocalStorage<RpcMetrics>();
@@ -134,7 +146,7 @@ export function createHttpServer(beta?: ProtectedBeta, port = 8080) {
         });
         if (!beta && req.method === 'POST' && path === '/mcp' && Sentry.isEnabled()) {
             const metrics: RpcMetrics = {
-                trafficSource: req.headers['x-runescape-mcp-smoke'] === '1' ? 'smoke_test' : 'public',
+                trafficSource: isVerifiedSmokeTest(req.headers['x-runescape-mcp-smoke']) ? 'smoke_test' : 'public',
                 pendingTools: new Map(),
             };
             tagRequestSpan({ 'mcp.traffic_source': metrics.trafficSource });

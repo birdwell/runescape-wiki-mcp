@@ -37,7 +37,8 @@ test('public MCP metrics distinguish setup, discovery and tool outcomes on both 
     await once(collector, 'listening');
     const collectorPort = (collector.address() as AddressInfo).port;
     const child = spawn(process.execPath, ['dist/http.js'], {
-        env: { HOST: '127.0.0.1', PORT: '0', SENTRY_DSN: `http://test@127.0.0.1:${collectorPort}/1` },
+        env: { HOST: '127.0.0.1', PORT: '0', SENTRY_DSN: `http://test@127.0.0.1:${collectorPort}/1`,
+            MCP_SMOKE_TOKEN: 'test-smoke-token' },
         stdio: ['ignore', 'ignore', 'pipe'],
     });
     const exited = once(child, 'exit');
@@ -59,9 +60,11 @@ test('public MCP metrics distinguish setup, discovery and tool outcomes on both 
         }
 
         async function rpc(method: string, params: Record<string, unknown>,
-            { modern = false, smoke = false, notification = false } = {}) {
+            { modern = false, smoke = false, spoofSmoke = false, notification = false } = {}) {
             const headers = new Headers({ 'content-type': 'application/json', accept: 'application/json, text/event-stream' });
-            if (smoke) headers.set('X-Runescape-Mcp-Smoke', '1');
+            if (smoke) headers.set('X-Runescape-Mcp-Smoke', 'test-smoke-token');
+            // The old value no longer proves smoke traffic.
+            if (spoofSmoke) headers.set('X-Runescape-Mcp-Smoke', '1');
             if (modern) {
                 headers.set('MCP-Protocol-Version', '2026-07-28');
                 headers.set('Mcp-Method', method);
@@ -103,6 +106,7 @@ test('public MCP metrics distinguish setup, discovery and tool outcomes on both 
         await rpc('notifications/initialized', {}, { notification: true });
         await rpc('server/discover', {}, { modern: true });
         await rpc('tools/list', {}, { modern: true, smoke: true });
+        await rpc('tools/list', {}, { spoofSmoke: true });
         const modernFailure = await rpc('tools/call', { name: 'estimate_flip', arguments: {} }, { modern: true });
         expect(modernFailure.result.isError).toBe(true);
 
@@ -162,7 +166,7 @@ test('public MCP metrics distinguish setup, discovery and tool outcomes on both 
             'public tools/call success': 2,
             'public tools/call failed': 5,
             'public tools/call aborted': 1,
-            'public tools/list received': 2,
+            'public tools/list received': 3,
             'public initialize received': 1,
             'public notifications/initialized received': 1,
             'public notifications/cancelled received': 1,
