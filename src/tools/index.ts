@@ -33,16 +33,12 @@ export const allTools: Tool[] = [
     annotations: { ...tool.annotations, title: tool.title ?? tool.name },
 }));
 
-// Every name handleTool accepts: published names plus hidden legacy aliases.
-const knownToolNames = new Set([
-    ...allTools.map(tool => tool.name),
-    ...[itemTools, priceTools, historyTools, compareTools, flipTools, playerTools, wikiTools,
-        recommendationTools, entityTools, wikiReferenceTools].flat().map(tool => tool.name),
-]);
+const implementedToolNames = new Set([itemTools, priceTools, historyTools, compareTools, flipTools,
+    playerTools, wikiTools, recommendationTools, entityTools, wikiReferenceTools].flat().map(tool => tool.name));
 
-/** True when handleTool accepts this name. Keeps client strings out of metric dimensions. */
+/** True when handleTool dispatches this name. Keeps client strings out of metric dimensions. */
 export function isKnownToolName(name: string): boolean {
-    return knownToolNames.has(name);
+    return implementedToolNames.has(implementationToolName(name));
 }
 
 export function availableTools(): Tool[] {

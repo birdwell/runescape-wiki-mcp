@@ -22,7 +22,6 @@ export type ToolOutcome = 'success' | 'failed' | 'aborted';
 
 export function trackRpcMethods(metrics: RpcMetrics, body: unknown): void {
     const received = new Map<string, number>();
-    let toolCall = false;
     for (const message of Array.isArray(body) ? body : [body]) {
         const request = isJSONRPCRequest(message);
         if (!request && !isJSONRPCNotification(message)) continue;
@@ -30,7 +29,6 @@ export function trackRpcMethods(metrics: RpcMetrics, body: unknown): void {
             const names = metrics.pendingTools.get(message.id) ?? [];
             names.push(metricToolName(message.params?.name));
             metrics.pendingTools.set(message.id, names);
-            toolCall = true;
             continue;
         }
         // Keep unrecognized client strings out of the metric dimensions.
@@ -38,8 +36,6 @@ export function trackRpcMethods(metrics: RpcMetrics, body: unknown): void {
         received.set(method, (received.get(method) ?? 0) + 1);
     }
     for (const [method, count] of received) countRpc(metrics, method, 'received', count);
-    // Lets Sentry count unique callers that used a tool, apart from setup-only scanners.
-    if (toolCall) tagRequestSpan({ 'mcp.tool_call': true });
 }
 
 /** Adds attributes to the HTTP request's root span, so trace queries can filter on them. */
@@ -52,12 +48,18 @@ export function tagRequestSpan(attributes: Record<string, string | boolean>): vo
     }
 }
 
-export function trackToolResult(metrics: RpcMetrics, id: RequestId, outcome: ToolOutcome): void {
+export function trackToolResult(metrics: RpcMetrics, id: RequestId, outcome: ToolOutcome, requestedName: string): void {
     const names = metrics.pendingTools.get(id);
     if (!names?.length) return;
-    const toolName = names.shift()!;
+    // Calls in a legacy batch can share an id and finish out of order.
+    const toolName = metricToolName(requestedName);
+    const index = names.indexOf(toolName);
+    names.splice(index === -1 ? 0 : index, 1);
     if (!names.length) metrics.pendingTools.delete(id);
     countRpc(metrics, 'tools/call', outcome, 1, toolName);
+    // The handler ran, so the request passed SDK validation. This lets Sentry
+    // count unique callers that used a tool, apart from setup-only scanners.
+    tagRequestSpan({ 'mcp.tool_call': true });
 }
 
 export function finishRpcMetrics(metrics: RpcMetrics, aborted: boolean): void {

@@ -18,7 +18,7 @@ export function createHttpServer(beta?: ProtectedBeta, port = 8080) {
         const metrics = rpcMetrics.getStore();
         if (!metrics) return createMcpServer();
         return createServerWithToolObserver((toolName, id, outcome) => {
-            trackToolResult(metrics, id, outcome);
+            trackToolResult(metrics, id, outcome, toolName);
             if (outcome === 'success') {
                 Sentry.metrics.count('runescape.mcp.tool_call.success', 1, {
                     attributes: { tool_name: toolName, traffic_source: metrics.trafficSource },

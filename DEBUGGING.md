@@ -146,8 +146,9 @@ tool. It is the requested name, including legacy aliases. Names the server
 does not accept appear as `other`. Other methods have no `tool_name`.
 
 For unique users, query request spans, not metrics. Each public `POST /mcp`
-root span carries `mcp.traffic_source`. Spans whose body includes `tools/call`
-also carry `mcp.tool_call:true`. Count users with `count_unique(user.ip)` and
+root span carries `mcp.traffic_source`. Spans where a tool handler ran also
+carry `mcp.tool_call:true`. Requests the SDK rejects before the handler, such as
+HTTP `406`, are not tagged. Count users with `count_unique(user.ip)` and
 filter on `is_transaction:true mcp.traffic_source:public mcp.tool_call:true`.
 This counts IP addresses, not people: shared networks undercount, and changing
 networks overcount. Drop `mcp.tool_call:true` to include setup-only scanners.
