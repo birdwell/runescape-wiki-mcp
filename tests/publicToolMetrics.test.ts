@@ -8,6 +8,7 @@ import { gunzipSync } from 'node:zlib';
 test('public MCP metrics distinguish setup, discovery and tool outcomes on both protocols', async () => {
     const metrics: Array<{ name: string; type: string; value: number; source: string;
         tool?: string; method?: string; outcome?: string }> = [];
+    const requestSpans: Array<Record<string, unknown>> = [];
     const collector = createServer(async (req, res) => {
         const chunks: Buffer[] = [];
         for await (const chunk of req) chunks.push(chunk);
@@ -15,7 +16,15 @@ test('public MCP metrics distinguish setup, discovery and tool outcomes on both 
         const envelope = req.headers['content-encoding'] === 'gzip' ? gunzipSync(bytes) : bytes;
         const [, ...items] = envelope.toString().trimEnd().split('\n');
         for (let index = 0; index < items.length; index += 2) {
-            if (JSON.parse(items[index]).type !== 'trace_metric') continue;
+            const type = JSON.parse(items[index]).type;
+            if (type === 'span') {
+                for (const span of JSON.parse(items[index + 1]).items) {
+                    if (!span.is_segment || span.attributes['url.path']?.value !== '/mcp') continue;
+                    requestSpans.push(Object.fromEntries(Object.entries(span.attributes)
+                        .map(([key, attribute]) => [key, (attribute as { value: unknown }).value])));
+                }
+            }
+            if (type !== 'trace_metric') continue;
             for (const metric of JSON.parse(items[index + 1]).items) {
                 metrics.push({ name: metric.name, type: metric.type, value: metric.value,
                     tool: metric.attributes.tool_name?.value, source: metric.attributes.traffic_source?.value,
@@ -162,6 +171,32 @@ test('public MCP metrics distinguish setup, discovery and tool outcomes on both 
             'smoke_test tools/call success': 2,
             'smoke_test tools/list received': 1,
         });
+
+        // Every tools/call outcome carries a bounded tool name; other methods carry none.
+        const byTool = new Map<string, number>();
+        for (const metric of metrics.filter(metric => metric.name === 'runescape.mcp.rpc.message')) {
+            if (metric.method !== 'tools/call') {
+                expect(metric.tool).toBeUndefined();
+                continue;
+            }
+            const key = `${metric.source} ${metric.outcome} ${metric.tool}`;
+            byTool.set(key, (byTool.get(key) ?? 0) + metric.value);
+        }
+        expect(Object.fromEntries(byTool)).toEqual({
+            'public success get_ge_info': 1,
+            'public success estimate_flip': 1,
+            'public failed estimate_flip': 4,
+            'public failed other': 1,
+            'public aborted estimate_flip': 1,
+            'smoke_test success get_ge_info': 1,
+            'smoke_test success estimate_flip': 1,
+        });
+
+        // Root request spans let Sentry count unique callers that used a tool.
+        const tagged = requestSpans.map(data => `${data['mcp.traffic_source']} ${data['mcp.tool_call'] ?? false}`);
+        expect(tagged).toEqual(expect.arrayContaining(['public true', 'smoke_test true', 'public false']));
+        expect(tagged.filter(tag => tag === 'public true').length).toBeGreaterThanOrEqual(5);
+        expect(tagged).not.toContain('undefined true');
     } finally {
         if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
         await exited;

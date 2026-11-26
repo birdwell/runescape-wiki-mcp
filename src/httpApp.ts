@@ -9,7 +9,7 @@ import { handleDiscoveryRequest } from './discovery.js';
 import { homepageHtml } from './homepage.js';
 import { clientKeyFromHeaders, consumeRateLimit } from './rateLimit.js';
 import { createServer as createMcpServer, createServerWithToolObserver } from './server.js';
-import { finishRpcMetrics, trackRpcMethods, trackToolResult, type RpcMetrics } from './rpcMetrics.js';
+import { finishRpcMetrics, tagRequestSpan, trackRpcMethods, trackToolResult, type RpcMetrics } from './rpcMetrics.js';
 import type { ProtectedBeta } from './beta.js';
 
 export function createHttpServer(beta?: ProtectedBeta, port = 8080) {
@@ -137,6 +137,7 @@ export function createHttpServer(beta?: ProtectedBeta, port = 8080) {
                 trafficSource: req.headers['x-runescape-mcp-smoke'] === '1' ? 'smoke_test' : 'public',
                 pendingTools: new Map(),
             };
+            tagRequestSpan({ 'mcp.traffic_source': metrics.trafficSource });
             res.once('finish', () => finishRpcMetrics(metrics, false));
             res.once('close', () => finishRpcMetrics(metrics, !res.writableFinished));
             void rpcMetrics.run(metrics, serveMcp);

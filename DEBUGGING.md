@@ -141,6 +141,17 @@ methods such as `server/discover`, `tools/list`, `initialize`, and
 `success`, `failed`, or `aborted`. An MCP tool error can appear as `failed`
 even with HTTP `200`. Unknown method names appear as `other`.
 
+`tools/call` messages also carry `tool_name`, so failures can be grouped by
+tool. It is the requested name, including legacy aliases. Names the server
+does not accept appear as `other`. Other methods have no `tool_name`.
+
+For unique users, query request spans, not metrics. Each public `POST /mcp`
+root span carries `mcp.traffic_source`. Spans whose body includes `tools/call`
+also carry `mcp.tool_call:true`. Count users with `count_unique(user.ip)` and
+filter on `is_transaction:true mcp.traffic_source:public mcp.tool_call:true`.
+This counts IP addresses, not people: shared networks undercount, and changing
+networks overcount. Drop `mcp.tool_call:true` to include setup-only scanners.
+
 This metric covers JSON-RPC requests and notifications parsed at `/mcp` after
 the HTTP rate limit check. Legacy batches count each message.
 
