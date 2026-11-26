@@ -36,7 +36,7 @@ export const REGISTRY_NAME = 'io.github.birdwell/runescape-wiki-mcp';
 export const SERVER_TITLE = 'RuneScape 3 MCP Server';
 export const PUBLIC_ORIGIN = 'https://runescape-wiki-mcp.fly.dev';
 export const MCP_PATH = '/mcp';
-export const REPOSITORY_URL = 'https://github.com/birdwell/runescape-wiki-mcp';
+export const REPOSITORY_URL = 'https://github.com/birdwelllabs/runescape-wiki-mcp';
 /** GitHub repository id. Stable across renames. */
 export const REPOSITORY_ID = '1047256430';
 

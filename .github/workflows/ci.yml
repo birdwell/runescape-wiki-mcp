@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    runs-on: self-hosted
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'mac-mini-native' }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -18,11 +18,17 @@ jobs:
           bun-version: 1.4.5
       - run: bun install --frozen-lockfile
       - run: bun run test
-      - run: bunx playwright install chromium
+      - name: Install Playwright Chromium
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            bunx playwright install --with-deps chromium
+          else
+            bunx playwright install chromium
+          fi
       - run: bun run test:e2e
 
   node20-public-http:
-    runs-on: self-hosted
+    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'mac-mini-native' }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
