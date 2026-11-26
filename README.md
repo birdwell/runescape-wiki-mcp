@@ -448,4 +448,8 @@ the npm package referenced in `server.json` is available, and use the official
 `mcp-publisher` CLI from the repository root. Run `mcp-publisher login github`
 and sign in as `birdwell`, then run `mcp-publisher publish`. Verify the listing
 version and hosted URL in the [MCP Registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.birdwell/runescape-wiki-mcp).
-The tag workflow checks the identifiers and records the manual publication step.
+The Registry accepts each server version only once. Any metadata change, such as
+a new repository URL, needs a new top-level `version` in `server.json`, even when
+the npm package version stays the same. Tag the release as `v` plus that server
+version. The tag workflow checks the tag, the identifiers and the npm reference,
+then records the manual publication step.

@@ -14,7 +14,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Check registry identity and package reference
         run: |
-          jq -e --slurpfile pkg package.json '
+          jq -e --slurpfile pkg package.json --arg tag "$GITHUB_REF_NAME" '
+            $tag == ("v" + .version) and
             .name == $pkg[0].mcpName and
             .name == "io.github.birdwell/runescape-wiki-mcp" and
             any(.packages[]; .registryType == "npm" and .identifier == $pkg[0].name and .version == $pkg[0].version)
