@@ -7,7 +7,7 @@
       "dependencies": {
         "@modelcontextprotocol/node": "^2.1.2",
         "@modelcontextprotocol/server": "^2.4.0",
-        "@sentry/node": "^11.18.0",
+        "@sentry/node": "^11.19.0",
         "htmlparser2": "^12.0.0",
         "zod": "^4.6.7",
       },
@@ -373,19 +373,19 @@
 
     "@poppinss/exception": ["@poppinss/exception@1.2.3", "", {}, "sha512-dCED+QRChTVatE9ibtoaxc+WkdzOSjYTKi/+uacHWIsfodVfpsueo3+DKpgU5Px8qXjgmXkSvhXvSCz3fnP9lw=="],
 
-    "@sentry/bundler-plugins": ["@sentry/bundler-plugins@11.18.0", "", { "dependencies": { "@sentry/core": "11.18.0", "dotenv": "^17.4.2", "glob": "^14.0.3", "magic-string": "~0.30.8 || ^1.0.0", "oxc-parser": "^0.152.0", "sentry": "^0.50.0" }, "peerDependencies": { "rollup": ">=3.2.0", "webpack": ">=5.1.0" }, "optionalPeers": ["rollup", "webpack"] }, "sha512-rFvVTYGF1zGnis+USxzWjnCCSJQwe2+rONiCTU9KE1gZQOGf9ZsgXOadJjZAHu3RBFOMnKtkQ7NUuPlXazEnIw=="],
+    "@sentry/bundler-plugins": ["@sentry/bundler-plugins@11.19.0", "", { "dependencies": { "@sentry/core": "11.19.0", "dotenv": "^17.4.2", "glob": "^14.0.3", "magic-string": "~0.30.8 || ^1.0.0", "oxc-parser": "^0.152.0", "sentry": "^0.50.0" }, "peerDependencies": { "rollup": ">=3.2.0", "webpack": ">=5.1.0" }, "optionalPeers": ["rollup", "webpack"] }, "sha512-3LV4rMfNEnlN7Cl+psHunf00xE78oml7x+IjyjFmGAuCAQlC2L8DUyzcV2k63oxAv/0M36RTNaSCN8R76DWhJw=="],
 
     "@sentry/conventions": ["@sentry/conventions@0.36.0", "", {}, "sha512-FedIjtJSiTZa3VARAds2ok7Q9Xt2LjrZJ1SeaxMvGhRgMw4V+eOaECGa/JbJWe30tw6yehE1W7T4HmgK5XJRTQ=="],
 
-    "@sentry/core": ["@sentry/core@11.18.0", "", { "dependencies": { "@sentry/conventions": "^0.36.0" } }, "sha512-i5DvfuiCFBznC7zBAdz+C5AVuRLy+RdoGtPOQMELWJSg3CnIfLTUNJQfwweVFrLUeh6CHw0u0W4tpirQnNmx4w=="],
+    "@sentry/core": ["@sentry/core@11.19.0", "", { "dependencies": { "@sentry/conventions": "^0.36.0" } }, "sha512-5akJ7KtDY4FCcE1Wi7yMG+FZRZtb89ghEPUb/5ZKrwtt6w5Fki2PDzOBKPj9p9g9KK0EIX3vjTBNQcNPsAFBHA=="],
 
-    "@sentry/node": ["@sentry/node@11.18.0", "", { "dependencies": { "@opentelemetry/api": "^1.9.1", "@sentry/bundler-plugins": "11.18.0", "@sentry/conventions": "^0.36.0", "@sentry/core": "11.18.0", "@sentry/opentelemetry": "11.18.0", "@sentry/server-runtime-injection": "11.18.0", "@sentry/server-utils": "11.18.0" } }, "sha512-qZFnEG/WOifjfvG9HUiWXM266tmZow0Omq9mZK0hKmevVT4bowgVzNi+jyejVZrBAKqSC2PF96ebymiJ1Z7FPQ=="],
+    "@sentry/node": ["@sentry/node@11.19.0", "", { "dependencies": { "@opentelemetry/api": "^1.9.1", "@sentry/bundler-plugins": "11.19.0", "@sentry/conventions": "^0.36.0", "@sentry/core": "11.19.0", "@sentry/opentelemetry": "11.19.0", "@sentry/server-runtime-injection": "11.19.0", "@sentry/server-utils": "11.19.0" } }, "sha512-9iulG8K9B1BNeXUC3R45T+zBy4dUxutADfH6h72Kdk9pFAh3cnMSlfLgeMk6oH7AS0bUtoE6pRwzFC9Oe5j7tw=="],
 
-    "@sentry/opentelemetry": ["@sentry/opentelemetry@11.18.0", "", { "dependencies": { "@sentry/conventions": "^0.36.0", "@sentry/core": "11.18.0" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" } }, "sha512-f5cyOW/cayhmFBWgVaJIeVJ+VLi0tB0rxaNjMBb8eEKAKMBoqCngfEIOeMVeurrTRlGZ0A/525YEnBbfdTCmmg=="],
+    "@sentry/opentelemetry": ["@sentry/opentelemetry@11.19.0", "", { "dependencies": { "@sentry/conventions": "^0.36.0", "@sentry/core": "11.19.0" }, "peerDependencies": { "@opentelemetry/api": "^1.9.0" } }, "sha512-+NAMAv9/fncRvfkmUKe2YamL4zm++qVBj6KxUsBIzVt+/E7qJ1ksPnzu516rMjl5lwh6I9xtTCR2UxutuPukkg=="],
 
-    "@sentry/server-runtime-injection": ["@sentry/server-runtime-injection@11.18.0", "", { "dependencies": { "@sentry/core": "11.18.0", "@sentry/server-utils": "11.18.0" } }, "sha512-Lwk0lTNWyPiCFKUXZzdVN/3MDddUM1LvOiny5nLXzU1Xe4nlPZCBcZcM0WTE7/v5w5S/COb7sw8SxB7VhbZvJA=="],
+    "@sentry/server-runtime-injection": ["@sentry/server-runtime-injection@11.19.0", "", { "dependencies": { "@sentry/core": "11.19.0", "@sentry/server-utils": "11.19.0" } }, "sha512-pscfOb2cXiJUDJ04A7p64dv3KP9xsXl/fG0qlhGZGqAqGTFlTk+jVzevKv3P/aPfPpgNrQWEm4HLJ4PPN5r4mQ=="],
 
-    "@sentry/server-utils": ["@sentry/server-utils@11.18.0", "", { "dependencies": { "@opentelemetry/api": "^1.9.1", "@sentry/conventions": "^0.36.0", "@sentry/core": "11.18.0" } }, "sha512-1ny+6qT8Hyt9EWplbAcf28wiFS82jiLCGwy8PQeq2IHm8lxsGbRkohAcp3hfRHZUsyiSGOVBcN3ofORLZvxSyg=="],
+    "@sentry/server-utils": ["@sentry/server-utils@11.19.0", "", { "dependencies": { "@opentelemetry/api": "^1.9.1", "@sentry/conventions": "^0.36.0", "@sentry/core": "11.19.0" } }, "sha512-s0kv5B/qVyh8J+uXwiqmvuO65iOnTMuXIeJfYJEvFzOTbE5N27MzgA8VfG25gFA5L9bORVdHQIf/vsm4XBsQYQ=="],
 
     "@sinclair/typebox": ["@sinclair/typebox@0.34.52", "", {}, "sha512-XiMQh7qqVlxZzcVD+kkGMNGMzcTrDMLWI7S4x7z1MkCkbDPrekpZXEUK0eZqZFMuHQg2a2DZOcDIh9o5v3Gonw=="],
 
